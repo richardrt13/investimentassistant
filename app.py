@@ -70,7 +70,7 @@ def get_stock_data(tickers, years=5):
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
-def get_cumulative_return(tickers, years=5):
+def get_cumulative_return(ticker, years=5):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
