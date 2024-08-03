@@ -104,7 +104,7 @@ def plot_efficient_frontier(returns, optimal_portfolio):
     
     fig.update_layout(
         title='Fronteira Eficiente',
-        xaxis_title='Volatilidade Anual',
+        xaxis_title='Volatlidade Anual',
         yaxis_title='Retorno Anual Esperado',
         showlegend=True,
         hovermode='closest'
