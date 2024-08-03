@@ -56,6 +56,9 @@ def train_model(X, y):
     # Dividir dados em treino e teste
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     
+    # Manter as colunas antes de normalizar
+    columns = X_train.columns
+    
     # Normalizar os dados
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
@@ -100,7 +103,7 @@ def train_model(X, y):
     # Criar gráficos de performance
     performance_plots = create_performance_plots(best_model, X_train_selected, y_train, X_test_selected, y_test)
     
-    return best_model, selector, scaler, performance_plots
+    return best_model, selector, scaler, columns, performance_plots
 
 def create_performance_plots(model, X_train, y_train, X_test, y_test):
     # Predições
