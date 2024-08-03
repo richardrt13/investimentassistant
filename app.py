@@ -1,4 +1,4 @@
-import streamlit as st
+4.import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
@@ -98,6 +98,11 @@ if st.button('Montar Recomendação'):
             returns = calculate_annualized_returns(data)
             cov_matrix = calculate_annualized_covariance_matrix(data)
 
+            # Verifique se há ativos suficientes após a filtragem
+            if len(returns) < 2:
+                st.error("Número insuficiente de ativos para calcular a matriz de covariância.")
+                st.stop()
+
             filtered_tickers = tickers
             if sector_filter != 'All':
                 filtered_tickers = [ticker for ticker in tickers if sectors[ticker[:-3]] == sector_filter]
@@ -105,13 +110,8 @@ if st.button('Montar Recomendação'):
                 returns = calculate_annualized_returns(data)
                 cov_matrix = calculate_annualized_covariance_matrix(data)
 
-            if len(returns) == 0:
-                st.error("Não há dados suficientes para realizar a otimização.")
+            if not validate_cov_matrix(cov_matrix):
                 st.stop()
-
-            if len(returns) < max_assets:
-                max_assets = len(returns)
-                st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
 
             magic_formula_df = get_magic_formula_rankings(filtered_tickers)
             selected_tickers = magic_formula_df.head(max_assets).index.tolist()
@@ -119,8 +119,7 @@ if st.button('Montar Recomendação'):
             selected_returns = returns[selected_tickers]
             selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
-            if selected_cov_matrix.isnull().values.any() or selected_cov_matrix.shape[0] < 2:
-                st.error("A matriz de covariância contém valores inválidos ou insuficientes.")
+            if not validate_cov_matrix(selected_cov_matrix):
                 st.stop()
 
             try:
