@@ -42,28 +42,53 @@ def get_magic_formula_rankings(tickers):
     df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
     return df.sort_values(by='MagicFormula_Rank')
 
+def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
+    portfolio_return = np.sum(returns * weights)
+    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+    
+    if portfolio_volatility == 0:
+        return 0  # Retorna 0 se a volatilidade for zero para evitar divisão por zero
+    
+    return -(portfolio_return - risk_free_rate) / portfolio_volatility
+
 def markowitz_optimization(returns, cov_matrix, max_assets):
     num_assets = len(returns)
+    
+    if num_assets == 0:
+        st.error("Não há ativos disponíveis para otimização.")
+        return [], []
+    
     args = (returns, cov_matrix)
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = tuple((0, 1) for _ in range(num_assets))
 
     def objective(weights, returns, cov_matrix):
-        return -negative_sharpe_ratio(weights, returns, cov_matrix)
+        return negative_sharpe_ratio(weights, returns, cov_matrix)
     
-    result = minimize(objective, num_assets * [1. / num_assets], args=args, method='SLSQP', bounds=bounds, constraints=constraints)
+    initial_weights = num_assets * [1. / num_assets]
+    
+    try:
+        result = minimize(objective, initial_weights, args=args, method='SLSQP', bounds=bounds, constraints=constraints)
+    except Exception as e:
+        st.error(f"Erro durante a otimização: {e}")
+        return [], []
+
+    if not result.success:
+        st.warning(f"A otimização não convergiu: {result.message}")
+        return [], []
 
     weights = result.x
     selected_assets = np.argsort(weights)[-max_assets:]
     selected_weights = weights[selected_assets]
-    selected_weights /= np.sum(selected_weights)  # Renormalize weights
+    
+    # Verifica se a soma dos pesos é zero
+    if np.sum(selected_weights) == 0:
+        st.error("A otimização resultou em pesos zero para todos os ativos.")
+        return [], []
+    
+    selected_weights /= np.sum(selected_weights)  # Renormaliza os pesos
 
     return selected_assets, selected_weights
-
-def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
-    portfolio_return = np.sum(returns * weights)
-    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-    return -(portfolio_return - risk_free_rate) / portfolio_volatility
 
 # Streamlit Interface
 st.title('BDR Portfolio Optimizer')
@@ -90,7 +115,7 @@ if st.button('Montar Recomendação'):
     with st.spinner('Baixando dados e otimizando portfólio...'):
         data = download_data(tickers)
         
-        if data is not None:
+        if data is not None and not data.empty:
             returns = calculate_annualized_returns(data)
             cov_matrix = calculate_annualized_covariance_matrix(data)
 
@@ -100,6 +125,10 @@ if st.button('Montar Recomendação'):
                 data = data[filtered_tickers]
                 returns = calculate_annualized_returns(data)
                 cov_matrix = calculate_annualized_covariance_matrix(data)
+
+            if len(returns) == 0:
+                st.error("Não há dados suficientes para realizar a otimização.")
+                st.stop()
 
             # Verificar se há ativos suficientes após a filtragem
             if len(returns) < max_assets:
@@ -112,10 +141,10 @@ if st.button('Montar Recomendação'):
             selected_returns = returns[selected_tickers]
             selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
-            try:
-                selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, max_assets)
-            except Exception as e:
-                st.error(f"Erro na otimização: {e}")
+            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, max_assets)
+
+            if len(selected_assets) == 0 or len(optimal_weights) == 0:
+                st.error("A otimização falhou. Por favor, tente com diferentes parâmetros ou ativos.")
                 st.stop()
 
             final_tickers = [selected_tickers[i] for i in selected_assets]
@@ -148,12 +177,14 @@ if st.button('Montar Recomendação'):
 
             # Gráfico de retorno esperado vs. volatilidade
             fig_risk_return = px.scatter(
-                x=[portfolio_volatility],
-                y=[expected_return],
-                labels={'x': 'Volatility', 'y': 'Expected Return'},
+                x=[portfolio_volatility], 
+                y=[expected_return], 
+                labels={'x': 'Volatility', 'y': 'Expected Return'}, 
                 title='Risk vs Return'
             )
             fig_risk_return.update_traces(marker=dict(size=10))
             st.plotly_chart(fig_risk_return)
+        else:
+            st.error("Não foi possível baixar os dados. Por favor, tente novamente mais tarde.")
 else:
     st.info("Clique no botão para gerar a recomendação.")
