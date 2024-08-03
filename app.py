@@ -5,6 +5,7 @@ import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from ml_models import prepare_data, train_model, predict_future_return
 
 @st.cache_data
 def load_assets():
@@ -126,14 +127,23 @@ def plot_efficient_frontier(returns, optimal_portfolio):
     
     return fig
 
+@st.cache_resource
+def train_ml_models(tickers):
+    models = {}
+    for ticker in tickers:
+        X, y = prepare_data(ticker)
+        model, selector, scaler = train_model(X, y)
+        models[ticker] = (model, selector, scaler)
+    return models
+
 def main():
-    st.title('BDR Recommendation and Portfolio Optimization')
+    st.title('BDR Recommendation and Portfolio Optimization with ML')
 
     ativos_df = load_assets()
 
     # Substituir "-" por "Outros" na coluna "Sector"
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
-    
+
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
 
@@ -163,18 +173,33 @@ def main():
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
 
-        # Análise fundamentalista e de liquidez
+        # Treinar modelos de ML
+        status_text.text('Treinando modelos de ML...')
+        tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+        ml_models = train_ml_models(tickers)
+
+        # Prever retornos futuros
+        future_returns = []
+        for ticker in tickers:
+            X_future, _ = prepare_data(ticker)
+            model, selector, scaler = ml_models[ticker]
+            predicted_return = predict_future_return(model, selector, scaler, X_future.iloc[-1:])
+            future_returns.append(predicted_return[0])
+
+        ativos_df['Predicted_Return'] = future_returns
+
+        # Análise fundamentalista, de liquidez e ML
         ativos_df['Score'] = (
             ativos_df['ROE'] / ativos_df['P/L'] +
             1 / ativos_df['P/VP'] +
-            np.log(ativos_df['Volume'])
+            np.log(ativos_df['Volume']) +
+            ativos_df['Predicted_Return']
         )
 
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Score')
 
         # Obter dados históricos dos últimos 5 anos
-        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
         stock_data = get_stock_data(tickers)
 
@@ -183,7 +208,7 @@ def main():
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
 
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Predicted_Return', 'Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
