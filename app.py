@@ -82,7 +82,7 @@ def main():
     portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
     sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
 
-    st.subheader('Métricas do Portfólio')
+    st.subheader('Métricas do Portólio')
     st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
     st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
     st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
