@@ -133,7 +133,7 @@ def main():
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
 
-    sector_filter = st.selectbox('Selecione o Setor', options=setores)
+    sector_filter = st.multiselect('Selecione o Setor', options=setores)
 
     if sector_filter != 'Todos':
         ativos_df = ativos_df[ativos_df['Sector'] == sector_filter]
