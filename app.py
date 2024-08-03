@@ -5,7 +5,7 @@ import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from ml_models import prepare_data, train_model, predict_future_return
+from ml_models import prepare_data, train_or_load_model, predict_future_return
 
 
 @st.cache_data
@@ -129,11 +129,10 @@ def plot_efficient_frontier(returns, optimal_portfolio):
     return fig
 
 @st.cache_resource
-def train_ml_models(tickers):
+def train_or_load_ml_models(tickers, force_train=False):
     models = {}
     for ticker in tickers:
-        X, y = prepare_data(ticker)
-        model, selector, scaler, performance_plots = train_model(X, y)
+        model, selector, scaler, performance_plots = train_or_load_model(ticker, force_train)
         models[ticker] = (model, selector, scaler, performance_plots)
     return models
 
@@ -153,8 +152,9 @@ def main():
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
 
-    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
-
+    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=1000.0, step=100.0)
+    
+    force_train = st.checkbox("Forçar retreinamento dos modelos")
     if st.button('Gerar Recomendação'):
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -175,9 +175,9 @@ def main():
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
         
         # Treinar modelos de ML
-        status_text.text('Treinando modelos de ML...')
+        status_text.text('Carregando ou treinando modelos de ML...')
         tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        ml_models = train_ml_models(tickers)
+        ml_models = train_or_load_ml_models(tickers, force_train)
 
         # Exibir métricas e gráficos de performance para cada modelo
         st.subheader("Performance dos Modelos de ML")
