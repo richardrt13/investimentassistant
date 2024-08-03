@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from scipy.optimize import minimize
+import plotly.graph_objects as go
 
 @st.cache_data
 def load_assets():
@@ -45,6 +46,71 @@ def optimize_portfolio(returns, risk_free_rate):
     result = minimize(negative_sharpe_ratio, num_assets*[1./num_assets], args=args,
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
+
+def generate_random_portfolios(returns, num_portfolios=5000):
+    results = []
+    n_assets = returns.shape[1]
+    for _ in range(num_portfolios):
+        weights = np.random.random(n_assets)
+        weights /= np.sum(weights)
+        p_return, p_volatility = portfolio_performance(weights, returns)
+        results.append({
+            'Return': p_return,
+            'Volatility': p_volatility,
+            'Sharpe': (p_return - risk_free_rate) / p_volatility,
+            'Weights': weights
+        })
+    return pd.DataFrame(results)
+
+def plot_efficient_frontier(returns, optimal_portfolio):
+    portfolios = generate_random_portfolios(returns)
+    
+    fig = go.Figure()
+    
+    # Plotar portfólios aleatórios
+    fig.add_trace(go.Scatter(
+        x=portfolios['Volatility'],
+        y=portfolios['Return'],
+        mode='markers',
+        marker=dict(
+            size=5,
+            color=portfolios['Sharpe'],
+            colorscale='Viridis',
+            colorbar=dict(title='Índice de Sharpe'),
+            showscale=True
+        ),
+        text=portfolios['Sharpe'].apply(lambda x: f'Sharpe: {x:.3f}'),
+        hoverinfo='text+x+y',
+        name='Portfólios'
+    ))
+    
+    # Plotar portfólio ótimo
+    opt_return, opt_volatility = portfolio_performance(optimal_portfolio, returns)
+    opt_sharpe = (opt_return - risk_free_rate) / opt_volatility
+    
+    fig.add_trace(go.Scatter(
+        x=[opt_volatility],
+        y=[opt_return],
+        mode='markers',
+        marker=dict(
+            size=15,
+            color='red',
+            symbol='star'
+        ),
+        text=[f'Portfólio Ótimo<br>Sharpe: {opt_sharpe:.3f}'],
+        hoverinfo='text+x+y',
+        name='Portfólio Ótimo'
+    ))
+    
+    fig.update_layout(
+        title='Fronteira Eficiente',
+        xaxis_title='Volatilidade Anual',
+        yaxis_title='Retorno Anual Esperado',
+        showlegend=True,
+        hovermode='closest'
+    )
+    
+    return fig
 
 def main():
     st.title('BDR Recommendation and Portfolio Optimization')
@@ -90,7 +156,7 @@ def main():
         top_ativos = ativos_df.nlargest(10, 'Score')
 
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score']])
+        st.dataframe(top_ativos[['Ticker', 'Nome', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score']])
 
         # Otimização de portfólio
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
@@ -102,6 +168,7 @@ def main():
         stock_data = get_stock_data(tickers, start_date, end_date)
         returns = calculate_returns(stock_data)
 
+        global risk_free_rate
         risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
 
         status_text.text('Otimizando portfólio...')
@@ -130,6 +197,11 @@ def main():
         st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
         st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
         st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
+
+        # Gerar e exibir o gráfico de dispersão
+        status_text.text('Gerando gráfico da fronteira eficiente...')
+        fig = plot_efficient_frontier(returns, optimal_weights)
+        st.plotly_chart(fig)
 
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
