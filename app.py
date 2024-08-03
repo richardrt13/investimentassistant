@@ -35,12 +35,18 @@ def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
 st.title('BDR Portfolio Optimizer')
 
 budget = st.number_input('Investment Budget', min_value=0, value=10000)
-sector_filter = st.selectbox('Sector', options=['All', 'Tech', 'Finance', 'Healthcare'])
+
 
 # Carregar dados dos ativos
 ativos_df = pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
-tickers = ativos_df['Ticker'].tolist()
+ativos_df = ativos_df[ativos_df['Sector'].isin(['Tecnologia', 'Financeiro', 'Farmacêutico'])]
+ativos_df = ativos_df[ativos_df['Ticker'].str.contains('34')]
+tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 sectors = ativos_df.set_index('Ticker')['Sector'].to_dict()
+sectors_list = ativos_df['Sector'].tolist()
+sectors_list = list(set(sectors_list))
+sectors_list.insert(0, 'All')
+sector_filter = st.selectbox('Sector', options=sectors_list)
 
 data = download_data(tickers)
 returns = calculate_annualized_returns(data)
