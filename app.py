@@ -53,7 +53,6 @@ budget = st.number_input('Investment Budget', min_value=1, value=10000)
 
 # Carregar dados dos ativos
 ativos_df = pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
-ativos_df = ativos_df[ativos_df['Sector'].isin(['Tecnologia', 'Financeiro', 'Farmacêutico'])]
 ativos_df = ativos_df[ativos_df['Ticker'].str.contains('34')]
 tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 sectors = ativos_df.set_index('Ticker')['Sector'].to_dict()
