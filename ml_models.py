@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import joblib
 import os
+from pymongo import MongoClient
+import pickle
 
 def prepare_data(ticker, years=5):
     end_date = datetime.now()
@@ -187,25 +189,55 @@ def create_performance_plots(model, X_train, y_train, X_test, y_test):
         'feature_importance': feature_importance_plot
     }
 
-def save_model(ticker, model, selector, scaler):
+mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
+client = MongoClient(mongo_uri)
+db = client['StockIdea']
+
+def save_model_to_mongo(ticker, model, selector, scaler):
     try:
-        if not os.path.exists('saved_models'):
-            os.makedirs('saved_models')
-        joblib.dump(model, f'saved_models/{ticker}_model.joblib')
-        joblib.dump(selector, f'saved_models/{ticker}_selector.joblib')
-        joblib.dump(scaler, f'saved_models/{ticker}_scaler.joblib')
+        # Serializar os objetos
+        model_blob = pickle.dumps(model)
+        selector_blob = pickle.dumps(selector)
+        scaler_blob = pickle.dumps(scaler)
+
+        # Criar documento para salvar no MongoDB
+        model_document = {
+            "ticker": ticker,
+            "model": model_blob,
+            "selector": selector_blob,
+            "scaler": scaler_blob
+        }
+
+        # Salvar no MongoDB
+        db.models.update_one({"ticker": ticker}, {"$set": model_document}, upsert=True)
+        print(f"Modelo salvo com sucesso no MongoDB para {ticker}")
     except Exception as e:
         print(f"Erro ao salvar o modelo para {ticker}: {str(e)}")
 
-def load_model(ticker):
+def load_model_from_mongo(ticker):
     try:
-        model = joblib.load(f'saved_models/{ticker}_model.joblib')
-        selector = joblib.load(f'saved_models/{ticker}_selector.joblib')
-        scaler = joblib.load(f'saved_models/{ticker}_scaler.joblib')
-        return model, selector, scaler
+        # Buscar o documento no MongoDB
+        model_document = db.models.find_one({"ticker": ticker})
+        
+        if model_document:
+            # Deserializar os objetos
+            model = pickle.loads(model_document["model"])
+            selector = pickle.loads(model_document["selector"])
+            scaler = pickle.loads(model_document["scaler"])
+            print(f"Modelo carregado com sucesso do MongoDB para {ticker}")
+            return model, selector, scaler
+        else:
+            print(f"Modelo não encontrado no MongoDB para {ticker}")
+            return None, None, None
     except Exception as e:
         print(f"Erro ao carregar o modelo para {ticker}: {str(e)}")
         return None, None, None
+        
+def save_model(ticker, model, selector, scaler):
+    save_model_to_mongo(ticker, model, selector, scaler)
+
+def load_model(ticker):
+    return load_model_from_mongo(ticker)
 
 def train_or_load_model(ticker, force_train=False):
     model_path = f'saved_models/{ticker}_model.joblib'
