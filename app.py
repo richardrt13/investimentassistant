@@ -136,7 +136,7 @@ def main():
     sector_filter = st.multiselect('Selecione o Setor', options=setores)
 
     if sector_filter != 'Todos':
-        ativos_df = ativos_df[ativos_df['Sector'] == sector_filter]
+        ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
 
     invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
 
