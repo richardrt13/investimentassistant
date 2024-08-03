@@ -185,25 +185,38 @@ def create_performance_plots(model, X_train, y_train, X_test, y_test):
     }
 
 def save_model(ticker, model, selector, scaler):
-    if not os.path.exists('saved_models'):
-        os.makedirs('saved_models')
-    joblib.dump(model, f'saved_models/{ticker}_model.joblib')
-    joblib.dump(selector, f'saved_models/{ticker}_selector.joblib')
-    joblib.dump(scaler, f'saved_models/{ticker}_scaler.joblib')
+    try:
+        if not os.path.exists('saved_models'):
+            os.makedirs('saved_models')
+        joblib.dump(model, f'saved_models/{ticker}_model.joblib')
+        joblib.dump(selector, f'saved_models/{ticker}_selector.joblib')
+        joblib.dump(scaler, f'saved_models/{ticker}_scaler.joblib')
+    except Exception as e:
+        print(f"Erro ao salvar o modelo para {ticker}: {str(e)}")
 
 def load_model(ticker):
-    model = joblib.load(f'saved_models/{ticker}_model.joblib')
-    selector = joblib.load(f'saved_models/{ticker}_selector.joblib')
-    scaler = joblib.load(f'saved_models/{ticker}_scaler.joblib')
-    return model, selector, scaler
+    try:
+        model = joblib.load(f'saved_models/{ticker}_model.joblib')
+        selector = joblib.load(f'saved_models/{ticker}_selector.joblib')
+        scaler = joblib.load(f'saved_models/{ticker}_scaler.joblib')
+        return model, selector, scaler
+    except Exception as e:
+        print(f"Erro ao carregar o modelo para {ticker}: {str(e)}")
+        return None, None, None
 
 def train_or_load_model(ticker, force_train=False):
     model_path = f'saved_models/{ticker}_model.joblib'
     
     if os.path.exists(model_path) and not force_train:
-        print(f"Carregando modelo existente para {ticker}")
+        print(f"Tentando carregar modelo existente para {ticker}")
         model, selector, scaler = load_model(ticker)
-        performance_plots = None  # Não criamos gráficos para modelos carregados
+        if model is None:
+            print(f"Falha ao carregar modelo para {ticker}. Treinando novo modelo.")
+            X, y = prepare_data(ticker)
+            model, selector, scaler, performance_plots = train_model(X, y)
+            save_model(ticker, model, selector, scaler)
+        else:
+            performance_plots = None
     else:
         print(f"Treinando novo modelo para {ticker}")
         X, y = prepare_data(ticker)
