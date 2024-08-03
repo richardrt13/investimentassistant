@@ -9,6 +9,8 @@ import yfinance as yf
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
+import os
 
 def prepare_data(ticker, years=5):
     end_date = datetime.now()
@@ -181,6 +183,35 @@ def create_performance_plots(model, X_train, y_train, X_test, y_test):
         'learning_curve': learning_curve_plot,
         'feature_importance': feature_importance_plot
     }
+
+def save_model(ticker, model, selector, scaler):
+    if not os.path.exists('saved_models'):
+        os.makedirs('saved_models')
+    joblib.dump(model, f'saved_models/{ticker}_model.joblib')
+    joblib.dump(selector, f'saved_models/{ticker}_selector.joblib')
+    joblib.dump(scaler, f'saved_models/{ticker}_scaler.joblib')
+
+def load_model(ticker):
+    model = joblib.load(f'saved_models/{ticker}_model.joblib')
+    selector = joblib.load(f'saved_models/{ticker}_selector.joblib')
+    scaler = joblib.load(f'saved_models/{ticker}_scaler.joblib')
+    return model, selector, scaler
+
+def train_or_load_model(ticker, force_train=False):
+    model_path = f'saved_models/{ticker}_model.joblib'
+    
+    if os.path.exists(model_path) and not force_train:
+        print(f"Carregando modelo existente para {ticker}")
+        model, selector, scaler = load_model(ticker)
+        X, y = prepare_data(ticker)
+        performance_plots = create_performance_plots(model, *train_test_split(X, y, test_size=0.2, random_state=42))
+    else:
+        print(f"Treinando novo modelo para {ticker}")
+        X, y = prepare_data(ticker)
+        model, selector, scaler, performance_plots = train_model(X, y)
+        save_model(ticker, model, selector, scaler)
+    
+    return model, selector, scaler, performance_plots
 
 def predict_future_return(model, selector, scaler, X_future):
     X_future_scaled = scaler.transform(X_future)
