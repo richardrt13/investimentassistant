@@ -22,12 +22,25 @@ def get_fundamental_data(ticker):
         'Price': info.get('currentPrice', np.nan)
     }
 
-def get_stock_data(tickers, start_date, end_date):
+def get_stock_data(tickers, years=5):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
+
+def get_cumulative_return(ticker):
+    stock = yf.Ticker(ticker)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=5*365)
+    hist = stock.history(start=start_date, end=end_date)
+    if len(hist) > 0:
+        cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
+    else:
+        cumulative_return = None
+    return cumulative_return
 
 def portfolio_performance(weights, returns):
     portfolio_return = np.sum(returns.mean() * weights) * 252
@@ -62,19 +75,6 @@ def generate_random_portfolios(returns, num_portfolios=5000):
             'Weights': weights
         })
     return pd.DataFrame(results)
-
-
-def get_stock_data(tickers, years=5):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years*365)
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-    return data
-
-def calculate_returns(prices):
-    return prices.pct_change().dropna()
-
-def calculate_cumulative_returns(prices):
-    return (prices.pct_change() + 1).prod() - 1
 
 def plot_efficient_frontier(returns, optimal_portfolio):
     portfolios = generate_random_portfolios(returns)
@@ -179,8 +179,8 @@ def main():
         stock_data = get_stock_data(tickers)
 
         # Calcular rentabilidade acumulada
-        cumulative_returns = calculate_cumulative_returns(stock_data)
-        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns.values
+        cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
 
         st.subheader('Top 10 BDRs Recomendados')
         st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
@@ -214,6 +214,7 @@ def main():
 
         portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
         sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
+
 
         st.subheader('Métricas do Portfólio')
         st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
