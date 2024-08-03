@@ -203,8 +203,7 @@ def train_or_load_model(ticker, force_train=False):
     if os.path.exists(model_path) and not force_train:
         print(f"Carregando modelo existente para {ticker}")
         model, selector, scaler = load_model(ticker)
-        X, y = prepare_data(ticker)
-        performance_plots = create_performance_plots(model, *train_test_split(X, y, test_size=0.2, random_state=42))
+        performance_plots = None  # Não criamos gráficos para modelos carregados
     else:
         print(f"Treinando novo modelo para {ticker}")
         X, y = prepare_data(ticker)
