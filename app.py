@@ -2,8 +2,8 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-from scipy.optimize import minimize
 import plotly.express as px
+import scipy.cluster.hierarchy as sch
 
 # Funções auxiliares
 @st.cache_data
@@ -42,56 +42,29 @@ def get_magic_formula_rankings(tickers):
     df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
     return df.sort_values(by='MagicFormula_Rank')
 
-def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
-    portfolio_return = np.sum(returns * weights)
-    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+def hrp_portfolio(cov_matrix, max_assets):
+    corr = cov_matrix.corr()
+    distance = np.sqrt(0.5 * (1 - corr))
     
-    if portfolio_volatility == 0:
-        return 0  # Retorna 0 se a volatilidade for zero para evitar divisão por zero
+    linkage = sch.linkage(distance, 'single')
+    sort_ix = sch.leaves_list(linkage)
     
-    return -(portfolio_return - risk_free_rate) / portfolio_volatility
-
-def markowitz_optimization(returns, cov_matrix, max_assets):
-    num_assets = len(returns)
+    weights = np.ones(len(sort_ix)) / len(sort_ix)
+    clusters = [sort_ix]
     
-    if num_assets == 0:
-        st.error("Não há ativos disponíveis para otimização.")
-        return [], []
+    while len(clusters) > max_assets:
+        clusters = [cluster[int(len(cluster)/2):] for cluster in clusters]
+        weights = np.array([sum(1/np.diag(cov_matrix.iloc[c, c]) for c in clusters)])
+        weights /= sum(weights)
     
-    args = (returns, cov_matrix)
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    bounds = tuple((0, 1) for _ in range(num_assets))
-
-    def objective(weights, returns, cov_matrix):
-        return negative_sharpe_ratio(weights, returns, cov_matrix)
+    selected_assets = sort_ix[:max_assets]
+    selected_weights = weights[:max_assets]
+    selected_weights /= np.sum(selected_weights)  # Normalize weights
     
-    initial_weights = num_assets * [1. / num_assets]
-    
-    try:
-        result = minimize(objective, initial_weights, args=args, method='SLSQP', bounds=bounds, constraints=constraints)
-    except Exception as e:
-        st.error(f"Erro durante a otimização: {e}")
-        return [], []
-
-    if not result.success:
-        st.warning(f"A otimização não convergiu: {result.message}")
-        return [], []
-
-    weights = result.x
-    selected_assets = np.argsort(weights)[-max_assets:]
-    selected_weights = weights[selected_assets]
-    
-    # Verifica se a soma dos pesos é zero
-    if np.sum(selected_weights) == 0:
-        st.error("A otimização resultou em pesos zero para todos os ativos.")
-        return [], []
-    
-    selected_weights /= np.sum(selected_weights)  # Renormaliza os pesos
-
     return selected_assets, selected_weights
 
 # Streamlit Interface
-st.title('BDR Portfolio Optimizer')
+st.title('BDR Portfolio Optimizer (HRP)')
 
 budget = st.number_input('Investment Budget', min_value=1000, value=10000, step=1000)
 
@@ -141,7 +114,11 @@ if st.button('Montar Recomendação'):
             selected_returns = returns[selected_tickers]
             selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
-            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, max_assets)
+            try:
+                selected_assets, optimal_weights = hrp_portfolio(selected_cov_matrix, max_assets)
+            except Exception as e:
+                st.error(f"Erro durante a otimização HRP: {e}")
+                st.stop()
 
             if len(selected_assets) == 0 or len(optimal_weights) == 0:
                 st.error("A otimização falhou. Por favor, tente com diferentes parâmetros ou ativos.")
@@ -155,16 +132,16 @@ if st.button('Montar Recomendação'):
                 'Investment': optimal_weights * budget
             })
 
-            st.subheader('Optimized Portfolio Allocation')
+            st.subheader('Optimized Portfolio Allocation (HRP)')
             st.dataframe(portfolio.style.format({'Weight': '{:.2%}', 'Investment': '${:.2f}'}))
 
             # Gráfico de alocação
-            fig_allocation = px.pie(portfolio, names='Ticker', values='Investment', title='Portfolio Allocation')
+            fig_allocation = px.pie(portfolio, names='Ticker', values='Investment', title='Portfolio Allocation (HRP)')
             st.plotly_chart(fig_allocation)
 
             st.subheader('Portfolio Summary')
-            expected_return = np.sum(selected_returns[selected_assets] * optimal_weights)
-            portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.values, optimal_weights)))
+            expected_return = np.sum(selected_returns.iloc[selected_assets] * optimal_weights)
+            portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.iloc[selected_assets, selected_assets].values, optimal_weights)))
             sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
 
             col1, col2 = st.columns(2)
@@ -180,7 +157,7 @@ if st.button('Montar Recomendação'):
                 x=[portfolio_volatility], 
                 y=[expected_return], 
                 labels={'x': 'Volatility', 'y': 'Expected Return'}, 
-                title='Risk vs Return'
+                title='Risk vs Return (HRP)'
             )
             fig_risk_return.update_traces(marker=dict(size=10))
             st.plotly_chart(fig_risk_return)
