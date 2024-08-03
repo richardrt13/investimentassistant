@@ -22,6 +22,26 @@ def calculate_annualized_covariance_matrix(data):
     daily_returns = data.pct_change().dropna()
     return daily_returns.cov() * 252
 
+def get_magic_formula_rankings(tickers):
+    data = {}
+    for ticker in tickers:
+        try:
+            stock = yf.Ticker(ticker)
+            data[ticker] = {
+                'ROC': stock.info.get('returnOnEquity', np.nan),
+                'EY': stock.info.get('earningsYield', np.nan)
+            }
+        except Exception as e:
+            st.error(f"Erro ao obter dados para {ticker}: {e}")
+
+    df = pd.DataFrame(data).T.dropna()
+    df['ROC_Rank'] = df['ROC'].rank(ascending=False)
+    df['EY_Rank'] = df['EY'].rank(ascending=False)
+    df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
+    df = df.sort_values(by='MagicFormula_Rank')
+    
+    return df
+
 def markowitz_optimization(returns, cov_matrix, max_assets):
     num_assets = len(returns)
     args = (returns, cov_matrix)
@@ -34,7 +54,6 @@ def markowitz_optimization(returns, cov_matrix, max_assets):
     result = minimize(objective, num_assets * [1. / num_assets], args=args, method='SLSQP', bounds=bounds, constraints=constraints)
 
     weights = result.x
-    # Manter apenas os melhores ativos com pesos positivos
     selected_assets = np.argsort(weights)[-max_assets:]
     selected_weights = weights[selected_assets]
 
@@ -68,16 +87,8 @@ if st.button('Montar Recomendação'):
     data = download_data(tickers)
     
     if data is not None:
-        st.write("Dados baixados:")
-        st.write(data.head())
-        
         returns = calculate_annualized_returns(data)
         cov_matrix = calculate_annualized_covariance_matrix(data)
-        
-        st.write("Retornos anualizados:")
-        st.write(returns)
-        st.write("Matriz de covariância anualizada:")
-        st.write(cov_matrix)
 
         filtered_tickers = tickers
         if sector_filter != 'All':
@@ -85,27 +96,28 @@ if st.button('Montar Recomendação'):
             data = data[filtered_tickers]
             returns = calculate_annualized_returns(data)
             cov_matrix = calculate_annualized_covariance_matrix(data)
-            
-            st.write("Retornos anualizados após filtragem:")
-            st.write(returns)
-            st.write("Matriz de covariância anualizada após filtragem:")
-            st.write(cov_matrix)
 
         # Verificar se há ativos suficientes após a filtragem
         if len(returns) < max_assets:
             max_assets = len(returns)
             st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
 
+        magic_formula_df = get_magic_formula_rankings(filtered_tickers)
+        selected_tickers = magic_formula_df.head(max_assets).index.tolist()
+
+        selected_returns = returns[selected_tickers]
+        selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
+
         try:
-            selected_assets, optimal_weights = markowitz_optimization(returns, cov_matrix, max_assets)
+            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, max_assets)
         except Exception as e:
             st.error(f"Erro na otimização: {e}")
             st.stop()
 
-        selected_tickers = [filtered_tickers[i] for i in selected_assets]
+        final_tickers = [selected_tickers[i] for i in selected_assets]
 
         portfolio = pd.DataFrame({
-            'Ticker': selected_tickers,
+            'Ticker': final_tickers,
             'Weight': optimal_weights,
             'Investment': optimal_weights * budget
         })
@@ -118,8 +130,8 @@ if st.button('Montar Recomendação'):
         st.plotly_chart(fig_allocation)
 
         st.write('Portfolio Summary')
-        expected_return = np.sum(returns[selected_assets] * optimal_weights)
-        portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(cov_matrix[selected_assets][:, selected_assets], optimal_weights)))
+        expected_return = np.sum(selected_returns[selected_assets] * optimal_weights)
+        portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.values, optimal_weights)))
         sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
 
         st.write(f"Total Investment: {portfolio['Investment'].sum()}")
