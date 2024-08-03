@@ -1,10 +1,10 @@
-pandas
-yfinance
 streamlit
+pandas
+numpy
+yfinance
+scipy
+plotly
 matplotlib
 seaborn
 scikit-learn
-pymongo
-plotly
 joblib
-os
