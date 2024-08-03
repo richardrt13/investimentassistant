@@ -42,43 +42,32 @@ def get_magic_formula_rankings(tickers):
     df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
     return df.sort_values(by='MagicFormula_Rank')
 
-
 def hrp_portfolio(cov_matrix, max_assets):
     if cov_matrix.empty or cov_matrix.shape[0] < 2:
         st.error("Não há dados suficientes para realizar a otimização HRP.")
         return [], []
 
     corr = cov_matrix.corr()
-    
-    # Verifica se a matriz de correlação tem valores válidos
-    if np.isnan(corr).all() or np.isinf(corr).all():
-        st.error("A matriz de correlação não contém valores válidos.")
-        return [], []
-
     distance = np.sqrt(0.5 * (1 - corr))
-    
+
     # Verifica se a matriz de distância tem valores válidos
     if np.isnan(distance).all() or np.isinf(distance).all():
         st.error("A matriz de distância não contém valores válidos.")
         return [], []
 
-    # Usa 'complete' em vez de 'single' para lidar melhor com dados esparsos
     linkage = sch.linkage(distance, 'complete')
     sort_ix = sch.leaves_list(linkage)
-    
-    weights = np.ones(len(sort_ix)) / len(sort_ix)
+
     clusters = [sort_ix]
-    
+
     while len(clusters) > max_assets:
-        clusters = [cluster[int(len(cluster)/2):] for cluster in clusters]
-        weights = np.array([sum(1/np.diag(cov_matrix.iloc[c, c]) for c in clusters)])
-        weights /= sum(weights)
-    
-    selected_assets = sort_ix[:max_assets]
-    selected_weights = weights[:max_assets]
-    selected_weights /= np.sum(selected_weights)  # Normalize weights
-    
-    return selected_assets, selected_weights
+        clusters = [cluster[:len(cluster)//2] for cluster in clusters] + [cluster[len(cluster)//2:] for cluster in clusters]
+        if len(clusters) > max_assets:
+            clusters = clusters[:max_assets]
+
+    selected_assets = clusters[0] if clusters else []
+    weights = np.ones(len(selected_assets)) / len(selected_assets)
+    return selected_assets, weights
 
 # Streamlit Interface
 st.title('BDR Portfolio Optimizer (HRP)')
@@ -104,7 +93,7 @@ max_assets = st.slider('Number of Assets in Portfolio', min_value=1, max_value=2
 if st.button('Montar Recomendação'):
     with st.spinner('Baixando dados e otimizando portfólio...'):
         data = download_data(tickers)
-        
+
         if data is not None and not data.empty:
             returns = calculate_annualized_returns(data)
             cov_matrix = calculate_annualized_covariance_matrix(data)
@@ -120,7 +109,6 @@ if st.button('Montar Recomendação'):
                 st.error("Não há dados suficientes para realizar a otimização.")
                 st.stop()
 
-            # Verificar se há ativos suficientes após a filtragem
             if len(returns) < max_assets:
                 max_assets = len(returns)
                 st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
@@ -131,7 +119,6 @@ if st.button('Montar Recomendação'):
             selected_returns = returns[selected_tickers]
             selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
-            # Verifica se há dados válidos na matriz de covariância
             if selected_cov_matrix.isnull().values.any() or selected_cov_matrix.shape[0] < 2:
                 st.error("A matriz de covariância contém valores inválidos ou insuficientes.")
                 st.stop()
@@ -140,10 +127,6 @@ if st.button('Montar Recomendação'):
                 selected_assets, optimal_weights = hrp_portfolio(selected_cov_matrix, max_assets)
             except Exception as e:
                 st.error(f"Erro durante a otimização HRP: {e}")
-                st.stop()
-
-            if len(selected_assets) == 0 or len(optimal_weights) == 0:
-                st.error("A otimização falhou. Por favor, tente com diferentes parâmetros ou ativos.")
                 st.stop()
 
             if len(selected_assets) == 0 or len(optimal_weights) == 0:
@@ -161,13 +144,12 @@ if st.button('Montar Recomendação'):
             st.subheader('Optimized Portfolio Allocation (HRP)')
             st.dataframe(portfolio.style.format({'Weight': '{:.2%}', 'Investment': '${:.2f}'}))
 
-            # Gráfico de alocação
             fig_allocation = px.pie(portfolio, names='Ticker', values='Investment', title='Portfolio Allocation (HRP)')
             st.plotly_chart(fig_allocation)
 
             st.subheader('Portfolio Summary')
-            expected_return = np.sum(selected_returns.iloc[selected_assets] * optimal_weights)
-            portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.iloc[selected_assets, selected_assets].values, optimal_weights)))
+            expected_return = np.sum(selected_returns * optimal_weights)
+            portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.values, optimal_weights)))
             sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
 
             col1, col2 = st.columns(2)
@@ -178,7 +160,6 @@ if st.button('Montar Recomendação'):
                 st.metric("Portfolio Volatility", f"{portfolio_volatility:.2%}")
                 st.metric("Portfolio Sharpe Ratio", f"{sharpe_ratio:.2f}")
 
-            # Gráfico de retorno esperado vs. volatilidade
             fig_risk_return = px.scatter(
                 x=[portfolio_volatility], 
                 y=[expected_return], 
