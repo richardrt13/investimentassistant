@@ -132,8 +132,8 @@ def train_ml_models(tickers):
     models = {}
     for ticker in tickers:
         X, y = prepare_data(ticker)
-        model, selector, scaler = train_model(X, y)
-        models[ticker] = (model, selector, scaler)
+        model, selector, scaler, performance_plots = train_model(X, y)
+        models[ticker] = (model, selector, scaler, performance_plots)
     return models
 
 def main():
@@ -172,20 +172,38 @@ def main():
 
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
-
+        
         # Treinar modelos de ML
         status_text.text('Treinando modelos de ML...')
         tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
         ml_models = train_ml_models(tickers)
 
+        # Exibir métricas e gráficos de performance para cada modelo
+        st.subheader("Performance dos Modelos de ML")
+        for ticker in tickers:
+            st.write(f"Modelo para {ticker}")
+            model, selector, scaler, performance_plots = ml_models[ticker]
+        
+            col1, col2 = st.columns(2)
+            with col1:
+                st.pyplot(performance_plots['scatter_plot'])
+            with col2:
+                st.pyplot(performance_plots['residuals_plot'])
+            
+            col3, col4 = st.columns(2)
+            with col3:
+                st.pyplot(performance_plots['learning_curve'])
+            with col4:
+                st.pyplot(performance_plots['feature_importance'])
+
         # Prever retornos futuros
         future_returns = []
         for ticker in tickers:
             X_future, _ = prepare_data(ticker)
-            model, selector, scaler = ml_models[ticker]
+            model, selector, scaler, _ = ml_models[ticker]
             predicted_return = predict_future_return(model, selector, scaler, X_future.iloc[-1:])
             future_returns.append(predicted_return[0])
-
+    
         ativos_df['Predicted_Return'] = future_returns
 
         # Análise fundamentalista, de liquidez e ML
