@@ -185,17 +185,20 @@ def main():
             st.write(f"Modelo para {ticker}")
             model, selector, scaler, performance_plots = ml_models[ticker]
         
-            col1, col2 = st.columns(2)
-            with col1:
-                st.pyplot(performance_plots['scatter_plot'])
-            with col2:
-                st.pyplot(performance_plots['residuals_plot'])
-            
-            col3, col4 = st.columns(2)
-            with col3:
-                st.pyplot(performance_plots['learning_curve'])
-            with col4:
-                st.pyplot(performance_plots['feature_importance'])
+            if performance_plots is not None:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.pyplot(performance_plots['scatter_plot'])
+                with col2:
+                    st.pyplot(performance_plots['residuals_plot'])
+                
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.pyplot(performance_plots['learning_curve'])
+                with col4:
+                    st.pyplot(performance_plots['feature_importance'])
+            else:
+                st.write("Modelo carregado de arquivo. Gráficos de performance não disponíveis.")
 
         # Prever retornos futuros
         future_returns = []
