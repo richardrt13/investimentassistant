@@ -5,8 +5,6 @@ import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from ml_models import prepare_data, train_or_load_model, predict_future_return
-
 
 @st.cache_data
 def load_assets():
@@ -128,22 +126,14 @@ def plot_efficient_frontier(returns, optimal_portfolio):
     
     return fig
 
-@st.cache_resource
-def train_or_load_ml_models(tickers, force_train=False):
-    models = {}
-    for ticker in tickers:
-        model, selector, scaler, performance_plots = train_or_load_model(ticker, force_train)
-        models[ticker] = (model, selector, scaler, performance_plots)
-    return models
-
 def main():
-    st.title('BDR Recommendation and Portfolio Optimization with ML')
+    st.title('BDR Recommendation and Portfolio Optimization')
 
     ativos_df = load_assets()
 
     # Substituir "-" por "Outros" na coluna "Sector"
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
-
+    
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
 
@@ -152,9 +142,8 @@ def main():
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
 
-    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=1000.0, step=100.0)
-    
-    force_train = st.checkbox("Forçar retreinamento dos modelos")
+    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
+
     if st.button('Gerar Recomendação'):
         progress_bar = st.progress(0)
         status_text = st.empty()
@@ -173,59 +162,19 @@ def main():
 
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
-        
-        # Treinar modelos de ML
-        status_text.text('Carregando ou treinando modelos de ML...')
-        tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        try:
-            ml_models = train_or_load_ml_models(tickers, force_train)
-        except Exception as e:
-            st.error(f"Erro ao treinar ou carregar modelos: {str(e)}")
-            return
 
-        # Exibir métricas e gráficos de performance para cada modelo
-        st.subheader("Performance dos Modelos de ML")
-        for ticker in tickers:
-            st.write(f"Modelo para {ticker}")
-            model, selector, scaler, performance_plots = ml_models[ticker]
-        
-            if performance_plots is not None:
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.pyplot(performance_plots['scatter_plot'])
-                with col2:
-                    st.pyplot(performance_plots['residuals_plot'])
-                
-                col3, col4 = st.columns(2)
-                with col3:
-                    st.pyplot(performance_plots['learning_curve'])
-                with col4:
-                    st.pyplot(performance_plots['feature_importance'])
-            else:
-                st.write("Modelo carregado de arquivo. Gráficos de performance não disponíveis.")
-
-        # Prever retornos futuros
-        future_returns = []
-        for ticker in tickers:
-            X_future, _ = prepare_data(ticker)
-            model, selector, scaler, _ = ml_models[ticker]
-            predicted_return = predict_future_return(model, selector, scaler, X_future.iloc[-1:])
-            future_returns.append(predicted_return[0])
-    
-        ativos_df['Predicted_Return'] = future_returns
-
-        # Análise fundamentalista, de liquidez e ML
+        # Análise fundamentalista e de liquidez
         ativos_df['Score'] = (
             ativos_df['ROE'] / ativos_df['P/L'] +
             1 / ativos_df['P/VP'] +
-            np.log(ativos_df['Volume']) +
-            ativos_df['Predicted_Return']
+            np.log(ativos_df['Volume'])
         )
 
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Score')
 
         # Obter dados históricos dos últimos 5 anos
+        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
         stock_data = get_stock_data(tickers)
 
@@ -234,7 +183,7 @@ def main():
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
 
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Predicted_Return', 'Score', 'Rentabilidade Acumulada (5 anos)']])
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
@@ -279,7 +228,45 @@ def main():
 
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
+# Adicionando a explicação no final do aplicativo Streamlit
+def display_summary():
+    st.header("Lógica")
 
+    resumo = """
+    ### Coleta de Dados Financeiros
+    Para cada ativo, o código coleta dados financeiros importantes, como:
+    - **P/L (Preço/Lucro)**: Mede o valor que os investidores estão dispostos a pagar por cada unidade de lucro da empresa.
+    - **P/VP (Preço/Valor Patrimonial)**: Compara o preço de mercado da empresa com seu valor contábil.
+    - **ROE (Retorno sobre o Patrimônio)**: Mede a eficiência da empresa em gerar lucros com os recursos dos acionistas.
+    - **Volume**: Indica a liquidez do ativo.
+    - **Price (Preço)**: O preço atual do ativo.
+
+    ### Cálculo da Pontuação dos Ativos
+    Cada ativo recebe uma pontuação baseada em suas características financeiras:
+    - **Pontuação** = (ROE / P/L) + (1 / P/VP) + log(Volume)
+    Essa pontuação combina a eficiência da empresa, a atratividade do preço e a liquidez, penalizando ativos com valores altos de P/L e P/VP.
+
+    ### Seleção dos Melhores Ativos
+    Os 10 ativos com as maiores pontuações são selecionados para análise mais detalhada.
+
+    ### Coleta de Dados Históricos de Preços
+    Para os 10 ativos selecionados, o código coleta dados históricos de preços dos últimos 5 anos e calcula a rentabilidade acumulada nesse período.
+
+    ### Otimização de Portfólio
+    A otimização de portfólio utiliza a teoria de portfólios de Harry Markowitz para encontrar a melhor combinação de ativos que maximize o retorno esperado e minimize o risco. Os principais conceitos matemáticos e estatísticos envolvidos são:
+    - **Retornos Esperados**: Calculados como a média dos retornos diários dos ativos.
+    - **Covariância**: Mede como os retornos dos ativos variam juntos.
+    - **Volatilidade do Portfólio**: Calculada com base na matriz de covariância dos retornos dos ativos.
+    - **Índice de Sharpe**: Mede o retorno ajustado pelo risco, calculado como (Retorno do Portfólio - Taxa Livre de Risco) / Volatilidade do Portfólio.
+
+    A otimização busca maximizar o índice de Sharpe, encontrando a alocação ótima dos ativos que proporciona o maior retorno ajustado pelo risco. Isso é feito através de um processo de minimização numérica.
+
+    ### Resultados e Visualização
+    O código apresenta a alocação ótima do portfólio, mostrando quanto investir em cada ativo para atingir a melhor combinação de retorno e risco. Além disso, um gráfico da "fronteira eficiente" é gerado para visualizar a relação entre risco e retorno para diferentes portfólios, destacando o portfólio ótimo.
+    """
+
+    st.markdown(resumo)
 
 if __name__ == "__main__":
     main()
+    display_summary()
