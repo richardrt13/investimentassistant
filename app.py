@@ -53,6 +53,7 @@ budget = st.number_input('Investment Budget', min_value=1, value=10000)
 
 # Carregar dados dos ativos
 ativos_df = pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
+ativos_df = ~ativos_df[ativos_df['Sector'].isin(['-'])]
 ativos_df = ativos_df[ativos_df['Ticker'].str.contains('34')]
 tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 sectors = ativos_df.set_index('Ticker')['Sector'].to_dict()
@@ -68,6 +69,11 @@ if st.button('Montar Recomendação'):
     if data is not None:
         returns = calculate_annualized_returns(data)
         cov_matrix = calculate_annualized_covariance_matrix(data)
+        
+        st.write("Retornos anualizados:")
+        st.write(returns)
+        st.write("Matriz de covariância anualizada:")
+        st.write(cov_matrix)
 
         filtered_tickers = tickers
         if sector_filter != 'All':
@@ -75,8 +81,23 @@ if st.button('Montar Recomendação'):
             data = data[filtered_tickers]
             returns = calculate_annualized_returns(data)
             cov_matrix = calculate_annualized_covariance_matrix(data)
+            
+            st.write("Retornos anualizados após filtragem:")
+            st.write(returns)
+            st.write("Matriz de covariância anualizada após filtragem:")
+            st.write(cov_matrix)
 
-        selected_assets, optimal_weights = markowitz_optimization(returns, cov_matrix, max_assets)
+        # Verificar se há ativos suficientes após a filtragem
+        if len(returns) < max_assets:
+            max_assets = len(returns)
+            st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
+
+        try:
+            selected_assets, optimal_weights = markowitz_optimization(returns, cov_matrix, max_assets)
+        except Exception as e:
+            st.error(f"Erro na otimização: {e}")
+            st.stop()
+
         selected_tickers = [filtered_tickers[i] for i in selected_assets]
 
         portfolio = pd.DataFrame({
