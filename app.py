@@ -142,7 +142,7 @@ def main():
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
 
-    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
+    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=1000.0, step=100.0)
 
     if st.button('Gerar Recomendação'):
         progress_bar = st.progress(0)
