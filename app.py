@@ -177,7 +177,11 @@ def main():
         # Treinar modelos de ML
         status_text.text('Carregando ou treinando modelos de ML...')
         tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        ml_models = train_or_load_ml_models(tickers, force_train)
+        try:
+            ml_models = train_or_load_ml_models(tickers, force_train)
+        except Exception as e:
+            st.error(f"Erro ao treinar ou carregar modelos: {str(e)}")
+            return
 
         # Exibir métricas e gráficos de performance para cada modelo
         st.subheader("Performance dos Modelos de ML")
