@@ -42,11 +42,28 @@ def get_magic_formula_rankings(tickers):
     df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
     return df.sort_values(by='MagicFormula_Rank')
 
+
 def hrp_portfolio(cov_matrix, max_assets):
+    if cov_matrix.empty or cov_matrix.shape[0] < 2:
+        st.error("Não há dados suficientes para realizar a otimização HRP.")
+        return [], []
+
     corr = cov_matrix.corr()
+    
+    # Verifica se a matriz de correlação tem valores válidos
+    if np.isnan(corr).all() or np.isinf(corr).all():
+        st.error("A matriz de correlação não contém valores válidos.")
+        return [], []
+
     distance = np.sqrt(0.5 * (1 - corr))
     
-    linkage = sch.linkage(distance, 'single')
+    # Verifica se a matriz de distância tem valores válidos
+    if np.isnan(distance).all() or np.isinf(distance).all():
+        st.error("A matriz de distância não contém valores válidos.")
+        return [], []
+
+    # Usa 'complete' em vez de 'single' para lidar melhor com dados esparsos
+    linkage = sch.linkage(distance, 'complete')
     sort_ix = sch.leaves_list(linkage)
     
     weights = np.ones(len(sort_ix)) / len(sort_ix)
@@ -114,10 +131,19 @@ if st.button('Montar Recomendação'):
             selected_returns = returns[selected_tickers]
             selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
+            # Verifica se há dados válidos na matriz de covariância
+            if selected_cov_matrix.isnull().values.any() or selected_cov_matrix.shape[0] < 2:
+                st.error("A matriz de covariância contém valores inválidos ou insuficientes.")
+                st.stop()
+
             try:
                 selected_assets, optimal_weights = hrp_portfolio(selected_cov_matrix, max_assets)
             except Exception as e:
                 st.error(f"Erro durante a otimização HRP: {e}")
+                st.stop()
+
+            if len(selected_assets) == 0 or len(optimal_weights) == 0:
+                st.error("A otimização falhou. Por favor, tente com diferentes parâmetros ou ativos.")
                 st.stop()
 
             if len(selected_assets) == 0 or len(optimal_weights) == 0:
