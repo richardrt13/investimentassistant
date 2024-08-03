@@ -81,7 +81,7 @@ def train_model(X, y):
     # Obter o melhor modelo
     best_model = grid_search.best_estimator_
     
-train_predictions = best_model.predict(X_train_selected)
+    train_predictions = best_model.predict(X_train_selected)
     test_predictions = best_model.predict(X_test_selected)
     
     train_mse = mean_squared_error(y_train, train_predictions)
