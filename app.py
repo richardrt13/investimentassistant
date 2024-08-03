@@ -63,16 +63,18 @@ def generate_random_portfolios(returns, num_portfolios=5000):
         })
     return pd.DataFrame(results)
 
-def get_cumulative_return(ticker):
-    stock = yf.Ticker(ticker)
+
+def get_stock_data(tickers, years=5):
     end_date = datetime.now()
-    start_date = end_date - timedelta(days=5*365)
-    hist = stock.history(start=start_date, end=end_date)
-    if len(hist) > 0:
-        cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
-    else:
-        cumulative_return = None
-    return cumulative_return
+    start_date = end_date - timedelta(days=years*365)
+    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    return data
+
+def calculate_returns(prices):
+    return prices.pct_change().dropna()
+
+def calculate_cumulative_returns(prices):
+    return (prices.pct_change() + 1).prod() - 1
 
 def plot_efficient_frontier(returns, optimal_portfolio):
     portfolios = generate_random_portfolios(returns)
@@ -167,21 +169,19 @@ def main():
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Score')
 
-        # Obter rentabilidade acumulada dos últimos 5 anos
+        # Obter dados históricos dos últimos 5 anos
+        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
-        cumulative_returns = []
-        for ticker in top_ativos['Ticker']:
-            cumulative_return = get_cumulative_return(ticker + '.SA')
-            cumulative_returns.append(cumulative_return)
+        stock_data = get_stock_data(tickers)
 
-        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+        # Calcular rentabilidade acumulada
+        cumulative_returns = calculate_cumulative_returns(stock_data)
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns.values
 
         st.subheader('Top 10 BDRs Recomendados')
         st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
-        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
-        stock_data = get_stock_data(tickers, years=5)
         returns = calculate_returns(stock_data)
 
         global risk_free_rate
@@ -216,10 +216,13 @@ def main():
         st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
         st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
 
-        st.plotly_chart(plot_efficient_frontier(returns, optimal_weights))
+        # Gerar e exibir o gráfico de dispersão
+        status_text.text('Gerando gráfico da fronteira eficiente...')
+        fig = plot_efficient_frontier(returns, optimal_weights)
+        st.plotly_chart(fig)
 
-        progress_bar.progress(100)
         status_text.text('Análise concluída!')
+        progress_bar.progress(100)
 
 if __name__ == "__main__":
     main()
