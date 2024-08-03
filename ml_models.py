@@ -170,7 +170,7 @@ def create_performance_plots(model, X_train, y_train, X_test, y_test):
 
     # Importância das features
     feature_importance = pd.DataFrame({
-        'feature': X_train.columns,
+        'feature': X_train.values,
         'importance': model.feature_importances_
     }).sort_values('importance', ascending=False)
 
