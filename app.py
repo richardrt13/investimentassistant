@@ -53,7 +53,7 @@ budget = st.number_input('Investment Budget', min_value=1, value=10000)
 
 # Carregar dados dos ativos
 ativos_df = pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
-ativos_df = ativos_df[~ativos_df['Sector'].isin(['-'])]
+ativos_df = ativos_df[ativos_df['Sector'].isin(['Tecnologia', 'Financeiro', 'Farmacêutico'])]
 ativos_df = ativos_df[ativos_df['Ticker'].str.contains('34')]
 tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 sectors = ativos_df.set_index('Ticker')['Sector'].to_dict()
@@ -66,7 +66,11 @@ max_assets = st.slider('Number of Assets in Portfolio', min_value=1, max_value=2
 
 if st.button('Montar Recomendação'):
     data = download_data(tickers)
+    
     if data is not None:
+        st.write("Dados baixados:")
+        st.write(data.head())
+        
         returns = calculate_annualized_returns(data)
         cov_matrix = calculate_annualized_covariance_matrix(data)
         
