@@ -156,7 +156,7 @@ def main():
         top_ativos = ativos_df.nlargest(10, 'Score')
 
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Nome', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score']])
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score']])
 
         # Otimização de portfólio
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
