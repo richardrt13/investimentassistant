@@ -70,10 +70,10 @@ def get_stock_data(tickers, years=5):
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
-def get_cumulative_return(ticker):
+def get_cumulative_return(tickers, years=5):
     stock = yf.Ticker(ticker)
-    end_date = datetime.datetime.now()
-    start_date = end_date - datetime.timedelta(days=5*365)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
     hist = stock.history(start=start_date, end=end_date)
     if len(hist) > 0:
         cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
