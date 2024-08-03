@@ -6,8 +6,12 @@ from scipy.optimize import minimize
 
 # Funções auxiliares
 def download_data(tickers):
-    data = yf.download(tickers, period='5y')
-    return data['Adj Close']
+    try:
+        data = yf.download(tickers, period='5y')
+        return data['Adj Close']
+    except Exception as e:
+        st.error(f"Erro ao baixar dados: {e}")
+        return None
 
 def calculate_annualized_returns(data):
     daily_returns = data.pct_change().dropna()
@@ -34,8 +38,7 @@ def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
 # Streamlit Interface
 st.title('BDR Portfolio Optimizer')
 
-budget = st.number_input('Investment Budget', min_value=0, value=10000)
-
+budget = st.number_input('Investment Budget', min_value=1, value=10000)
 
 # Carregar dados dos ativos
 ativos_df = pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
@@ -49,32 +52,35 @@ sectors_list.insert(0, 'All')
 sector_filter = st.selectbox('Sector', options=sectors_list)
 
 data = download_data(tickers)
-returns = calculate_annualized_returns(data)
-cov_matrix = calculate_annualized_covariance_matrix(data)
-
-filtered_tickers = tickers
-if sector_filter != 'All':
-    filtered_tickers = [ticker for ticker in tickers if sectors[ticker] == sector_filter]
-    data = data[filtered_tickers]
-    returns = returns[filtered_tickers]
+if data is not None:
+    returns = calculate_annualized_returns(data)
     cov_matrix = calculate_annualized_covariance_matrix(data)
 
-optimal_weights = markowitz_optimization(returns, cov_matrix)
-portfolio = pd.DataFrame({
-    'Ticker': filtered_tickers,
-    'Weight': optimal_weights,
-    'Investment': optimal_weights * budget
-})
+    filtered_tickers = tickers
+    if sector_filter != 'All':
+        filtered_tickers = [ticker for ticker in tickers if sectors[ticker[:-3]] == sector_filter]
+        data = data[filtered_tickers]
+        returns = calculate_annualized_returns(data)
+        cov_matrix = calculate_annualized_covariance_matrix(data)
 
-st.write('Optimized Portfolio Allocation')
-st.dataframe(portfolio)
+    optimal_weights = markowitz_optimization(returns, cov_matrix)
+    portfolio = pd.DataFrame({
+        'Ticker': filtered_tickers,
+        'Weight': optimal_weights,
+        'Investment': optimal_weights * budget
+    })
 
-st.write('Portfolio Summary')
-expected_return = np.sum(returns * optimal_weights)
-portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(cov_matrix, optimal_weights)))
-sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
+    st.write('Optimized Portfolio Allocation')
+    st.dataframe(portfolio)
 
-st.write(f"Total Investment: {portfolio['Investment'].sum()}")
-st.write(f"Expected Annual Return: {expected_return:.2%}")
-st.write(f"Portfolio Volatility: {portfolio_volatility:.2%}")
-st.write(f"Portfolio Sharpe Ratio: {sharpe_ratio:.2f}")
+    st.write('Portfolio Summary')
+    expected_return = np.sum(returns * optimal_weights)
+    portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(cov_matrix, optimal_weights)))
+    sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
+
+    st.write(f"Total Investment: {portfolio['Investment'].sum()}")
+    st.write(f"Expected Annual Return: {expected_return:.2%}")
+    st.write(f"Portfolio Volatility: {portfolio_volatility:.2%}")
+    st.write(f"Portfolio Sharpe Ratio: {sharpe_ratio:.2f}")
+else:
+    st.error("Não foi possível baixar os dados dos ativos.")
