@@ -8,6 +8,17 @@ from scipy.optimize import minimize
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
 
+@st.cache_data
+def get_fundamental_data(ticker):
+    stock = yf.Ticker(ticker)
+    info = stock.info
+    return {
+        'P/L': info.get('trailingPE', np.nan),
+        'P/VP': info.get('priceToBook', np.nan),
+        'ROE': info.get('returnOnEquity', np.nan),
+        'Volume': info.get('averageVolume', np.nan)
+    }
+
 def get_stock_data(tickers, start_date, end_date):
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
@@ -46,21 +57,32 @@ def main():
     if sector_filter != 'Todos':
         ativos_df = ativos_df[ativos_df['Sector'] == sector_filter]
 
+    # Obter dados fundamentalistas
+    fundamental_data = []
+    for ticker in ativos_df['Ticker']:
+        with st.spinner(f'Carregando dados para {ticker}...'):
+            data = get_fundamental_data(ticker + '.SA')
+            data['Ticker'] = ticker
+            fundamental_data.append(data)
+
+    fundamental_df = pd.DataFrame(fundamental_data)
+    ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
+
     # Filtrar ativos com informações necessárias
-    ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Liquidez Média Diária'])
+    ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume'])
 
     # Análise fundamentalista e de liquidez
     ativos_df['Score'] = (
         ativos_df['ROE'] / ativos_df['P/L'] +
         1 / ativos_df['P/VP'] +
-        np.log(ativos_df['Liquidez Média Diária'])
+        np.log(ativos_df['Volume'])
     )
 
     # Selecionar os top 10 ativos com base no score
     top_ativos = ativos_df.nlargest(10, 'Score')
 
     st.subheader('Top 10 BDRs Recomendados')
-    st.dataframe(top_ativos[['Ticker', 'Nome', 'Sector', 'P/L', 'P/VP', 'ROE', 'Liquidez Média Diária', 'Score']])
+    st.dataframe(top_ativos[['Ticker', 'Nome', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Score']])
 
     # Otimização de portfólio
     tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
@@ -82,7 +104,7 @@ def main():
     portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
     sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
 
-    st.subheader('Métricas do Portólio')
+    st.subheader('Métricas do Portfólio')
     st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
     st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
     st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
