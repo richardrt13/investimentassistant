@@ -272,45 +272,7 @@ def main():
 
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
-# Adicionando a explicação no final do aplicativo Streamlit
-def display_summary():
-    st.header("Lógica")
 
-    resumo = """
-    ### Coleta de Dados Financeiros
-    Para cada ativo, o código coleta dados financeiros importantes, como:
-    - **P/L (Preço/Lucro)**: Mede o valor que os investidores estão dispostos a pagar por cada unidade de lucro da empresa.
-    - **P/VP (Preço/Valor Patrimonial)**: Compara o preço de mercado da empresa com seu valor contábil.
-    - **ROE (Retorno sobre o Patrimônio)**: Mede a eficiência da empresa em gerar lucros com os recursos dos acionistas.
-    - **Volume**: Indica a liquidez do ativo.
-    - **Price (Preço)**: O preço atual do ativo.
-
-    ### Cálculo da Pontuação dos Ativos
-    Cada ativo recebe uma pontuação baseada em suas características financeiras:
-    - **Pontuação** = (ROE / P/L) + (1 / P/VP) + log(Volume)
-    Essa pontuação combina a eficiência da empresa, a atratividade do preço e a liquidez, penalizando ativos com valores altos de P/L e P/VP.
-
-    ### Seleção dos Melhores Ativos
-    Os 10 ativos com as maiores pontuações são selecionados para análise mais detalhada.
-
-    ### Coleta de Dados Históricos de Preços
-    Para os 10 ativos selecionados, o código coleta dados históricos de preços dos últimos 5 anos e calcula a rentabilidade acumulada nesse período.
-
-    ### Otimização de Portfólio
-    A otimização de portfólio utiliza a teoria de portfólios de Harry Markowitz para encontrar a melhor combinação de ativos que maximize o retorno esperado e minimize o risco. Os principais conceitos matemáticos e estatísticos envolvidos são:
-    - **Retornos Esperados**: Calculados como a média dos retornos diários dos ativos.
-    - **Covariância**: Mede como os retornos dos ativos variam juntos.
-    - **Volatilidade do Portfólio**: Calculada com base na matriz de covariância dos retornos dos ativos.
-    - **Índice de Sharpe**: Mede o retorno ajustado pelo risco, calculado como (Retorno do Portfólio - Taxa Livre de Risco) / Volatilidade do Portfólio.
-
-    A otimização busca maximizar o índice de Sharpe, encontrando a alocação ótima dos ativos que proporciona o maior retorno ajustado pelo risco. Isso é feito através de um processo de minimização numérica.
-
-    ### Resultados e Visualização
-    O código apresenta a alocação ótima do portfólio, mostrando quanto investir em cada ativo para atingir a melhor combinação de retorno e risco. Além disso, um gráfico da "fronteira eficiente" é gerado para visualizar a relação entre risco e retorno para diferentes portfólios, destacando o portfólio ótimo.
-    """
-
-    st.markdown(resumo)
 
 if __name__ == "__main__":
     main()
-    display_summary()
