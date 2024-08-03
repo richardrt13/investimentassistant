@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from ml_models import prepare_data, train_model, predict_future_return
 
+
 @st.cache_data
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
