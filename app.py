@@ -35,12 +35,24 @@ def get_magic_formula_rankings(tickers):
             st.error(f"Erro ao obter dados para {ticker}: {e}")
 
     df = pd.DataFrame(data).T.dropna()
+    if df.empty:
+        st.error("Não há dados suficientes para aplicar a Magic Formula.")
+        st.stop()
+    
     df['ROC_Rank'] = df['ROC'].rank(ascending=False)
     df['EY_Rank'] = df['EY'].rank(ascending=False)
     df['MagicFormula_Rank'] = df['ROC_Rank'] + df['EY_Rank']
     df = df.sort_values(by='MagicFormula_Rank')
     
     return df
+
+def get_asset_prices(tickers):
+    try:
+        prices_data = yf.download(tickers, period='1d')['Adj Close'].iloc[-1]
+        return prices_data
+    except Exception as e:
+        st.error(f"Erro ao obter preços dos ativos: {e}")
+        return None
 
 def markowitz_optimization(returns, cov_matrix, prices, budget, max_assets):
     num_assets = len(returns)
@@ -53,13 +65,17 @@ def markowitz_optimization(returns, cov_matrix, prices, budget, max_assets):
 
     def objective(weights, returns, cov_matrix):
         return negative_sharpe_ratio(weights, returns, cov_matrix)
-    
+
     result = minimize(objective, num_assets * [1. / num_assets], args=args, method='SLSQP', bounds=bounds, constraints=constraints)
+    
+    if not result.success:
+        st.error(f"Erro na otimização: {result.message}")
+        st.stop()
 
     weights = result.x
     selected_assets = np.argsort(weights)[-max_assets:]
     selected_weights = weights[selected_assets]
-
+    
     return selected_assets, selected_weights
 
 def negative_sharpe_ratio(weights, returns, cov_matrix, risk_free_rate=0.02):
@@ -89,79 +105,98 @@ max_assets = st.slider('Number of Assets in Portfolio', min_value=1, max_value=2
 if st.button('Montar Recomendação'):
     data = download_data(tickers)
     
-    if data is not None:
+    if data is None or data.empty:
+        st.error("Não foi possível baixar os dados dos ativos.")
+        st.stop()
+
+    returns = calculate_annualized_returns(data)
+    cov_matrix = calculate_annualized_covariance_matrix(data)
+
+    if returns.empty or cov_matrix.empty:
+        st.error("Os cálculos de retornos ou matriz de covariância resultaram em dados vazios.")
+        st.stop()
+
+    filtered_tickers = tickers
+    if sector_filter != 'All':
+        filtered_tickers = [ticker for ticker in tickers if sectors[ticker[:-3]] == sector_filter]
+        data = data[filtered_tickers]
         returns = calculate_annualized_returns(data)
         cov_matrix = calculate_annualized_covariance_matrix(data)
 
-        filtered_tickers = tickers
-        if sector_filter != 'All':
-            filtered_tickers = [ticker for ticker in tickers if sectors[ticker[:-3]] == sector_filter]
-            data = data[filtered_tickers]
-            returns = calculate_annualized_returns(data)
-            cov_matrix = calculate_annualized_covariance_matrix(data)
+    if len(returns) < max_assets:
+        max_assets = len(returns)
+        st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
 
-        # Verificar se há ativos suficientes após a filtragem
-        if len(returns) < max_assets:
-            max_assets = len(returns)
-            st.warning(f"Não há ativos suficientes após a filtragem. O número máximo de ativos foi ajustado para {max_assets}.")
+    magic_formula_df = get_magic_formula_rankings(filtered_tickers)
+    if magic_formula_df.empty:
+        st.error("Não há dados suficientes para aplicar a Magic Formula.")
+        st.stop()
+        
+    selected_tickers = magic_formula_df.head(max_assets).index.tolist()
 
-        magic_formula_df = get_magic_formula_rankings(filtered_tickers)
-        selected_tickers = magic_formula_df.head(max_assets).index.tolist()
+    selected_returns = returns[selected_tickers]
+    selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
-        selected_returns = returns[selected_tickers]
-        selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
+    prices = get_asset_prices(selected_tickers)
+    if prices is None or prices.empty:
+        st.error("Não foi possível obter preços dos ativos. Verifique os tickers e tente novamente.")
+        st.stop()
 
-        try:
-            prices = yf.download(selected_tickers, period='1d')['Adj Close'].iloc[-1].values
-            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, prices, budget, max_assets)
-        except Exception as e:
-            st.error(f"Erro na otimização: {e}")
-            st.stop()
+    try:
+        selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, prices.values, budget, max_assets)
+    except Exception as e
+    try:
+        selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, prices.values, budget, max_assets)
+    except Exception as e:
+        st.error(f"Erro na otimização: {e}")
+        st.stop()
 
-        final_tickers = [selected_tickers[i] for i in selected_assets]
+    final_tickers = [selected_tickers[i] for i in selected_assets]
+    final_weights = optimal_weights
 
-        portfolio = pd.DataFrame({
-            'Ticker': final_tickers,
-            'Weight': optimal_weights,
-            'Investment': optimal_weights * budget
-        })
-# Exibir resultados
-        st.write('Optimized Portfolio Allocation')
-        st.dataframe(portfolio)
+    portfolio = pd.DataFrame({
+        'Ticker': final_tickers,
+        'Weight': final_weights,
+        'Price': [prices[ticker] for ticker in final_tickers],
+        'Investment': final_weights * budget
+    })
 
-        st.write('Portfolio Summary')
-        expected_return = np.sum(selected_returns.loc[final_tickers].mean() * optimal_weights)
-        portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix, optimal_weights)))
-        sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
+    st.write('Optimized Portfolio Allocation')
+    st.dataframe(portfolio)
 
-        st.write(f"Total Investment: R$ {portfolio['Investment'].sum():,.2f}")
-        st.write(f"Expected Annual Return: {expected_return:.2%}")
-        st.write(f"Portfolio Volatility: {portfolio_volatility:.2%}")
-        st.write(f"Portfolio Sharpe Ratio: {sharpe_ratio:.2f}")
+    st.write('Portfolio Summary')
+    expected_return = np.sum(selected_returns.loc[final_tickers].mean() * final_weights)
+    portfolio_volatility = np.sqrt(np.dot(final_weights.T, np.dot(selected_cov_matrix.loc[final_tickers, final_tickers], final_weights)))
+    sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
 
-        # Visualização dos ativos e suas alocações
-        fig = px.bar(portfolio, x='Ticker', y='Investment', title='Investment Allocation by Asset')
-        st.plotly_chart(fig)
+    st.write(f"Total Investment: R$ {portfolio['Investment'].sum():,.2f}")
+    st.write(f"Expected Annual Return: {expected_return:.2%}")
+    st.write(f"Portfolio Volatility: {portfolio_volatility:.2%}")
+    st.write(f"Portfolio Sharpe Ratio: {sharpe_ratio:.2f}")
 
-        # Visualização do retorno e volatilidade
-        st.write("Portfolio Statistics")
-        st.write(f"Expected Return: {expected_return:.2%}")
-        st.write(f"Volatility: {portfolio_volatility:.2%}")
-        st.write(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+    # Visualização dos ativos e suas alocações
+    fig = px.bar(portfolio, x='Ticker', y='Investment', title='Investment Allocation by Asset')
+    st.plotly_chart(fig)
 
-        # Gráfico de fronteira eficiente
-        def efficient_frontier(returns, cov_matrix, num_portfolios=10000):
-            results = np.zeros((num_portfolios, 3))
-            for i in range(num_portfolios):
-                weights = np.random.random(len(returns))
-                weights /= np.sum(weights)
-                portfolio_return = np.sum(returns * weights)
-                portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-                sharpe_ratio = (portfolio_return - 0.02) / portfolio_volatility
-                results[i] = [portfolio_return, portfolio_volatility, sharpe_ratio]
-            return results
+    # Visualização do retorno e volatilidade
+    st.write("Portfolio Statistics")
+    st.write(f"Expected Return: {expected_return:.2%}")
+    st.write(f"Volatility: {portfolio_volatility:.2%}")
+    st.write(f"Sharpe Ratio: {sharpe_ratio:.2f}")
 
-        frontier_results = efficient_frontier(selected_returns, selected_cov_matrix)
-        frontier_df = pd.DataFrame(frontier_results, columns=['Return', 'Volatility', 'Sharpe Ratio'])
-        fig_frontier = px.scatter(frontier_df, x='Volatility', y='Return', color='Sharpe Ratio', title='Efficient Frontier')
-        st.plotly_chart(fig_frontier)
+    # Gráfico de fronteira eficiente
+    def efficient_frontier(returns, cov_matrix, num_portfolios=10000):
+        results = np.zeros((num_portfolios, 3))
+        for i in range(num_portfolios):
+            weights = np.random.random(len(returns))
+            weights /= np.sum(weights)
+            portfolio_return = np.sum(returns * weights)
+            portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+            sharpe_ratio = (portfolio_return - 0.02) / portfolio_volatility
+            results[i] = [portfolio_return, portfolio_volatility, sharpe_ratio]
+        return results
+
+    frontier_results = efficient_frontier(selected_returns, selected_cov_matrix)
+    frontier_df = pd.DataFrame(frontier_results, columns=['Return', 'Volatility', 'Sharpe Ratio'])
+    fig_frontier = px.scatter(frontier_df, x='Volatility', y='Return', color='Sharpe Ratio', title='Efficient Frontier')
+    st.plotly_chart(fig_frontier)
