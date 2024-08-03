@@ -62,7 +62,7 @@ def train_model(X, y):
     X_test_scaled = scaler.transform(X_test)
     
     # Seleção de features
-    selector = SelectFromModel(RandomForestRegressor(n_estimators=100, random_state=42), threshold='median')
+    selector = SelectFromModel(RandomForestRegressor(n_estimators=50, random_state=42), threshold='median')
     selector.fit(X_train_scaled, y_train)
     X_train_selected = selector.transform(X_train_scaled)
     X_test_selected = selector.transform(X_test_scaled)
@@ -70,14 +70,14 @@ def train_model(X, y):
     # Definir o modelo e os parâmetros para o GridSearch
     rf = RandomForestRegressor(random_state=42)
     param_grid = {
-        'n_estimators': [100, 200, 300],
-        'max_depth': [None, 10, 20, 30],
-        'min_samples_split': [2, 5, 10],
-        'min_samples_leaf': [1, 2, 4]
+        'n_estimators': [100, 200],
+        'max_depth': [None, 10, 20],
+        'min_samples_split': [2, 5],
+        'min_samples_leaf': [1, 2]
     }
     
     # Realizar GridSearch com validação cruzada
-    grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=5, n_jobs=-1, verbose=2)
+    grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=2, n_jobs=-1, verbose=2)
     grid_search.fit(X_train_selected, y_train)
     
     # Obter o melhor modelo
