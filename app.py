@@ -70,17 +70,6 @@ def get_stock_data(tickers, years=5):
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
-def get_cumulative_return(ticker, years=5):
-    stock = yf.Ticker(ticker)
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years*365)
-    hist = stock.history(start=start_date, end=end_date)
-    if len(hist) > 0:
-        cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
-    else:
-        cumulative_return = None
-    return cumulative_return
-
 def calculate_returns(prices):
     return prices.pct_change().dropna()
 
@@ -187,7 +176,7 @@ def main():
 
         # Calcular rentabilidade acumulada
         cumulative_returns = calculate_cumulative_returns(stock_data)
-        top_ativos['Rentabilidade Acumulada (5 anos)'] = get_cumulative_return(ticker)
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns.values
 
         st.subheader('Top 10 BDRs Recomendados')
         st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
