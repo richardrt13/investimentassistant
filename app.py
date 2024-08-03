@@ -4,63 +4,21 @@ import numpy as np
 import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
-@st.cache_data
-def load_assets():
-    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
+# ... (mantenha as funções anteriores: load_assets, get_fundamental_data, portfolio_performance, negative_sharpe_ratio, optimize_portfolio, generate_random_portfolios)
 
-@st.cache_data
-def get_fundamental_data(ticker):
-    stock = yf.Ticker(ticker)
-    info = stock.info
-    return {
-        'P/L': info.get('trailingPE', np.nan),
-        'P/VP': info.get('priceToBook', np.nan),
-        'ROE': info.get('returnOnEquity', np.nan),
-        'Volume': info.get('averageVolume', np.nan),
-        'Price': info.get('currentPrice', np.nan)
-    }
-
-def get_stock_data(tickers, start_date, end_date):
+def get_stock_data(tickers, years=5):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
 
-def portfolio_performance(weights, returns):
-    portfolio_return = np.sum(returns.mean() * weights) * 252
-    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
-    return portfolio_return, portfolio_volatility
-
-def negative_sharpe_ratio(weights, returns, risk_free_rate):
-    p_return, p_volatility = portfolio_performance(weights, returns)
-    return -(p_return - risk_free_rate) / p_volatility
-
-def optimize_portfolio(returns, risk_free_rate):
-    num_assets = returns.shape[1]
-    args = (returns, risk_free_rate)
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    bound = (0.0, 1.0)
-    bounds = tuple(bound for asset in range(num_assets))
-    result = minimize(negative_sharpe_ratio, num_assets*[1./num_assets], args=args,
-                      method='SLSQP', bounds=bounds, constraints=constraints)
-    return result.x
-
-def generate_random_portfolios(returns, num_portfolios=5000):
-    results = []
-    n_assets = returns.shape[1]
-    for _ in range(num_portfolios):
-        weights = np.random.random(n_assets)
-        weights /= np.sum(weights)
-        p_return, p_volatility = portfolio_performance(weights, returns)
-        results.append({
-            'Return': p_return,
-            'Volatility': p_volatility,
-            'Sharpe': (p_return - risk_free_rate) / p_volatility,
-            'Weights': weights
-        })
-    return pd.DataFrame(results)
+def calculate_cumulative_returns(prices):
+    return (prices.pct_change() + 1).prod() - 1
 
 def plot_efficient_frontier(returns, optimal_portfolio):
     portfolios = generate_random_portfolios(returns)
@@ -104,7 +62,7 @@ def plot_efficient_frontier(returns, optimal_portfolio):
     
     fig.update_layout(
         title='Fronteira Eficiente',
-        xaxis_title='Volatlidade Anual',
+        xaxis_title='Volatilidade Anual',
         yaxis_title='Retorno Anual Esperado',
         showlegend=True,
         hovermode='closest'
@@ -155,17 +113,19 @@ def main():
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Score')
 
+        # Obter dados históricos dos últimos 5 anos
+        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+        status_text.text('Obtendo dados históricos...')
+        stock_data = get_stock_data(tickers)
+
+        # Calcular rentabilidade acumulada
+        cumulative_returns = calculate_cumulative_returns(stock_data)
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns.values
+
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score']])
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
-        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
-
-        start_date = '2020-01-01'
-        end_date = '2023-12-31'
-
-        status_text.text('Obtendo dados históricos...')
-        stock_data = get_stock_data(tickers, start_date, end_date)
         returns = calculate_returns(stock_data)
 
         global risk_free_rate
@@ -180,11 +140,13 @@ def main():
             price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
             allocated_value = weight * invest_value
             shares = allocated_value / price
+            cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
             allocation_data.append({
                 'Ticker': ticker,
                 'Peso': f"{weight:.2%}",
                 'Valor Alocado': f"R$ {allocated_value:.2f}",
-                'Quantidade de Ações': f"{shares:.2f}"
+                'Quantidade de Ações': f"{shares:.2f}",
+                'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}"
             })
         
         allocation_df = pd.DataFrame(allocation_data)
