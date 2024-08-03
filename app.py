@@ -42,10 +42,13 @@ def get_magic_formula_rankings(tickers):
     
     return df
 
-def markowitz_optimization(returns, cov_matrix, max_assets):
+def markowitz_optimization(returns, cov_matrix, prices, budget, max_assets):
     num_assets = len(returns)
-    args = (returns, cov_matrix)
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    args = (returns, cov_matrix, prices, budget)
+    constraints = (
+        {'type': 'eq', 'fun': lambda x: np.sum(x) - 1},
+        {'type': 'ineq', 'fun': lambda x: budget - np.sum(x * prices)}
+    )
     bounds = tuple((0, 1) for asset in range(num_assets))
 
     def objective(weights, returns, cov_matrix):
@@ -109,7 +112,8 @@ if st.button('Montar Recomendação'):
         selected_cov_matrix = cov_matrix.loc[selected_tickers, selected_tickers]
 
         try:
-            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, max_assets)
+            prices = yf.download(selected_tickers, period='1d')['Adj Close'].iloc[-1].values
+            selected_assets, optimal_weights = markowitz_optimization(selected_returns, selected_cov_matrix, prices, budget, max_assets)
         except Exception as e:
             st.error(f"Erro na otimização: {e}")
             st.stop()
@@ -121,32 +125,43 @@ if st.button('Montar Recomendação'):
             'Weight': optimal_weights,
             'Investment': optimal_weights * budget
         })
-
+# Exibir resultados
         st.write('Optimized Portfolio Allocation')
         st.dataframe(portfolio)
 
-        # Gráfico de alocação
-        fig_allocation = px.pie(portfolio, names='Ticker', values='Investment', title='Portfolio Allocation')
-        st.plotly_chart(fig_allocation)
-
         st.write('Portfolio Summary')
-        expected_return = np.sum(selected_returns[selected_assets] * optimal_weights)
-        portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix.values, optimal_weights)))
+        expected_return = np.sum(selected_returns.loc[final_tickers].mean() * optimal_weights)
+        portfolio_volatility = np.sqrt(np.dot(optimal_weights.T, np.dot(selected_cov_matrix, optimal_weights)))
         sharpe_ratio = (expected_return - 0.02) / portfolio_volatility
 
-        st.write(f"Total Investment: {portfolio['Investment'].sum()}")
+        st.write(f"Total Investment: R$ {portfolio['Investment'].sum():,.2f}")
         st.write(f"Expected Annual Return: {expected_return:.2%}")
         st.write(f"Portfolio Volatility: {portfolio_volatility:.2%}")
         st.write(f"Portfolio Sharpe Ratio: {sharpe_ratio:.2f}")
 
-        # Gráfico de retorno esperado vs. volatilidade
-        fig_risk_return = px.scatter(
-            x=[portfolio_volatility], 
-            y=[expected_return], 
-            labels={'x': 'Volatility', 'y': 'Expected Return'}, 
-            title='Risk vs Return'
-        )
-        fig_risk_return.update_traces(marker=dict(size=10))
-        st.plotly_chart(fig_risk_return)
-else:
-    st.write("Clique no botão para gerar a recomendação.")
+        # Visualização dos ativos e suas alocações
+        fig = px.bar(portfolio, x='Ticker', y='Investment', title='Investment Allocation by Asset')
+        st.plotly_chart(fig)
+
+        # Visualização do retorno e volatilidade
+        st.write("Portfolio Statistics")
+        st.write(f"Expected Return: {expected_return:.2%}")
+        st.write(f"Volatility: {portfolio_volatility:.2%}")
+        st.write(f"Sharpe Ratio: {sharpe_ratio:.2f}")
+
+        # Gráfico de fronteira eficiente
+        def efficient_frontier(returns, cov_matrix, num_portfolios=10000):
+            results = np.zeros((num_portfolios, 3))
+            for i in range(num_portfolios):
+                weights = np.random.random(len(returns))
+                weights /= np.sum(weights)
+                portfolio_return = np.sum(returns * weights)
+                portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
+                sharpe_ratio = (portfolio_return - 0.02) / portfolio_volatility
+                results[i] = [portfolio_return, portfolio_volatility, sharpe_ratio]
+            return results
+
+        frontier_results = efficient_frontier(selected_returns, selected_cov_matrix)
+        frontier_df = pd.DataFrame(frontier_results, columns=['Return', 'Volatility', 'Sharpe Ratio'])
+        fig_frontier = px.scatter(frontier_df, x='Volatility', y='Return', color='Sharpe Ratio', title='Efficient Frontier')
+        st.plotly_chart(fig_frontier)
