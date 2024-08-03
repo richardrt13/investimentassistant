@@ -22,12 +22,18 @@ def get_fundamental_data(ticker):
         'Price': info.get('currentPrice', np.nan)
     }
 
-def get_stock_data(tickers, start_date, end_date):
+def get_stock_data(tickers, years=5):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
+
+def calculate_cumulative_returns(prices):
+    cumulative_returns = (prices.pct_change() + 1).cumprod() - 1
+    return cumulative_returns.iloc[-1]
 
 def portfolio_performance(weights, returns):
     portfolio_return = np.sum(returns.mean() * weights) * 252
@@ -63,24 +69,11 @@ def generate_random_portfolios(returns, num_portfolios=5000):
         })
     return pd.DataFrame(results)
 
-
-def get_stock_data(tickers, years=5):
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=years*365)
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-    return data
-
-def calculate_returns(prices):
-    return prices.pct_change().dropna()
-
-def calculate_cumulative_returns(prices):
-    return (prices.pct_change() + 1).prod() - 1
-
 def plot_efficient_frontier(returns, optimal_portfolio):
     portfolios = generate_random_portfolios(returns)
-    
+
     fig = go.Figure()
-    
+
     # Plotar portfólios aleatórios
     fig.add_trace(go.Scatter(
         x=portfolios['Volatility'],
@@ -97,11 +90,11 @@ def plot_efficient_frontier(returns, optimal_portfolio):
         hoverinfo='text+x+y',
         name='Portfólios'
     ))
-    
+
     # Plotar portfólio ótimo
     opt_return, opt_volatility = portfolio_performance(optimal_portfolio, returns)
     opt_sharpe = (opt_return - risk_free_rate) / opt_volatility
-    
+
     fig.add_trace(go.Scatter(
         x=[opt_volatility],
         y=[opt_return],
@@ -115,7 +108,7 @@ def plot_efficient_frontier(returns, optimal_portfolio):
         hoverinfo='text+x+y',
         name='Portfólio Ótimo'
     ))
-    
+
     fig.update_layout(
         title='Fronteira Eficiente',
         xaxis_title='Volatilidade Anual',
@@ -123,7 +116,7 @@ def plot_efficient_frontier(returns, optimal_portfolio):
         showlegend=True,
         hovermode='closest'
     )
-    
+
     return fig
 
 def main():
@@ -133,7 +126,7 @@ def main():
 
     # Substituir "-" por "Outros" na coluna "Sector"
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
-    
+
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
 
@@ -208,7 +201,7 @@ def main():
                 'Quantidade de Ações': f"{shares:.2f}",
                 'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}"
             })
-        
+
         allocation_df = pd.DataFrame(allocation_data)
         st.table(allocation_df)
 
