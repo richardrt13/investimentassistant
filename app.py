@@ -1,116 +1,91 @@
 import streamlit as st
-import yfinance as yf
 import pandas as pd
 import numpy as np
-import plotly.express as px
+import yfinance as yf
 from scipy.optimize import minimize
 
-# Funções auxiliares
-@st.cache_data
-def download_data(tickers):
-    data = yf.download(tickers, period='5y')['Adj Close']
-    return data
-
-def calculate_annualized_returns(data):
-    daily_returns = data.pct_change().dropna()
-    return daily_returns.mean() * 252
-
-def calculate_annualized_covariance_matrix(data):
-    daily_returns = data.pct_change().dropna()
-    return daily_returns.cov() * 252
-
-def optimize_portfolio(returns, cov_matrix, risk_free_rate=0.02):
-    num_assets = len(returns)
-    def portfolio_performance(weights):
-        port_return = np.sum(weights * returns)
-        port_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        return port_volatility, port_return
-    
-    def objective_function(weights):
-        port_volatility, port_return = portfolio_performance(weights)
-        return -((port_return - risk_free_rate) / port_volatility)  # Maximiza o Sharpe Ratio
-
-    constraints = ({'type': 'eq', 'fun': lambda weights: np.sum(weights) - 1})
-    bounds = tuple((0, 1) for _ in range(num_assets))
-    initial_weights = num_assets * [1. / num_assets,]
-    result = minimize(objective_function, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-
-    return result.x, portfolio_performance(result.x)
-
-# Streamlit Interface
-st.title('Investment Portfolio Recommender')
-
-# Carregar dados dos ativos
 @st.cache_data
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
 
-ativos_df = load_assets()
-setores = sorted(set(ativos_df['Sector']))
-setores.insert(0, 'Todos')
+def get_stock_data(tickers, start_date, end_date):
+    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    return data
 
-# Seleção do setor
-sector_filter = st.selectbox('Selecione o Setor', options=setores)
+def calculate_returns(prices):
+    return prices.pct_change().dropna()
 
-# Filtrar ativos conforme o setor selecionado
-if sector_filter != 'Todos':
-    ativos_df = ativos_df[ativos_df['Sector'] == sector_filter]
+def portfolio_performance(weights, returns):
+    portfolio_return = np.sum(returns.mean() * weights) * 252
+    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
+    return portfolio_return, portfolio_volatility
 
-# Obter tickers
-tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-sector_mapping = ativos_df.set_index('Ticker')['Sector'].to_dict()
+def negative_sharpe_ratio(weights, returns, risk_free_rate):
+    p_return, p_volatility = portfolio_performance(weights, returns)
+    return -(p_return - risk_free_rate) / p_volatility
 
-# Definições de entrada
-budget = st.number_input('Orçamento para Investimento', min_value=1000, value=10000, step=1000)
-max_assets = st.slider('Número Máximo de Ativos na Carteira', min_value=1, max_value=20, value=10)
+def optimize_portfolio(returns, risk_free_rate):
+    num_assets = returns.shape[1]
+    args = (returns, risk_free_rate)
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bound = (0.0, 1.0)
+    bounds = tuple(bound for asset in range(num_assets))
+    result = minimize(negative_sharpe_ratio, num_assets*[1./num_assets], args=args,
+                      method='SLSQP', bounds=bounds, constraints=constraints)
+    return result.x
 
-# Processar dados e otimizar
-if st.button('Montar Recomendação'):
-    with st.spinner('Baixando dados e otimizando portfólio...'):
-        data = download_data(tickers)
+def main():
+    st.title('BDR Recommendation and Portfolio Optimization')
 
-        if data is not None and not data.empty:
-            returns = calculate_annualized_returns(data)
-            cov_matrix = calculate_annualized_covariance_matrix(data)
+    ativos_df = load_assets()
+    setores = sorted(set(ativos_df['Sector']))
+    setores.insert(0, 'Todos')
 
-            # Verificar se há ativos suficientes após a filtragem
-            if len(returns) < 2:
-                st.error("Número insuficiente de ativos para calcular a matriz de covariância.")
-                st.stop()
+    sector_filter = st.selectbox('Selecione o Setor', options=setores)
 
-            try:
-                weights, (volatility, return_) = optimize_portfolio(returns, cov_matrix)
-            except Exception as e:
-                st.error(f"Erro durante a otimização da carteira: {e}")
-                st.stop()
+    if sector_filter != 'Todos':
+        ativos_df = ativos_df[ativos_df['Sector'] == sector_filter]
 
-            portfolio = pd.DataFrame({
-                'Ticker': tickers,
-                'Weight': weights,
-                'Investment': weights * budget
-            })
+    # Filtrar ativos com informações necessárias
+    ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Liquidez Média Diária'])
 
-            st.subheader('Alocação de Carteira Otimizada')
-            st.dataframe(portfolio.style.format({'Weight': '{:.2%}', 'Investment': '${:.2f}'}))
+    # Análise fundamentalista e de liquidez
+    ativos_df['Score'] = (
+        ativos_df['ROE'] / ativos_df['P/L'] +
+        1 / ativos_df['P/VP'] +
+        np.log(ativos_df['Liquidez Média Diária'])
+    )
 
-            fig_allocation = px.pie(portfolio, names='Ticker', values='Investment', title='Alocação da Carteira')
-            st.plotly_chart(fig_allocation)
+    # Selecionar os top 10 ativos com base no score
+    top_ativos = ativos_df.nlargest(10, 'Score')
 
-            st.subheader('Resumo da Carteira')
-            st.metric("Investimento Total", f"${portfolio['Investment'].sum():.2f}")
-            st.metric("Retorno Anual Esperado", f"{return_:.2%}")
-            st.metric("Volatilidade da Carteira", f"{volatility:.2%}")
-            st.metric("Índice de Sharpe da Carteira", f"{(return_ - 0.02) / volatility:.2f}")
+    st.subheader('Top 10 BDRs Recomendados')
+    st.dataframe(top_ativos[['Ticker', 'Nome', 'Sector', 'P/L', 'P/VP', 'ROE', 'Liquidez Média Diária', 'Score']])
 
-            fig_risk_return = px.scatter(
-                x=[volatility], 
-                y=[return_], 
-                labels={'x': 'Volatilidade', 'y': 'Retorno Esperado'}, 
-                title='Risco vs Retorno'
-            )
-            fig_risk_return.update_traces(marker=dict(size=10))
-            st.plotly_chart(fig_risk_return)
-        else:
-            st.error("Não foi possível baixar os dados. Por favor, tente novamente mais tarde.")
-else:
-    st.info("Clique no botão para gerar a recomendação.")
+    # Otimização de portfólio
+    tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+
+    start_date = '2020-01-01'
+    end_date = '2023-12-31'
+
+    stock_data = get_stock_data(tickers, start_date, end_date)
+    returns = calculate_returns(stock_data)
+
+    risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
+
+    optimal_weights = optimize_portfolio(returns, risk_free_rate)
+
+    st.subheader('Alocação Ótima do Portfólio')
+    for ticker, weight in zip(tickers, optimal_weights):
+        st.write(f"{ticker}: {weight:.2%}")
+
+    portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
+    sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
+
+    st.subheader('Métricas do Portfólio')
+    st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
+    st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
+    st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
+
+if __name__ == "__main__":
+    main()
