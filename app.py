@@ -6,10 +6,12 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
+# Função para carregar os ativos do CSV
 @st.cache_data
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
 
+# Função para obter dados fundamentais de um ativo
 @st.cache_data
 def get_fundamental_data(ticker):
     stock = yf.Ticker(ticker)
@@ -22,15 +24,20 @@ def get_fundamental_data(ticker):
         'Price': info.get('currentPrice', np.nan)
     }
 
+# Função para obter dados históricos de preços
+@st.cache_data
 def get_stock_data(tickers, years=5):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
     return data
 
+# Função para calcular retornos diários
 def calculate_returns(prices):
     return prices.pct_change().dropna()
 
+# Função para calcular o retorno acumulado
+@st.cache_data
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
@@ -42,15 +49,18 @@ def get_cumulative_return(ticker):
         cumulative_return = None
     return cumulative_return
 
+# Função para calcular o desempenho do portfólio
 def portfolio_performance(weights, returns):
     portfolio_return = np.sum(returns.mean() * weights) * 252
     portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
     return portfolio_return, portfolio_volatility
 
+# Função para calcular o índice de Sharpe negativo (para otimização)
 def negative_sharpe_ratio(weights, returns, risk_free_rate):
     p_return, p_volatility = portfolio_performance(weights, returns)
     return -(p_return - risk_free_rate) / p_volatility
 
+# Função para otimizar o portfólio
 def optimize_portfolio(returns, risk_free_rate):
     num_assets = returns.shape[1]
     args = (returns, risk_free_rate)
@@ -61,6 +71,7 @@ def optimize_portfolio(returns, risk_free_rate):
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
 
+# Função para gerar portfólios aleatórios
 def generate_random_portfolios(returns, num_portfolios=5000):
     results = []
     n_assets = returns.shape[1]
@@ -76,6 +87,7 @@ def generate_random_portfolios(returns, num_portfolios=5000):
         })
     return pd.DataFrame(results)
 
+# Função para plotar a fronteira eficiente
 def plot_efficient_frontier(returns, optimal_portfolio):
     portfolios = generate_random_portfolios(returns)
     
@@ -215,7 +227,6 @@ def main():
         portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
         sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
 
-
         st.subheader('Métricas do Portfólio')
         st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
         st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
@@ -228,6 +239,7 @@ def main():
 
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
+
 # Adicionando a explicação no final do aplicativo Streamlit
 def display_summary():
     st.header("Lógica")
