@@ -28,7 +28,7 @@ def markowitz_optimization(returns, cov_matrix, max_assets):
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = tuple((0, 1) for asset in range(num_assets))
 
-    def objective(weights):
+    def objective(weights, returns, cov_matrix):
         return negative_sharpe_ratio(weights, returns, cov_matrix)
     
     result = minimize(objective, num_assets * [1. / num_assets], args=args, method='SLSQP', bounds=bounds, constraints=constraints)
