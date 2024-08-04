@@ -64,27 +64,46 @@ def get_fundamental_data(ticker, max_retries=1000):
                 }
 
 @st.cache_data(ttl=3600)
+# def get_stock_data(tickers, years=2, max_retries=1000):
+#     end_date = datetime.now()
+#     start_date = end_date - timedelta(days=years*365)
+#     all_data = pd.DataFrame()
+    
+#     for ticker in tickers:
+#         st.write(f"Tentando obter dados para o ticker: {ticker}")  # Adiciona debug
+#         for attempt in range(max_retries):
+#             try:
+#                 data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
+#                 st.write(f"Dados recebidos para {ticker}: {data.head()}")  # Adiciona debug
+#                 if not data.empty:
+#                     all_data[ticker] = data
+#                 break
+#             except Exception as e:
+#                 st.write(f"Tentativa {attempt} falhou para {ticker}: {e}")  # Adiciona debug
+#                 if attempt == max_retries - 1:
+#                     st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
+    
+#     st.write("Dados finais coletados:", all_data.head())  # Adiciona debug final
+#     return all_data
+
 def get_stock_data(tickers, years=2, max_retries=1000):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     all_data = pd.DataFrame()
     
     for ticker in tickers:
-        st.write(f"Tentando obter dados para o ticker: {ticker}")  # Adiciona debug
         for attempt in range(max_retries):
             try:
                 data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
-                st.write(f"Dados recebidos para {ticker}: {data.head()}")  # Adiciona debug
                 if not data.empty:
                     all_data[ticker] = data
                 break
             except Exception as e:
-                st.write(f"Tentativa {attempt} falhou para {ticker}: {e}")  # Adiciona debug
                 if attempt == max_retries - 1:
                     st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
     
-    st.write("Dados finais coletados:", all_data.head())  # Adiciona debug final
     return all_data
+
 
 # Função para calcular o retorno acumulado
 @st.cache_data
@@ -227,8 +246,7 @@ def main():
     
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
-        ativos_df
-
+        
     invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=1000.0, step=100.0)
 
     if st.button('Gerar Recomendação'):
@@ -239,20 +257,12 @@ def main():
                 fundamental_data.append(data)
             
             fundamental_df = pd.DataFrame(fundamental_data)
-            st.subheader('ativos_df')
-            ativos_df
             ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
-            st.subheader('fundamental_df')
-            fundamental_df
             ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
-            ativos_df
 
             tickers = ativos_df['Ticker'].tolist()
-            tickers
             stock_data = get_stock_data(tickers)
-            st.subheader('stock_data')
-            # stock_data
-            # fundamental_df
+       
             
             # Filtra os tickers que realmente têm dados
             valid_tickers = stock_data.columns
