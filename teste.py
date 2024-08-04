@@ -47,8 +47,6 @@ def get_fundamental_data(ticker, max_retries=3):
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
-    start_date
-    end_date
 
     for attempt in range(max_retries):
         try:
@@ -295,7 +293,6 @@ def main():
         # Calcular rentabilidade acumulada
         cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
-        cumulative_returns
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
