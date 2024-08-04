@@ -36,7 +36,7 @@ def load_assets():
 
 # Função para obter dados fundamentais de um ativo
 @st.cache_data(ttl=3600)
-def get_fundamental_data(ticker, max_retries=5):
+def get_fundamental_data(ticker, max_retries=1000):
     for attempt in range(max_retries):
         try:
             stock = yf.Ticker(ticker)
@@ -64,7 +64,7 @@ def get_fundamental_data(ticker, max_retries=5):
                 }
 
 @st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=2, max_retries=5):
+def get_stock_data(tickers, years=2, max_retries=1000):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     all_data = pd.DataFrame()
