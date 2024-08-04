@@ -325,7 +325,7 @@ def main():
 
         st.subheader('Métricas do Portfólio')
         st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
-      st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
+        st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
         st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
 
         # Gerar e exibir o gráfico de dispersão
