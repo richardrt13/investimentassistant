@@ -57,19 +57,27 @@ def get_fundamental_data(ticker, max_retries=3):
 
 # Função para obter dados históricos de preços com tratamento de erro
 @st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=5, max_retries=3):
+def get_stock_data(tickers, years=2, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
-    for attempt in range(max_retries):
-        try:
-            data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-            return data
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(2 ** attempt)  # Exponential backoff
-            else:
-                st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
-                return pd.DataFrame()
+    all_data = pd.DataFrame()
+    
+    for ticker in tickers:
+        for attempt in range(max_retries):
+            try:
+                data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
+                if not data.empty:
+                    all_data[ticker] = data
+                break
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
+                else:
+                    time.sleep(2 ** attempt)
+    
+    if all_data.empty:
+        st.error("Não foi possível obter dados para nenhum dos tickers.")
+    return all_data
 
 # Função para calcular o retorno acumulado
 @st.cache_data
