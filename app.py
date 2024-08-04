@@ -97,8 +97,11 @@ def negative_sharpe_ratio(weights, returns, risk_free_rate):
     p_return, p_volatility = portfolio_performance(weights, returns)
     return -(p_return - risk_free_rate) / p_volatility
 
-# Função para otimizar o portfólio usando risk parity
 def risk_parity_optimization(returns):
+    if returns.empty:
+        st.error("Não há dados de retorno para otimizar.")
+        return np.array([])
+
     def risk_parity_objective(weights):
         portfolio_variance = np.dot(weights.T, np.dot(returns.cov() * 252, weights))
         asset_risk_contribution = (weights * np.dot(returns.cov() * 252, weights)) / np.sqrt(portfolio_variance)
@@ -107,8 +110,13 @@ def risk_parity_optimization(returns):
     num_assets = returns.shape[1]
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = tuple((0.0, 1.0) for _ in range(num_assets))
-    result = minimize(risk_parity_objective, num_assets * [1. / num_assets], bounds=bounds, constraints=constraints)
-    return result.x
+    
+    try:
+        result = minimize(risk_parity_objective, num_assets * [1. / num_assets], bounds=bounds, constraints=constraints)
+        return result.x
+    except Exception as e:
+        st.error(f"Erro na otimização: {e}")
+        return np.array([])
 
 # Função para gerar portfólios aleatórios
 @st.cache_data
