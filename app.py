@@ -203,3 +203,50 @@ def main():
         for i, ticker in enumerate(ativos_df['Ticker']):
             status_text.text(f'Carregando dados para {ticker}...')
             progress_bar.progress((i + 1) / len(ativos_df))
+for i, ticker in enumerate(ativos_df['Ticker']):
+            status_text.text(f'Carregando dados para {ticker}...')
+            progress_bar.progress((i + 1) / len(ativos_df))
+            data = get_fundamental_data(ticker)
+            data['Ticker'] = ticker
+            fundamental_data.append(data)
+        fundamental_df = pd.DataFrame(fundamental_data)
+        ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
+        ativos_df = ativos_df.dropna()
+
+        tickers = ativos_df['Ticker'].tolist()
+        stock_data = get_stock_data(tickers)
+        stock_returns = calculate_returns(stock_data)
+
+        positions = get_current_positions(collection)
+        merged_positions = pd.merge(positions, ativos_df, on='Ticker')
+        
+        # Incorporar as posições atuais no cálculo do portfólio
+        initial_weights = np.zeros(stock_returns.shape[1])
+        for i, ticker in enumerate(stock_returns.columns):
+            if ticker in merged_positions['Ticker'].values:
+                qty = merged_positions.loc[merged_positions['Ticker'] == ticker, 'quantity'].values[0]
+                price = merged_positions.loc[merged_positions['Ticker'] == ticker, 'average_price'].values[0]
+                initial_weights[i] = qty * price / invest_value
+        
+        initial_weights = initial_weights / np.sum(initial_weights)
+
+        # Otimização do portfólio
+        optimal_portfolio = risk_parity_optimization(stock_returns)
+
+        # Adicionando pesos iniciais e otimizados aos ativos_df para exibição
+        ativos_df['Initial Weight'] = initial_weights
+        ativos_df['Optimized Weight'] = optimal_portfolio
+
+        st.subheader('Resultados da Recomendação de Portfólio')
+        st.write('Valores em porcentagem')
+        st.write(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
+
+        fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
+        st.plotly_chart(fig)
+
+        # Tabela de transações
+        st.subheader('Posições Atuais da Carteira')
+        st.write(positions[['Ticker', 'quantity', 'average_price']])
+
+if __name__ == "__main__":
+    main()
