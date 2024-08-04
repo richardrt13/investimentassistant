@@ -9,5 +9,4 @@ seaborn
 scikit-learn
 joblib
 pymongo
-PyPortfolioOpt
-pypfopt
+PyPortfolio0pt==1.5.5
