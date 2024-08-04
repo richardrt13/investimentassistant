@@ -252,13 +252,13 @@ def main():
             np.log(ativos_df['Volume'])
         )
 
-        tickers1 = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        stock_data1 = get_stock_data(tickers1)
+        tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+        stock_data_raw = get_stock_data(tickers1)
 
         # Detecção de anomalias e cálculo de RSI
-        for ticker in tickers1:
-            price_anomalies = detect_price_anomalies(stock_data1[ticker])
-            rsi = calculate_rsi(stock_data1[ticker])
+        for ticker in tickers_raw:
+            price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
+            rsi = calculate_rsi(stock_data_raw[ticker])
             ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
             ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
 
@@ -268,7 +268,6 @@ def main():
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
 
-        # Obter dados históricos dos últimos 5 anos
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
         stock_data = get_stock_data(tickers)
@@ -283,7 +282,7 @@ def main():
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
 
         st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score','Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
@@ -297,9 +296,6 @@ def main():
         cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
         cumulative_returns
-
-        # st.subheader('Top 10 BDRs Recomendados')
-        # st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
