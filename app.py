@@ -20,7 +20,8 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from pypfopt import risk_models
-from pypfopt import EfficientFrontier
+from pypfopt.efficient_frontier import EfficientFrontier
+
 
 
 # Função para carregar os ativos do CSV
