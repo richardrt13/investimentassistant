@@ -82,6 +82,16 @@ def get_stock_data(tickers, years=5, max_retries=5):
     
     return all_data
 
+
+# Função para calcular o retorno acumulado
+@st.cache_data
+def get_cumulative_return(ticker):
+    stock = yf.Ticker(ticker)
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=5*365)
+    hist = stock.history(start=start_date, end=end_date)
+    return (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1 if len(hist) > 0 else None
+
 def calculate_returns(prices):
     if prices.empty:
         return pd.DataFrame()
@@ -93,6 +103,11 @@ def portfolio_performance(weights, returns):
     portfolio_return = np.sum(returns.mean() * weights) * 252
     portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
     return portfolio_return, portfolio_volatility
+
+# Função para calcular o índice de Sharpe negativo (para otimização)
+def negative_sharpe_ratio(weights, returns, risk_free_rate):
+    p_return, p_volatility = portfolio_performance(weights, returns)
+    return -(p_return - risk_free_rate) / p_volatility
 
 def risk_parity_optimization(returns):
     if returns.empty:
@@ -114,6 +129,23 @@ def risk_parity_optimization(returns):
     except Exception as e:
         st.error(f"Erro na otimização: {e}")
         return np.array([])
+
+# Função para gerar portfólios aleatórios
+@st.cache_data
+def generate_random_portfolios(returns, num_portfolios=1000, risk_free_rate=0.05):
+    results = []
+    n_assets = returns.shape[1]
+    for _ in range(num_portfolios):
+        weights = np.random.random(n_assets)
+        weights /= np.sum(weights)
+        p_return, p_volatility = portfolio_performance(weights, returns)
+        results.append({
+            'Return': p_return,
+            'Volatility': p_volatility,
+            'Sharpe': (p_return - risk_free_rate) / p_volatility,
+            'Weights': weights
+        })
+    return pd.DataFrame(results)
 
 # Função para plotar a fronteira eficiente
 def plot_efficient_frontier(returns, optimal_portfolio, risk_free_rate=0.05):
@@ -228,7 +260,9 @@ def main():
                 if ticker in merged_positions['Ticker'].values:
                     qty = merged_positions.loc[merged_positions['Ticker'] == ticker, 'quantity'].values[0]
                     price = merged_positions.loc[merged_positions['Ticker'] == ticker, 'average_price'].values[0]
-                    initial_weights[i] = qty * price / (merged_positions['Price'].sum() + invest_value)
+                    initial_weights[i] = qty * price / invest_value
+
+            initial_weights = initial_weights / np.sum(initial_weights)
 
             optimal_portfolio = risk_parity_optimization(stock_returns)
             ativos_df['Initial Weight'] = initial_weights
