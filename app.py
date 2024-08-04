@@ -240,6 +240,7 @@ def main():
             ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
 
             tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+            tickers
             stock_data = get_stock_data(tickers)
             st.subheader('stock_data')
             # stock_data
