@@ -5,6 +5,7 @@ import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from requests.exceptions import ConnectionError
 
 # Função para carregar os ativos do CSV
 @st.cache_data
@@ -13,28 +14,47 @@ def load_assets():
 
 # Função para obter dados fundamentais de um ativo
 @st.cache_data
-def get_fundamental_data(ticker):
-    stock = yf.Ticker(ticker)
-    info = stock.info
-    return {
-        'P/L': info.get('trailingPE', np.nan),
-        'P/VP': info.get('priceToBook', np.nan),
-        'ROE': info.get('returnOnEquity', np.nan),
-        'Volume': info.get('averageVolume', np.nan),
-        'Price': info.get('currentPrice', np.nan)
-    }
+def get_fundamental_data(ticker, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+            return {
+                'P/L': info.get('trailingPE', np.nan),
+                'P/VP': info.get('priceToBook', np.nan),
+                'ROE': info.get('returnOnEquity', np.nan),
+                'Volume': info.get('averageVolume', np.nan),
+                'Price': info.get('currentPrice', np.nan)
+            }
+        except ConnectionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
+                return {
+                    'P/L': np.nan,
+                    'P/VP': np.nan,
+                    'ROE': np.nan,
+                    'Volume': np.nan,
+                    'Price': np.nan
+                }
 
-# Função para obter dados históricos de preços
+# Função para obter dados históricos de preços com tratamento de erro
 @st.cache_data
-def get_stock_data(tickers, years=5):
+def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
-    data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
-    return data
-
-# Função para calcular retornos diários
-def calculate_returns(prices):
-    return prices.pct_change().dropna()
+    
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+            return data
+        except ConnectionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
+                return pd.DataFrame()
 
 # Função para calcular o retorno acumulado
 @st.cache_data
@@ -175,6 +195,11 @@ def main():
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
 
+        # Verificar se há ativos suficientes para continuar
+        if len(ativos_df) < 10:
+            st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+            return
+
         # Análise fundamentalista e de liquidez
         ativos_df['Score'] = (
             ativos_df['ROE'] / ativos_df['P/L'] +
@@ -189,6 +214,11 @@ def main():
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
         stock_data = get_stock_data(tickers)
+
+        # Verificar se os dados históricos foram obtidos com sucesso
+        if stock_data.empty:
+            st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
+            return
 
         # Calcular rentabilidade acumulada
         cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
