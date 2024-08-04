@@ -258,12 +258,26 @@ def main():
         # Obter dados históricos dos últimos 5 anos
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
-        tickers
         stock_data = get_stock_data(tickers)
-        
+
         # Verificar se os dados históricos foram obtidos com sucesso
         if stock_data.empty:
             st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
+            return
+
+        # Calcular rentabilidade acumulada
+        cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+
+        st.subheader('Top 10 BDRs Recomendados')
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
+
+        # Otimização de portfólio
+        returns = calculate_returns(stock_data)
+
+        # Verificar se há retornos válidos para continuar
+        if returns.empty:
+            st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
             return
 
         # Calcular rentabilidade acumulada
