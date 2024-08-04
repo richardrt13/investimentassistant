@@ -52,10 +52,11 @@ def get_fundamental_data(ticker, max_retries=3):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
             else:
+                if "404" in str(e):
+                    return None  # Retourne None si 404
                 st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
                 return {key: np.nan for key in ['P/L', 'P/VP', 'ROE', 'Volume', 'Price']}
 
-# Função para obter dados históricos de preços com tratamento de erro
 @st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=2, max_retries=3):
     end_date = datetime.now()
@@ -71,7 +72,8 @@ def get_stock_data(tickers, years=2, max_retries=3):
                 break
             except Exception as e:
                 if attempt == max_retries - 1:
-                    st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
+                    if "404" not in str(e):
+                        st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
                 else:
                     time.sleep(2 ** attempt)
     
