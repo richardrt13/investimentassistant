@@ -253,16 +253,17 @@ def main():
         )
 
         tickers1 = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+        stock_data1 = get_stock_data(tickers1)
 
         # Detecção de anomalias e cálculo de RSI
         for ticker in tickers1:
-            price_anomalies = detect_price_anomalies(stock_data[ticker])
-            rsi = calculate_rsi(stock_data[ticker])
-            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
-            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+            price_anomalies = detect_price_anomalies(stock_data1[ticker])
+            rsi = calculate_rsi(stock_data1[ticker])
+            ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
+            ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
 
         # Calcular score ajustado
-        top_ativos['Adjusted_Score'] = top_ativos.apply(calculate_adjusted_score, axis=1)
+        ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
 
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
