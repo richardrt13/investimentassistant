@@ -64,29 +64,7 @@ def get_fundamental_data(ticker, max_retries=1000):
                 }
 
 @st.cache_data(ttl=3600)
-# def get_stock_data(tickers, years=2, max_retries=1000):
-#     end_date = datetime.now()
-#     start_date = end_date - timedelta(days=years*365)
-#     all_data = pd.DataFrame()
-    
-#     for ticker in tickers:
-#         st.write(f"Tentando obter dados para o ticker: {ticker}")  # Adiciona debug
-#         for attempt in range(max_retries):
-#             try:
-#                 data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
-#                 st.write(f"Dados recebidos para {ticker}: {data.head()}")  # Adiciona debug
-#                 if not data.empty:
-#                     all_data[ticker] = data
-#                 break
-#             except Exception as e:
-#                 st.write(f"Tentativa {attempt} falhou para {ticker}: {e}")  # Adiciona debug
-#                 if attempt == max_retries - 1:
-#                     st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
-    
-#     st.write("Dados finais coletados:", all_data.head())  # Adiciona debug final
-#     return all_data
-
-def get_stock_data(tickers, years=2, max_retries=1000):
+def get_stock_data(tickers, years=5, max_retries=5):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     all_data = pd.DataFrame()
