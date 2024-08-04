@@ -69,6 +69,14 @@ def get_cumulative_return(ticker):
         cumulative_return = None
     return cumulative_return
 
+def calculate_returns(prices):
+    if prices.empty:
+        return pd.DataFrame()
+    returns = prices.pct_change().dropna()
+    # Remove infinitos e NaNs
+    returns = returns.replace([np.inf, -np.inf], np.nan).dropna()
+    return returns
+
 # Função para calcular o desempenho do portfólio
 def portfolio_performance(weights, returns):
     portfolio_return = np.sum(returns.mean() * weights) * 252
@@ -229,12 +237,21 @@ def main():
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
+        
+        # Verificar se há retornos válidos para continuar
+        if returns.empty:
+            st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+            return
 
         global risk_free_rate
         risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
 
         status_text.text('Otimizando portfólio...')
-        optimal_weights = optimize_portfolio(returns, risk_free_rate)
+        try:
+            optimal_weights = optimize_portfolio(returns, risk_free_rate)
+        except Exception as e:
+            st.error(f"Erro ao otimizar o portfólio: {e}")
+            return
 
         st.subheader('Alocação Ótima do Portfólio')
         allocation_data = []
@@ -248,7 +265,7 @@ def main():
                 'Peso': f"{weight:.2%}",
                 'Valor Alocado': f"R$ {allocated_value:.2f}",
                 'Quantidade de Ações': f"{shares:.2f}",
-                'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}"
+                'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A"
             })
         
         allocation_df = pd.DataFrame(allocation_data)
