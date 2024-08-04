@@ -26,7 +26,7 @@ def init_db():
     return connect_to_mongo(mongo_uri, 'StockIdea', 'transactions')
 
 # Função para carregar os ativos do CSV
-@st.cache_data
+#@st.cache_data
 def load_assets():
     try:
         return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
@@ -36,7 +36,7 @@ def load_assets():
 
 # Função para obter dados fundamentais de um ativo
 #@st.cache_data(ttl=3600)
-def get_fundamental_data(ticker, max_retries=3):
+def get_fundamental_data(ticker, max_retries=200):
     for attempt in range(max_retries):
         try:
             stock = yf.Ticker(ticker)
@@ -58,7 +58,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 return {key: np.nan for key in ['P/L', 'P/VP', 'ROE', 'Volume', 'Price']}
 
 #@st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=2, max_retries=3):
+def get_stock_data(tickers, years=2, max_retries=200):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     all_data = pd.DataFrame()
@@ -82,7 +82,7 @@ def get_stock_data(tickers, years=2, max_retries=3):
     return all_data
 
 # Função para calcular o retorno acumulado
-@st.cache_data
+#@st.cache_data
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
@@ -129,7 +129,7 @@ def risk_parity_optimization(returns):
         return np.array([])
 
 # Função para gerar portfólios aleatórios
-@st.cache_data
+#@st.cache_data
 def generate_random_portfolios(returns, num_portfolios=1000, risk_free_rate=0.05):
     results = []
     n_assets = returns.shape[1]
