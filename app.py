@@ -219,12 +219,14 @@ def main():
         return
 
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
+    
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
     sector_filter = st.multiselect('Selecione o Setor', options=setores, default=['Todos'])
     
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
+        ativos_df
 
     invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
 
