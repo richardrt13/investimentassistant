@@ -6,9 +6,6 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
-from pypfopt import risk_models
-from pypfopt.efficient_frontier import EfficientFrontier
-import time
 
 # Função para carregar os ativos do CSV
 @st.cache_data
@@ -169,100 +166,165 @@ def plot_efficient_frontier(returns, optimal_portfolio):
 
     return fig
 
-def calculate_risk_parity_weights(returns):
-    # Calcular a matriz de covariância
-    cov_matrix = risk_models.sample_cov(returns)
-
-    # Criar o objeto EfficientFrontier
-    # Criar o objeto EfficientFrontier
-    ef = EfficientFrontier(None, cov_matrix, weight_bounds=(0, 1))
-
-    # Calcular os pesos de paridade de risco
-    weights = ef.min_volatility()
-
-    # Normalizar os pesos para garantir que somem 1
-    weights = ef.clean_weights()
-
-    return weights
-
-# Função principal para rodar o aplicativo Streamlit
 def main():
-    st.title("Recomendação de Investimentos em BDRs")
+    st.title('BDR Recommendation and Portfolio Optimization')
 
-    # Carregar a lista de ativos
-    assets = load_assets()
-    tickers = assets['Ticker'].tolist()
+    ativos_df = load_assets()
 
-    # Sidebar para seleção do valor a ser investido
-    st.sidebar.header("Parâmetros de Investimento")
-    investment_amount = st.sidebar.number_input("Valor a ser investido (R$)", min_value=0.0, value=10000.0, step=1000.0)
+    # Substituir "-" por "Outros" na coluna "Sector"
+    ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
 
-    # Sidebar para seleção do método de otimização
-    st.sidebar.header("Método de Otimização")
-    optimization_method = st.sidebar.selectbox("Selecione o método de otimização", ['Índice de Sharpe', 'Paridade de Risco'])
+    setores = sorted(set(ativos_df['Sector']))
+    setores.insert(0, 'Todos')
 
-    # Barra de progresso
-    progress_bar = st.progress(0)
+    sector_filter = st.multiselect('Selecione o Setor', options=setores)
 
-    # Coletar dados fundamentalistas
-    st.header("Dados Fundamentalistas")
-    fundamental_data = {}
-    for i, ticker in enumerate(tickers):
-        data = get_fundamental_data(ticker)
-        fundamental_data[ticker] = data
-        progress_bar.progress((i + 1) / len(tickers))
+    if 'Todos' not in sector_filter:
+        ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
 
-    fundamental_df = pd.DataFrame(fundamental_data).T
-    st.write(fundamental_df)
+    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
 
-    # Coletar dados históricos de preços
-    st.header("Dados Históricos de Preços")
-    prices = get_stock_data(tickers)
-    st.write(prices)
+    if st.button('Gerar Recomendação'):
+        progress_bar = st.progress(0)
+        status_text = st.empty()
 
-    # Calcular retornos
-    returns = calculate_returns(prices)
-    st.write(returns)
+        # Obter dados fundamentalistas
+        fundamental_data = []
+        for i, ticker in enumerate(ativos_df['Ticker']):
+            status_text.text(f'Carregando dados para {ticker}...')
+            progress_bar.progress((i + 1) / len(ativos_df))
+            data = get_fundamental_data(ticker + '.SA')
+            data['Ticker'] = ticker
+            fundamental_data.append(data)
 
-    # Definir a taxa livre de risco
-    global risk_free_rate
-    risk_free_rate = 0.05
+        fundamental_df = pd.DataFrame(fundamental_data)
+        ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
 
-    # Otimizar o portfólio com base no método selecionado
-    st.header("Otimização do Portfólio")
-    if optimization_method == 'Índice de Sharpe':
-        optimal_weights = optimize_portfolio(returns, risk_free_rate)
-    elif optimization_method == 'Paridade de Risco':
-        optimal_weights = calculate_risk_parity_weights(returns)
+        # Filtrar ativos com informações necessárias
+        ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
 
-    optimal_portfolio = dict(zip(tickers, optimal_weights))
-    st.write("Pesos do Portfólio Ótimo:")
-    st.write(optimal_portfolio)
+        # Verificar se há ativos suficientes para continuar
+        if len(ativos_df) < 10:
+            st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+            return
 
-    # Plotar a fronteira eficiente
-    st.header("Fronteira Eficiente")
-    fig = plot_efficient_frontier(returns, optimal_weights)
-    st.plotly_chart(fig)
+        # Análise fundamentalista e de liquidez
+        ativos_df['Score'] = (
+            ativos_df['ROE'] / ativos_df['P/L'] +
+            1 / ativos_df['P/VP'] +
+            np.log(ativos_df['Volume'])
+        )
 
-    # Exibir o resumo do portfólio
-    st.header("Resumo do Portfólio")
-    summary = {
-        'Ticker': list(optimal_portfolio.keys()),
-        'Peso (%)': [round(weight * 100, 2) for weight in optimal_weights],
-        'Preço Atual (R$)': [fundamental_data[ticker]['Price'] for ticker in optimal_portfolio.keys()],
-        'Volume Médio': [fundamental_data[ticker]['Volume'] for ticker in optimal_portfolio.keys()],
-        'P/L': [fundamental_data[ticker]['P/L'] for ticker in optimal_portfolio.keys()],
-        'P/VP': [fundamental_data[ticker]['P/VP'] for ticker in optimal_portfolio.keys()],
-        'ROE (%)': [fundamental_data[ticker]['ROE'] for ticker in optimal_portfolio.keys()],
-        'Retorno Acumulado (%)': [round(get_cumulative_return(ticker) * 100, 2) for ticker in optimal_portfolio.keys()]
-    }
-    summary_df = pd.DataFrame(summary)
-    st.write(summary_df)
+        # Selecionar os top 10 ativos com base no score
+        top_ativos = ativos_df.nlargest(10, 'Score')
 
-# Função para exibir o resumo do portfólio
+        # Obter dados históricos dos últimos 5 anos
+        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+        status_text.text('Obtendo dados históricos...')
+        stock_data = get_stock_data(tickers)
+
+        # Verificar se os dados históricos foram obtidos com sucesso
+        if stock_data.empty:
+            st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
+            return
+
+        # Calcular rentabilidade acumulada
+        cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+
+        st.subheader('Top 10 BDRs Recomendados')
+        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
+
+        # Otimização de portfólio
+        returns = calculate_returns(stock_data)
+
+        # Verificar se há retornos válidos para continuar
+        if returns.empty:
+            st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+            return
+
+        global risk_free_rate
+        risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
+
+        status_text.text('Otimizando portfólio...')
+        try:
+            optimal_weights = optimize_portfolio(returns, risk_free_rate)
+        except Exception as e:
+            st.error(f"Erro ao otimizar o portfólio: {e}")
+            return
+
+        st.subheader('Alocação Ótima do Portfólio')
+        allocation_data = []
+        for ticker, weight in zip(tickers, optimal_weights):
+            price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
+            allocated_value = weight * invest_value
+            shares = allocated_value / price
+            cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
+            allocation_data.append({
+                'Ticker': ticker,
+                'Peso': f"{weight:.2%}",
+                'Valor Alocado': f"R$ {allocated_value:.2f}",
+                'Quantidade de Ações': f"{shares:.2f}",
+                'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A"
+            })
+
+        allocation_df = pd.DataFrame(allocation_data)
+        st.table(allocation_df)
+
+        portfolio_return, portfolio_volatility = portfolio_performance(optimal_weights, returns)
+        sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
+
+        st.subheader('Métricas do Portfólio')
+        st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
+        st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
+        st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
+
+        # Gerar e exibir o gráfico de dispersão
+        status_text.text('Gerando gráfico da fronteira eficiente...')
+        fig = plot_efficient_frontier(returns, optimal_weights)
+        st.plotly_chart(fig)
+
+        status_text.text('Análise concluída!')
+        progress_bar.progress(100)
+
+# Adicionando a explicação no final do aplicativo Streamlit
 def display_summary():
-    st.header("Resumo do Portfólio")
-    st.write(summary_df)
+    st.header("Lógica")
+
+    resumo = """
+    ### Coleta de Dados Financeiros
+    Para cada ativo, o código coleta dados financeiros importantes, como:
+    - **P/L (Preço/Lucro)**: Mede o valor que os investidores estão dispostos a pagar por cada unidade de lucro da empresa.
+    - **P/VP (Preço/Valor Patrimonial)**: Compara o preço de mercado da empresa com seu valor contábil.
+    - **ROE (Retorno sobre o Patrimônio)**: Mede a eficiência da empresa em gerar lucros com os recursos dos acionistas.
+    - **Volume**: Indica a liquidez do ativo.
+    - **Price (Preço)**: O preço atual do ativo.
+
+    ### Cálculo da Pontuação dos Ativos
+    Cada ativo recebe uma pontuação baseada em suas características financeiras:
+    - **Pontuação** = (ROE / P/L) + (1 / P/VP) + log(Volume)
+    Essa pontuação combina a eficiência da empresa, a atratividade do preço e a liquidez, penalizando ativos com valores altos de P/L e P/VP.
+
+    ### Seleção dos Melhores Ativos
+    Os 10 ativos com as maiores pontuações são selecionados para análise mais detalhada.
+
+    ### Coleta de Dados Históricos de Preços
+    Para os 10 ativos selecionados, o código coleta dados históricos de preços dos últimos 5 anos e calcula a rentabilidade acumulada nesse período.
+
+    ### Otimização de Portfólio
+    A otimização de portfólio utiliza a teoria de portfólios de Harry Markowitz para encontrar a melhor combinação de ativos que maximize o retorno esperado e minimize o risco. Os principais conceitos matemáticos e estatísticos envolvidos são:
+    - **Retornos Esperados**: Calculados como a média dos retornos diários dos ativos.
+    - **Covariância**: Mede como os retornos dos ativos variam juntos.
+    - **Volatilidade do Portfólio**: Calculada com base na matriz de covariância dos retornos dos ativos.
+    - **Índice de Sharpe**: Mede o retorno ajustado pelo risco, calculado como (Retorno do Portfólio - Taxa Livre de Risco) / Volatilidade do Portfólio.
+
+    A otimização busca maximizar o índice de Sharpe, encontrando a alocação ótima dos ativos que proporciona o maior retorno ajustado pelo risco. Isso é feito através de um processo de minimização numérica.
+
+    ### Resultados e Visualização
+    O código apresenta a alocação ótima do portfólio, mostrando quanto investir em cada ativo para atingir a melhor combinação de retorno e risco. Além disso, um gráfico da "fronteira eficiente" é gerado para visualizar a relação entre risco e retorno para diferentes portfólios, destacando o portfólio ótimo.
+    """
+
+    st.markdown(resumo)
 
 if __name__ == "__main__":
     main()
