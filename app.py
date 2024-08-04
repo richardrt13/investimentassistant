@@ -1,16 +1,3 @@
-import subprocess
-import sys
-
-# Função para instalar um pacote
-def install(package):
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-
-# Instalar PyPortfolioOpt se não estiver instalado
-try:
-    import pypfopt
-except ImportError:
-    install("PyPortfolioOpt")
-
 import streamlit as st
 import pandas as pd
 import numpy as np
