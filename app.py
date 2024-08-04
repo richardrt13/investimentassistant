@@ -237,9 +237,12 @@ def main():
 
             tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
             stock_data = get_stock_data(tickers)
+            st.subheader('stock_data')
+            st.dataframe(stock_data[['Ticker']])
             
             # Filtra os tickers que realmente têm dados
             valid_tickers = stock_data.columns
+            st.write(valid_tickers)
             ativos_df = ativos_df[ativos_df['Ticker'].apply(lambda x: x + '.SA').isin(valid_tickers)]
             
             stock_returns = calculate_returns(stock_data)
