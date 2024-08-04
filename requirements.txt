@@ -10,3 +10,4 @@ scikit-learn
 joblib
 pymongo
 PyPortfolioOpt
+pypfopt
