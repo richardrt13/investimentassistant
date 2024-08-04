@@ -64,7 +64,7 @@ def get_cumulative_return(ticker):
     start_date = end_date - timedelta(days=5*365)
     hist = stock.history(start=start_date, end=end_date)
     if len(hist) > 0:
-        cumulative_return = (hist['Adj Close'].iloc[-1] / hist['Adj Close'].iloc[0]) - 1
+        cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
     else:
         cumulative_return = None
     return cumulative_return
