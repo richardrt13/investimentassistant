@@ -76,7 +76,7 @@ def get_stock_data(tickers, years=2, max_retries=3):
                     time.sleep(2 ** attempt)
     
     if all_data.empty:
-        st.error("Não foi possível obter dados para nenhum dos tickers.")
+        st.error("Não foi possível obter dado para nenhum dos tickers.")
     return all_data
 
 # Função para calcular o retorno acumulado
