@@ -255,10 +255,10 @@ def main():
 
         # Obter dados históricos dos últimos 5 anos
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
-        #status_text.text('Obtendo dados históricos...')
+        status_text.text('Obtendo dados históricos...')
+        tickers
         stock_data = get_stock_data(tickers)
-        stock_data
-
+        
         # Verificar se os dados históricos foram obtidos com sucesso
         if stock_data.empty:
             st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
@@ -267,6 +267,7 @@ def main():
         # Calcular rentabilidade acumulada
         cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+        cumulative_returns
 
         # Detecção de anomalias e cálculo de RSI
         for ticker in tickers:
