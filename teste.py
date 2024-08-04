@@ -201,6 +201,35 @@ def calculate_anomaly_scores(returns):
     anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
     return anomaly_scores
 
+def get_financial_growth_data(ticker, years=5):
+    stock = yf.Ticker(ticker)
+    
+    # Obter dados financeiros anuais
+    financials = stock.financials
+    balance_sheet = stock.balance_sheet
+    
+    if financials.empty or balance_sheet.empty:
+        return None
+    
+    # Calcular crescimento da receita
+    revenues = financials.loc['Total Revenue']
+    revenue_growth = (revenues.iloc[0] / revenues.iloc[-1]) ** (1/years) - 1 if len(revenues) >= years else None
+    
+    # Calcular crescimento do lucro
+    net_income = financials.loc['Net Income']
+    income_growth = (net_income.iloc[0] / net_income.iloc[-1]) ** (1/years) - 1 if len(net_income) >= years and net_income.iloc[-1] > 0 else None
+    
+    # Calcular estabilidade da dívida
+    total_debt = balance_sheet.loc['Total Debt']
+    debt_stability = -((total_debt.iloc[0] / total_debt.iloc[-1]) ** (1/years) - 1) if len(total_debt) >= years else None
+    
+    return {
+        'revenue_growth': revenue_growth,
+        'income_growth': income_growth,
+        'debt_stability': debt_stability
+    }
+
+
 def main():
     st.title('BDR Recommendation and Portfolio Optimization')
 
@@ -229,6 +258,9 @@ def main():
             status_text.text(f'Carregando dados para {ticker}...')
             progress_bar.progress((i + 1) / len(ativos_df))
             data = get_fundamental_data(ticker + '.SA')
+            growth_data = get_financial_growth_data(ticker + '.SA')
+            if growth_data:
+                data.update(growth_data)
             data['Ticker'] = ticker
             fundamental_data.append(data)
 
@@ -236,7 +268,7 @@ def main():
         ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
 
         # Filtrar ativos com informações necessárias
-        ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price'])
+        ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
 
         # Verificar se há ativos suficientes para continuar
         if len(ativos_df) < 10:
