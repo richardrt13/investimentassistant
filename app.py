@@ -219,6 +219,7 @@ def main():
         return
 
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
+    ativos_df["Ticker"]= ativos_df['Ticker'].apply(lambda x: x + '.SA')
     
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
@@ -243,10 +244,10 @@ def main():
             ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
             st.subheader('fundamental_df')
             fundamental_df
-            #ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
+            ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
             ativos_df
 
-            tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+            tickers = ativos_df['Ticker'].tolist()
             tickers
             stock_data = get_stock_data(tickers)
             st.subheader('stock_data')
