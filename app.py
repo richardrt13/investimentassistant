@@ -35,7 +35,7 @@ def load_assets():
         return pd.DataFrame()
 
 # Função para obter dados fundamentais de um ativo
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -57,7 +57,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
                 return {key: np.nan for key in ['P/L', 'P/VP', 'ROE', 'Volume', 'Price']}
 
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=2, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
