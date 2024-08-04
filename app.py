@@ -115,6 +115,49 @@ def risk_parity_optimization(returns):
         st.error(f"Erro na otimização: {e}")
         return np.array([])
 
+# Função para plotar a fronteira eficiente
+def plot_efficient_frontier(returns, optimal_portfolio, risk_free_rate=0.05):
+    portfolios = generate_random_portfolios(returns, risk_free_rate=risk_free_rate)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=portfolios['Volatility'],
+        y=portfolios['Return'],
+        mode='markers',
+        marker=dict(
+            size=5,
+            color=portfolios['Sharpe'],
+            colorscale='Viridis',
+            colorbar=dict(title='Índice de Sharpe'),
+            showscale=True
+        ),
+        text=portfolios['Sharpe'].apply(lambda x: f'Sharpe: {x:.3f}'),
+        hoverinfo='text+x+y',
+        name='Portfólios'
+    ))
+    opt_return, opt_volatility = portfolio_performance(optimal_portfolio, returns)
+    opt_sharpe = (opt_return - risk_free_rate) / opt_volatility
+    fig.add_trace(go.Scatter(
+        x=[opt_volatility],
+        y=[opt_return],
+        mode='markers',
+        marker=dict(
+            size=15,
+            color='red',
+            symbol='star'
+        ),
+        text=[f'Portfólio Ótimo<br>Sharpe: {opt_sharpe:.3f}'],
+        hoverinfo='text+x+y',
+        name='Portfólio Ótimo'
+    ))
+    fig.update_layout(
+        title='Fronteira Eficiente',
+        xaxis_title='Volatilidade Anual',
+        yaxis_title='Retorno Anual Esperado',
+        showlegend=True,
+        hovermode='closest'
+    )
+    return fig
+
 def get_current_positions(collection):
     pipeline = [
         {'$group': {
