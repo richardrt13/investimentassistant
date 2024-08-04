@@ -192,7 +192,7 @@ def calculate_rsi(prices, window=14):
 
 def calculate_adjusted_score(row):
     base_score = (row['ROE'] / row['P/L'] + 1 / row['P/VP'] + np.log(row['Volume']))
-    anomaly_penalty = sum([row[f'{col}_anomaly'] for col in ['price_anomaly', 'rsi_anomaly']])
+    anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']]) 
     return base_score * (1 - 0.1 * anomaly_penalty)
 
 def adjust_weights_for_anomalies(weights, anomaly_scores):
