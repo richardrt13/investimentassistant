@@ -189,13 +189,28 @@ def calculate_rsi(prices, window=14):
     return 100 - (100 / (1 + rs))
 
 def calculate_adjusted_score(row):
-    base_score = (row['ROE'] / row['P/L'] + 1 / row['P/VP'] + np.log(row['Volume']))
-    anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']]) 
+    base_score = (
+        row['ROE'] / row['P/L'] +
+        1 / row['P/VP'] +
+        np.log(row['Volume']) +
+        row['revenue_growth'] * 10 +  # Multiplicador para dar mais peso
+        row['income_growth'] * 10 +   # Multiplicador para dar mais peso
+        row['debt_stability'] * 5      # Multiplicador para dar mais peso
+    )
+    anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
     return base_score * (1 - 0.1 * anomaly_penalty)
 
-def adjust_weights_for_anomalies(weights, anomaly_scores):
-    adjusted_weights = weights * (1 - anomaly_scores)
+def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
+    anomaly_scores = calculate_anomaly_scores(returns)
+    growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
+    
+    # Normalizar os scores
+    growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
+    
+    # Ajustar pesos
+    adjusted_weights = weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
     return adjusted_weights / adjusted_weights.sum()
+
 
 def calculate_anomaly_scores(returns):
     anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
