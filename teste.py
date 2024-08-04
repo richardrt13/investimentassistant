@@ -252,8 +252,10 @@ def main():
             np.log(ativos_df['Volume'])
         )
 
+        tickers1 = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+
         # Detecção de anomalias e cálculo de RSI
-        for ticker in tickers:
+        for ticker in tickers1:
             price_anomalies = detect_price_anomalies(stock_data[ticker])
             rsi = calculate_rsi(stock_data[ticker])
             top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
