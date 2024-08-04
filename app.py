@@ -256,7 +256,7 @@ def main():
             
             # Filtra os tickers que realmente têm dados
             valid_tickers = stock_data.columns
-            ativos_df = ativos_df[ativos_df['Ticker'].apply(lambda x: x + '.SA').isin(valid_tickers)]
+            ativos_df = ativos_df[ativos_df['Ticker'].isin(valid_tickers)]
             
             stock_returns = calculate_returns(stock_data)
 
@@ -282,7 +282,7 @@ def main():
 
             st.subheader('Resultados da Recomendação de Portfólio')
             st.write('Valores em porcentagem')
-            st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
+            st.dataframe(ativos_df[['Ticker', 'Sector', 'Initial Weight', 'Optimized Weight']])
 
             fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
             st.plotly_chart(fig)
