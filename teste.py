@@ -43,7 +43,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
-@st.cache_data
+#@st.cache_data
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
