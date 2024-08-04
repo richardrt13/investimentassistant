@@ -228,7 +228,7 @@ def main():
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
         ativos_df
 
-    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
+    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=1000.0, step=100.0)
 
     if st.button('Gerar Recomendação'):
         with st.spinner('Processando dados...'):
@@ -238,8 +238,10 @@ def main():
                 fundamental_data.append(data)
             
             fundamental_df = pd.DataFrame(fundamental_data)
+            st.subheader('ativos_df')
             ativos_df
             ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
+            st.subheader('fundamental_df')
             fundamental_df
             #ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
             ativos_df
