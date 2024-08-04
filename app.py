@@ -239,6 +239,7 @@ def main():
             stock_data = get_stock_data(tickers)
             st.subheader('stock_data')
             stock_data
+            fundamental_df
             
             # Filtra os tickers que realmente têm dados
             valid_tickers = stock_data.columns
