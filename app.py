@@ -12,12 +12,12 @@ from pypfopt.efficient_frontier import EfficientFrontier
 
 
 # Função para carregar os ativos do CSV
-@st.cache_data
+#@st.cache_data
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
 
 # Função para obter dados fundamentais de um ativo
-@st.cache_data
+#@st.cache_data
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -44,7 +44,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
-@st.cache_data
+#@st.cache_data
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -61,7 +61,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 return pd.DataFrame()
 
 # Função para calcular o retorno acumulado
-@st.cache_data
+#@st.cache_data
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
