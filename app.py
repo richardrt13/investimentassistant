@@ -26,7 +26,7 @@ def init_db():
     return connect_to_mongo(mongo_uri, 'StockIdea', 'transactions')
 
 # Função para carregar os ativos do CSV
-#@st.cache_data
+@st.cache_data
 def load_assets():
     try:
         return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
@@ -35,13 +35,14 @@ def load_assets():
         return pd.DataFrame()
 
 # Função para obter dados fundamentais de um ativo
-#@st.cache_data(ttl=3600)
-def get_fundamental_data(ticker, max_retries=200):
+@st.cache_data(ttl=3600)
+def get_fundamental_data(ticker, max_retries=5):
     for attempt in range(max_retries):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
             return {
+                'Ticker': ticker,
                 'P/L': info.get('trailingPE', np.nan),
                 'P/VP': info.get('priceToBook', np.nan),
                 'ROE': info.get('returnOnEquity', np.nan),
@@ -52,13 +53,18 @@ def get_fundamental_data(ticker, max_retries=200):
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
             else:
-                if "404" in str(e):
-                    return None  # Retourne None si 404
                 st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
-                return {key: np.nan for key in ['P/L', 'P/VP', 'ROE', 'Volume', 'Price']}
+                return {
+                    'Ticker': ticker,
+                    'P/L': np.nan,
+                    'P/VP': np.nan,
+                    'ROE': np.nan,
+                    'Volume': np.nan,
+                    'Price': np.nan
+                }
 
-#@st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=2, max_retries=200):
+@st.cache_data(ttl=3600)
+def get_stock_data(tickers, years=2, max_retries=5):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     all_data = pd.DataFrame()
@@ -72,17 +78,12 @@ def get_stock_data(tickers, years=2, max_retries=200):
                 break
             except Exception as e:
                 if attempt == max_retries - 1:
-                    if "404" not in str(e):
-                        st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
-                else:
-                    time.sleep(2 ** attempt)
+                    st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
     
-    if all_data.empty:
-        st.error("Não foi possível obter dados para nenhum dos tickers.")
     return all_data
 
 # Função para calcular o retorno acumulado
-#@st.cache_data
+@st.cache_data
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
@@ -129,7 +130,7 @@ def risk_parity_optimization(returns):
         return np.array([])
 
 # Função para gerar portfólios aleatórios
-#@st.cache_data
+@st.cache_data
 def generate_random_portfolios(returns, num_portfolios=1000, risk_free_rate=0.05):
     results = []
     n_assets = returns.shape[1]
@@ -228,15 +229,24 @@ def main():
             fundamental_data = []
             for ticker in ativos_df['Ticker'].apply(lambda x: x + '.SA'):
                 data = get_fundamental_data(ticker)
-                data['Ticker'] = ticker
                 fundamental_data.append(data)
             
             fundamental_df = pd.DataFrame(fundamental_data)
-            ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker').dropna()
+            ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
+            ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
 
             tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
             stock_data = get_stock_data(tickers)
+            
+            # Filtra os tickers que realmente têm dados
+            valid_tickers = stock_data.columns
+            ativos_df = ativos_df[ativos_df['Ticker'].apply(lambda x: x + '.SA').isin(valid_tickers)]
+            
             stock_returns = calculate_returns(stock_data)
+
+            if stock_returns.empty:
+                st.error("Não foi possível obter dados de retorno para os ativos selecionados. Por favor, tente novamente mais tarde.")
+                return
 
             positions = get_current_positions(collection)
             merged_positions = pd.merge(positions, ativos_df, on='Ticker', how='right')
@@ -250,19 +260,16 @@ def main():
 
             initial_weights = initial_weights / np.sum(initial_weights)
 
-            if not stock_returns.empty:
-                optimal_portfolio = risk_parity_optimization(stock_returns)
-                ativos_df['Initial Weight'] = initial_weights
-                ativos_df['Optimized Weight'] = optimal_portfolio
+            optimal_portfolio = risk_parity_optimization(stock_returns)
+            ativos_df['Initial Weight'] = initial_weights
+            ativos_df['Optimized Weight'] = optimal_portfolio
 
-                st.subheader('Resultados da Recomendação de Portfólio')
-                st.write('Valores em porcentagem')
-                st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
+            st.subheader('Resultados da Recomendação de Portfólio')
+            st.write('Valores em porcentagem')
+            st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
 
-                fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
-                st.plotly_chart(fig)
-            else:
-                st.error("Não foi possível obter dados de retorno para os ativos selecionados. Por favor, tente novamente mais tarde.")
+            fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
+            st.plotly_chart(fig)
 
             st.subheader('Posições Atuais da Carteira')
             st.dataframe(positions[['Ticker', 'quantity', 'average_price']])
