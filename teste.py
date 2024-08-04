@@ -252,8 +252,18 @@ def main():
             np.log(ativos_df['Volume'])
         )
 
+        # Detecção de anomalias e cálculo de RSI
+        for ticker in tickers:
+            price_anomalies = detect_price_anomalies(stock_data[ticker])
+            rsi = calculate_rsi(stock_data[ticker])
+            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
+            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+
+        # Calcular score ajustado
+        top_ativos['Adjusted_Score'] = top_ativos.apply(calculate_adjusted_score, axis=1)
+
         # Selecionar os top 10 ativos com base no score
-        top_ativos = ativos_df.nlargest(10, 'Score')
+        top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
 
         # Obter dados históricos dos últimos 5 anos
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
@@ -285,18 +295,8 @@ def main():
         top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
         cumulative_returns
 
-        # Detecção de anomalias e cálculo de RSI
-        for ticker in tickers:
-            price_anomalies = detect_price_anomalies(stock_data[ticker])
-            rsi = calculate_rsi(stock_data[ticker])
-            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
-            top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
-
-        # Calcular score ajustado
-        top_ativos['Adjusted_Score'] = top_ativos.apply(calculate_adjusted_score, axis=1)
-
-        st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score', 'Rentabilidade Acumulada (5 anos)']])
+        # st.subheader('Top 10 BDRs Recomendados')
+        # st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score', 'Rentabilidade Acumulada (5 anos)']])
 
         # Otimização de portfólio
         returns = calculate_returns(stock_data)
