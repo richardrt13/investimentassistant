@@ -6,6 +6,9 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
+from pypfopt import risk_models
+from pypfopt import EfficientFrontier
+
 
 # Função para carregar os ativos do CSV
 @st.cache_data
