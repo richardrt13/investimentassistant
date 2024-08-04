@@ -240,6 +240,7 @@ def main():
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df
             ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
+            fundamental_df
             #ativos_df = ativos_df.dropna(subset=['Price'])  # Remove linhas sem preço
             ativos_df
 
