@@ -6,14 +6,18 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
+from pypfopt import risk_models
+from pypfopt.efficient_frontier import EfficientFrontier
+
+
 
 # Função para carregar os ativos do CSV
-@st.cache_data
+#@st.cache_data
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
 
 # Função para obter dados fundamentais de um ativo
-@st.cache_data
+#@st.cache_data
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -40,7 +44,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
-@st.cache_data
+#@st.cache_data
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -57,7 +61,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 return pd.DataFrame()
 
 # Função para calcular o retorno acumulado
-@st.cache_data
+#@st.cache_data
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
@@ -166,6 +170,21 @@ def plot_efficient_frontier(returns, optimal_portfolio):
 
     return fig
 
+def calculate_risk_parity_weights(returns):
+    # Calcular a matriz de covariância
+    cov_matrix = risk_models.sample_cov(returns)
+
+    # Criar o objeto EfficientFrontier
+    ef = EfficientFrontier(None, cov_matrix, weight_bounds=(0, 1))
+
+    # Calcular os pesos de Risk Parity
+    raw_weights = ef.risk_parity()
+
+    # Limpar os pesos (remove pesos muito pequenos)
+    cleaned_weights = ef.clean_weights()
+
+    return cleaned_weights
+
 def main():
     st.title('BDR Recommendation and Portfolio Optimization')
 
@@ -235,7 +254,7 @@ def main():
         st.subheader('Top 10 BDRs Recomendados')
         st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Rentabilidade Acumulada (5 anos)']])
 
-        # Otimização de portfólio
+       # Otimização de portfólio
         returns = calculate_returns(stock_data)
 
         # Verificar se há retornos válidos para continuar
@@ -248,7 +267,11 @@ def main():
 
         status_text.text('Otimizando portfólio...')
         try:
-            optimal_weights = optimize_portfolio(returns, risk_free_rate)
+            if optimization_method == 'Maximização do Índice de Sharpe':
+                optimal_weights = optimize_portfolio(returns, risk_free_rate)
+            else:  # Risk Parity
+                optimal_weights_dict = calculate_risk_parity_weights(returns)
+                optimal_weights = np.array([optimal_weights_dict.get(ticker, 0) for ticker in returns.columns])
         except Exception as e:
             st.error(f"Erro ao otimizar o portfólio: {e}")
             return
@@ -286,6 +309,7 @@ def main():
 
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
+
 
 # Adicionando a explicação no final do aplicativo Streamlit
 def display_summary():
