@@ -47,6 +47,9 @@ def get_fundamental_data(ticker, max_retries=3):
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
+    start_date
+
+    end_data
 
     for attempt in range(max_retries):
         try:
