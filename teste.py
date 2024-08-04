@@ -253,7 +253,7 @@ def main():
         )
 
         tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        stock_data_raw = get_stock_data(tickers1)
+        stock_data_raw = get_stock_data(tickers_raw)
 
         # Detecção de anomalias e cálculo de RSI
         for ticker in tickers_raw:
