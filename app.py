@@ -240,17 +240,20 @@ def main():
 
             initial_weights = initial_weights / np.sum(initial_weights)
 
-            optimal_portfolio = risk_parity_optimization(stock_returns)
+            if not stock_returns.empty:
+    optimal_portfolio = risk_parity_optimization(stock_returns)
+    
+    ativos_df['Initial Weight'] = initial_weights
+    ativos_df['Optimized Weight'] = optimal_portfolio
 
-            ativos_df['Initial Weight'] = initial_weights
-            ativos_df['Optimized Weight'] = optimal_portfolio
+    st.subheader('Resultados da Recomendação de Portfólio')
+    st.write('Valores em porcentagem')
+    st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
 
-            st.subheader('Resultados da Recomendação de Portfólio')
-            st.write('Valores em porcentagem')
-            st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
-
-            fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
-            st.plotly_chart(fig)
+    fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
+    st.plotly_chart(fig)
+else:
+    st.error("Não foi possível obter dados de retorno para os ativos selecionados. Por favor, tente novamente mais tarde.")
 
             st.subheader('Posições Atuais da Carteira')
             st.dataframe(positions[['Ticker', 'quantity', 'average_price']])
