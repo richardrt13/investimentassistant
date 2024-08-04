@@ -256,8 +256,8 @@ def main():
         # Obter dados históricos dos últimos 5 anos
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
-        tickers
         stock_data = get_stock_data(tickers)
+        stock_data
 
         # Verificar se os dados históricos foram obtidos com sucesso
         if stock_data.empty:
