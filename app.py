@@ -6,29 +6,36 @@ from scipy.optimize import minimize
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+import time
 
 # Função para conectar ao MongoDB
 def connect_to_mongo(uri, db_name, collection_name):
-    client = MongoClient(uri)
-    db = client[db_name]
-    collection = db[collection_name]
-    return collection
+    try:
+        client = MongoClient(uri)
+        db = client[db_name]
+        collection = db[collection_name]
+        return collection
+    except Exception as e:
+        st.error(f"Erro ao conectar com o MongoDB: {e}")
+        return None
 
 # Inicializar o banco de dados
-def init_db(collection):
-    pass  # Implemente se necessário
-
-mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
-collection = connect_to_mongo(mongo_uri, 'StockIdea', 'transactions')
-init_db(collection)
+@st.cache_resource
+def init_db():
+    mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
+    return connect_to_mongo(mongo_uri, 'StockIdea', 'transactions')
 
 # Função para carregar os ativos do CSV
 @st.cache_data
 def load_assets():
-    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
+    try:
+        return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv')
+    except Exception as e:
+        st.error(f"Erro ao carregar os ativos: {e}")
+        return pd.DataFrame()
 
 # Função para obter dados fundamentais de um ativo
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -41,21 +48,15 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan)
             }
-        except ConnectionError as e:
+        except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
             else:
                 st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
-                return {
-                    'P/L': np.nan,
-                    'P/VP': np.nan,
-                    'ROE': np.nan,
-                    'Volume': np.nan,
-                    'Price': np.nan
-                }
+                return {key: np.nan for key in ['P/L', 'P/VP', 'ROE', 'Volume', 'Price']}
 
 # Função para obter dados históricos de preços com tratamento de erro
-@st.cache_data
+@st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -63,7 +64,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
         try:
             data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
             return data
-        except ConnectionError as e:
+        except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
             else:
@@ -77,18 +78,13 @@ def get_cumulative_return(ticker):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=5*365)
     hist = stock.history(start=start_date, end=end_date)
-    if len(hist) > 0:
-        cumulative_return = (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1
-    else:
-        cumulative_return = None
-    return cumulative_return
+    return (hist['Close'].iloc[-1] / hist['Close'].iloc[0]) - 1 if len(hist) > 0 else None
 
 def calculate_returns(prices):
     if prices.empty:
         return pd.DataFrame()
     returns = prices.pct_change().dropna()
-    returns = returns.replace([np.inf, -np.inf], np.nan).dropna()
-    return returns
+    return returns.replace([np.inf, -np.inf], np.nan).dropna()
 
 # Função para calcular o desempenho do portfólio
 def portfolio_performance(weights, returns):
@@ -110,12 +106,13 @@ def risk_parity_optimization(returns):
 
     num_assets = returns.shape[1]
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    bounds = tuple((0.0, 1.0) for asset in range(num_assets))
+    bounds = tuple((0.0, 1.0) for _ in range(num_assets))
     result = minimize(risk_parity_objective, num_assets * [1. / num_assets], bounds=bounds, constraints=constraints)
     return result.x
 
 # Função para gerar portfólios aleatórios
-def generate_random_portfolios(returns, num_portfolios=1000):
+@st.cache_data
+def generate_random_portfolios(returns, num_portfolios=1000, risk_free_rate=0.05):
     results = []
     n_assets = returns.shape[1]
     for _ in range(num_portfolios):
@@ -131,8 +128,8 @@ def generate_random_portfolios(returns, num_portfolios=1000):
     return pd.DataFrame(results)
 
 # Função para plotar a fronteira eficiente
-def plot_efficient_frontier(returns, optimal_portfolio):
-    portfolios = generate_random_portfolios(returns)
+def plot_efficient_frontier(returns, optimal_portfolio, risk_free_rate=0.05):
+    portfolios = generate_random_portfolios(returns, risk_free_rate=risk_free_rate)
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=portfolios['Volatility'],
@@ -183,70 +180,72 @@ def get_current_positions(collection):
     ]
     results = list(collection.aggregate(pipeline))
     positions = pd.DataFrame(results).rename(columns={'_id': 'Ticker'})
-    positions = positions[positions['quantity'] > 0]  # Filtra ativos com quantidade positiva
-    return positions
+    return positions[positions['quantity'] > 0]  # Filtra ativos com quantidade positiva
 
 def main():
     st.title('BDR Recommendation and Portfolio Optimization')
+    
+    collection = init_db()
+    if collection is None:
+        st.error("Não foi possível conectar ao banco de dados. Por favor, tente novamente mais tarde.")
+        return
+
     ativos_df = load_assets()
+    if ativos_df.empty:
+        st.error("Não foi possível carregar os ativos. Por favor, tente novamente mais tarde.")
+        return
+
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
     setores = sorted(set(ativos_df['Sector']))
     setores.insert(0, 'Todos')
-    sector_filter = st.multiselect('Selecione o Setor', options=setores)
+    sector_filter = st.multiselect('Selecione o Setor', options=setores, default=['Todos'])
+    
     if 'Todos' not in sector_filter:
         ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
+
     invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
+
     if st.button('Gerar Recomendação'):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-        fundamental_data = []
-        for i, ticker in enumerate(ativos_df['Ticker']):
-            status_text.text(f'Carregando dados para {ticker}...')
-            progress_bar.progress((i + 1) / len(ativos_df))
-        for i, ticker in enumerate(ativos_df['Ticker']):
-            status_text.text(f'Carregando dados para {ticker}...')
-            progress_bar.progress((i + 1) / len(ativos_df))
-            data = get_fundamental_data(ticker)
-            data['Ticker'] = ticker
-            fundamental_data.append(data)
-        fundamental_df = pd.DataFrame(fundamental_data)
-        ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker')
-        ativos_df = ativos_df.dropna()
+        with st.spinner('Processando dados...'):
+            fundamental_data = []
+            for ticker in ativos_df['Ticker']:
+                data = get_fundamental_data(ticker)
+                data['Ticker'] = ticker
+                fundamental_data.append(data)
+            
+            fundamental_df = pd.DataFrame(fundamental_data)
+            ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker').dropna()
 
-        tickers = ativos_df['Ticker'].tolist()
-        stock_data = get_stock_data(tickers)
-        stock_returns = calculate_returns(stock_data)
+            tickers = ativos_df['Ticker'].tolist()
+            stock_data = get_stock_data(tickers)
+            stock_returns = calculate_returns(stock_data)
 
-        positions = get_current_positions(collection)
-        merged_positions = pd.merge(positions, ativos_df, on='Ticker')
-        
-        # Incorporar as posições atuais no cálculo do portfólio
-        initial_weights = np.zeros(stock_returns.shape[1])
-        for i, ticker in enumerate(stock_returns.columns):
-            if ticker in merged_positions['Ticker'].values:
-                qty = merged_positions.loc[merged_positions['Ticker'] == ticker, 'quantity'].values[0]
-                price = merged_positions.loc[merged_positions['Ticker'] == ticker, 'average_price'].values[0]
-                initial_weights[i] = qty * price / invest_value
-        
-        initial_weights = initial_weights / np.sum(initial_weights)
+            positions = get_current_positions(collection)
+            merged_positions = pd.merge(positions, ativos_df, on='Ticker', how='right')
 
-        # Otimização do portfólio
-        optimal_portfolio = risk_parity_optimization(stock_returns)
+            initial_weights = np.zeros(stock_returns.shape[1])
+            for i, ticker in enumerate(stock_returns.columns):
+                if ticker in merged_positions['Ticker'].values:
+                    qty = merged_positions.loc[merged_positions['Ticker'] == ticker, 'quantity'].values[0]
+                    price = merged_positions.loc[merged_positions['Ticker'] == ticker, 'average_price'].values[0]
+                    initial_weights[i] = qty * price / invest_value
 
-        # Adicionando pesos iniciais e otimizados aos ativos_df para exibição
-        ativos_df['Initial Weight'] = initial_weights
-        ativos_df['Optimized Weight'] = optimal_portfolio
+            initial_weights = initial_weights / np.sum(initial_weights)
 
-        st.subheader('Resultados da Recomendação de Portfólio')
-        st.write('Valores em porcentagem')
-        st.write(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
+            optimal_portfolio = risk_parity_optimization(stock_returns)
 
-        fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
-        st.plotly_chart(fig)
+            ativos_df['Initial Weight'] = initial_weights
+            ativos_df['Optimized Weight'] = optimal_portfolio
 
-        # Tabela de transações
-        st.subheader('Posições Atuais da Carteira')
-        st.write(positions[['Ticker', 'quantity', 'average_price']])
+            st.subheader('Resultados da Recomendação de Portfólio')
+            st.write('Valores em porcentagem')
+            st.dataframe(ativos_df[['Ticker', 'Company', 'Sector', 'Initial Weight', 'Optimized Weight']])
+
+            fig = plot_efficient_frontier(stock_returns, optimal_portfolio)
+            st.plotly_chart(fig)
+
+            st.subheader('Posições Atuais da Carteira')
+            st.dataframe(positions[['Ticker', 'quantity', 'average_price']])
 
 if __name__ == "__main__":
     main()
