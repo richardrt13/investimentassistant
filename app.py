@@ -232,7 +232,7 @@ def main():
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df = pd.merge(ativos_df, fundamental_df, on='Ticker').dropna()
 
-            tickers = ativos_df['Ticker'].tolist()
+            tickers = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
             stock_data = get_stock_data(tickers)
             stock_returns = calculate_returns(stock_data)
 
