@@ -203,7 +203,7 @@ def main():
         for i, ticker in enumerate(ativos_df['Ticker']):
             status_text.text(f'Carregando dados para {ticker}...')
             progress_bar.progress((i + 1) / len(ativos_df))
-for i, ticker in enumerate(ativos_df['Ticker']):
+        for i, ticker in enumerate(ativos_df['Ticker']):
             status_text.text(f'Carregando dados para {ticker}...')
             progress_bar.progress((i + 1) / len(ativos_df))
             data = get_fundamental_data(ticker)
