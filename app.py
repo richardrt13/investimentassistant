@@ -115,7 +115,7 @@ def risk_parity_optimization(returns):
     return result.x
 
 # Função para gerar portfólios aleatórios
-def generate_random_portfolios(returns, num_portfolios=5000):
+def generate_random_portfolios(returns, num_portfolios=1000):
     results = []
     n_assets = returns.shape[1]
     for _ in range(num_portfolios):
