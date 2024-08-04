@@ -357,8 +357,8 @@ def main():
             optimal_weights = optimize_portfolio(returns, risk_free_rate)
             
             # Ajustar pesos com base nas anomalias
-            anomaly_scores = calculate_anomaly_scores(returns)
-            adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
+            growth_data = top_ativos[['revenue_growth', 'income_growth', 'debt_stability']]
+            adjusted_weights = adjust_weights_for_growth_and_anomalies(optimal_weights, returns, growth_data)
         except Exception as e:
             st.error(f"Erro ao otimizar o portfólio: {e}")
             return
