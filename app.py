@@ -224,7 +224,7 @@ def main():
     if st.button('Gerar Recomendação'):
         with st.spinner('Processando dados...'):
             fundamental_data = []
-            for ticker in ativos_df['Ticker']:
+            for ticker in ativos_df['Ticker'].apply(lambda x: x + '.SA'):
                 data = get_fundamental_data(ticker)
                 data['Ticker'] = ticker
                 fundamental_data.append(data)
