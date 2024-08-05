@@ -241,7 +241,7 @@ def get_financial_growth_data(ticker, years=5):
         revenues = financials.loc['Total Revenue'].dropna().sort_index()
         if len(revenues) > 1:
             available_years = min(len(revenues) - 1, years)
-            revenue_growth = (revenues.iloc[-1] / revenues.iloc[-(available_years+1)]) ** (1/available_years) - 1
+            revenue_growth = round((revenues.iloc[-1] / revenues.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
         else:
             revenue_growth = None
         
@@ -249,7 +249,7 @@ def get_financial_growth_data(ticker, years=5):
         net_income = financials.loc['Net Income'].dropna().sort_index()
         if len(net_income) > 1 and net_income.iloc[0] > 0:
             available_years = min(len(net_income) - 1, years)
-            income_growth = (net_income.iloc[-1] / net_income.iloc[-(available_years+1)]) ** (1/available_years) - 1
+            income_growth = round((net_income.iloc[-1] / net_income.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
         else:
             income_growth = None
         
@@ -262,7 +262,7 @@ def get_financial_growth_data(ticker, years=5):
         total_debt = balance_sheet.loc['Total Debt'].dropna().sort_index()
         if len(total_debt) > 1:
             available_years = min(len(total_debt) - 1, years)
-            debt_stability = -((total_debt.iloc[-1] / total_debt.iloc[-(available_years+1)]) ** (1/available_years) - 1)
+            debt_stability = round(-((total_debt.iloc[-1] / total_debt.iloc[-(available_years+1)]) ** (1/available_years) - 1),2)
         else:
             debt_stability = None
     except Exception as e:
