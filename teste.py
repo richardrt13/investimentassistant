@@ -211,6 +211,9 @@ def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
     adjusted_weights = weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
     return adjusted_weights / adjusted_weights.sum()
 
+def adjust_weights_for_anomalies(weights, anomaly_scores):
+    adjusted_weights = weights * (1 - anomaly_scores)
+    return adjusted_weights / adjusted_weights.sum()
 
 def calculate_anomaly_scores(returns):
     anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
@@ -389,15 +392,8 @@ def main():
         try:
             optimal_weights = optimize_portfolio(returns, risk_free_rate)
             # Ajustar pesos com base nas anomalias
-            growth_data = top_ativos[['revenue_growth', 'income_growth', 'debt_stability']]
             anomaly_scores = calculate_anomaly_scores(returns)
-            growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
-            growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
-            st.subheader('optimal_weights, anomaly_scores, growth_scores')
-            optimal_weights
-            anomaly_scores
-            growth_scores
-            adjusted_weights = adjust_weights_for_growth_and_anomalies(optimal_weights, returns, growth_data)
+            adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
         except Exception as e:
             st.error(f"Erro ao otimizar o portfólio: {e}")
             return
