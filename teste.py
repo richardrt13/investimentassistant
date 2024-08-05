@@ -393,9 +393,10 @@ def main():
             anomaly_scores = calculate_anomaly_scores(returns)
             growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
             growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
-            adjusted_weights = optimal_weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
-            st.subheader('adjusted_weights')
-            adjusted_weights
+            st.subheader('optimal_weights, anomaly_scores, growth_scores')
+            optimal_weights
+            anomaly_scores
+            growth_scores
             adjusted_weights = adjust_weights_for_growth_and_anomalies(optimal_weights, returns, growth_data)
         except Exception as e:
             st.error(f"Erro ao otimizar o portfólio: {e}")
