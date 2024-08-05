@@ -340,10 +340,10 @@ def main():
 
         # Calcular score ajustado
         ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
+        ativos_df
 
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
-        top_ativos
         
 
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
