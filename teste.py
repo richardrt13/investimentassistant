@@ -388,6 +388,7 @@ def main():
         status_text.text('Otimizando portfólio...')
         try:
             optimal_weights = optimize_portfolio(returns, risk_free_rate)
+            returns
             optimal_weights
             # Ajustar pesos com base nas anomalias
             growth_data = top_ativos[['revenue_growth', 'income_growth', 'debt_stability']]
