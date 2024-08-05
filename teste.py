@@ -318,6 +318,8 @@ def main():
 
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+  
+        ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
      
         #Filtrar ativos com boa liquidez
         ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.75)]
