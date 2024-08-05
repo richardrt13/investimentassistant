@@ -454,37 +454,37 @@ def display_summary():
     st.header("Lógica")
 
     resumo = """
-    *Racional do Código para Seleção de Ativos e Alocação de Investimentos*
+    ***Racional do Código para Seleção de Ativos e Alocação de Investimentos***
     
-    **Objetivo:**
+    ***Objetivo:***
     O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
     
-    **Importação de Dados:**
+    ***Importação de Dados:***
     Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
     
-    **Cálculo de Indicadores Financeiros:**
+    ***Cálculo de Indicadores Financeiros:***
     Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
     Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
     
-    **Volatilidade:** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
+    ***Volatilidade:*** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
     Volatilidade = sqrt((1/(N-1)) * Σ(Ri - Retorno Médio)^2)
     
-    **Índice de Sharpe:** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
+    ***Índice de Sharpe:*** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
     Índice de Sharpe = (Retorno Médio - Rf) / Volatilidade, onde Rf é a taxa livre de risco.
     
     Valuation (P/L - Preço/Lucro): É uma métrica que relaciona o preço da ação com o lucro por ação. Um P/L mais baixo pode indicar que a ação está subvalorizada.
     P/L = Preço da Ação / Lucro por Ação
     
-    **Liquidez:** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
+    ***Liquidez:*** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
     
-    **Seleção dos Melhores Ativos:**
+    ***Seleção dos Melhores Ativos:***
     O código classifica os ativos com base nos indicadores calculados, priorizando aqueles com maior índice de Sharpe, boa valuation (P/L), e alta liquidez.
     
-    **Simulação de Alocação de Capital:**
+    ***Simulação de Alocação de Capital:***
     Utilizando os ativos selecionados, o código aplica métodos de otimização de carteira, como a Fronteira Eficiente de Markowitz. Esse método busca encontrar a combinação de ativos que oferece o maior retorno esperado para um dado nível de risco.
     Minimizar σp^2 = Σ(wi * wj * σij), Sujeito a Σ(wi) = 1, onde wi é a proporção do capital alocada no ativo i e σij é a covariância entre os retornos dos ativos i e j.
     
-    **Recomendação de Investimento:**
+    ***Recomendação de Investimento:***
     O código gera uma recomendação detalhada de como alocar seu capital nos ativos selecionados, mostrando a quantidade a ser investida em cada ativo. Ele também apresenta gráficos para visualizar o retorno esperado, o risco, e a alocação de capital.
     """
     st.markdown(resumo)
