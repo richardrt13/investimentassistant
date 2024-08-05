@@ -318,6 +318,9 @@ def main():
 
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+     
+        #Filtrar ativos com boa liquidez
+        ativos_df = ativos_df[ativos_df.Volume < ativo_df.Volume.quantile(.50)]
 
         # Verificar se há ativos suficientes para continuar
         if len(ativos_df) < 10:
