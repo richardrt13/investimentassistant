@@ -454,15 +454,15 @@ def display_summary():
     st.header("Lógica")
 
     resumo = """
-    Racional do Código para Seleção de Ativos e Alocação de Investimentos
+    **Racional do Código para Seleção de Ativos e Alocação de Investimentos**
     
-    Objetivo:
+    **Objetivo:**
     O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
     
-    Importação de Dados:
+    **Importação de Dados:*
     Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
     
-    Cálculo de Indicadores Financeiros:
+    **Cálculo de Indicadores Financeiros:**
     Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
     Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
     
