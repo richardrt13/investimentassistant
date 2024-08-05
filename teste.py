@@ -446,47 +446,6 @@ def main():
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
 
-# Adicionando a explicação no final do aplicativo Streamlit
-def display_summary():
-    st.header("Lógica e Melhorias Implementadas")
-
-    resumo = """
-    ### Coleta e Análise de Dados
-    1. **Dados Fundamentais**: P/L, P/VP, ROE, Volume e Preço são coletados para cada ativo.
-    2. **Cálculo de Score**: Combina eficiência da empresa, atratividade do preço e liquidez.
-    3. **Dados Históricos**: Coletados para os últimos 5 anos dos top 10 ativos.
-
-    ### Novas Implementações
-    1. **Detecção de Anomalias de Preço**:
-       - Utiliza o modelo ARIMA para identificar movimentos anormais nos preços.
-       - Ajuda a identificar períodos de volatilidade incomum ou mudanças abruptas.
-
-    2. **Cálculo do Índice de Força Relativa (RSI)**:
-       - Indica períodos de sobrecompra (RSI > 70) ou sobrevenda (RSI < 30).
-       - Fornece insights sobre a dinâmica de momentum do ativo.
-
-    3. **Score Ajustado**:
-       - Incorpora as informações de anomalias de preço e RSI no cálculo do score.
-       - Penaliza ativos com alto número de anomalias, potencialmente reduzindo o risco.
-
-    4. **Otimização de Portfólio Ajustada**:
-       - Os pesos ótimos são ajustados com base nas anomalias detectadas.
-       - Reduz a alocação em ativos com comportamento mais anômalo, potencialmente melhorando a estabilidade do portfólio.
-
-    ### Benefícios das Melhorias
-    - **Maior Robustez**: A consideração de anomalias ajuda a evitar ativos com comportamentos extremos ou imprevisíveis.
-    - **Análise Mais Completa**: Combina análise fundamental com análise técnica e detecção de anomalias.
-    - **Gestão de Risco Aprimorada**: A penalização de ativos com muitas anomalias pode ajudar a reduzir o risco geral do portfólio.
-    - **Insights Adicionais**: Fornece ao usuário informações sobre comportamentos anômalos dos ativos, permitindo decisões mais informadas.
-
-    ### Limitações e Considerações
-    - A detecção de anomalias e o cálculo do RSI são baseados em dados históricos e podem não prever eventos futuros.
-    - O ajuste dos pesos com base em anomalias é uma abordagem heurística e pode não ser ideal em todos os cenários de mercado.
-    - É importante considerar estas análises como parte de um processo de decisão mais amplo, que inclui outros fatores e análises.
-    """
-
-    st.markdown(resumo)
-
 if __name__ == "__main__":
     main()
-    display_summary()
+
