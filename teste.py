@@ -489,8 +489,6 @@ def display_summary():
     """
     st.markdown(resumo)
 
-# Imprimindo o texto no final do script
-print(rationale_text)
 if __name__ == "__main__":
     main()
     display_summary()
