@@ -343,6 +343,8 @@ def main():
 
         # Selecionar os top 10 ativos com base no score
         top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
+        top_ativos
+        
 
         tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
         status_text.text('Obtendo dados históricos...')
