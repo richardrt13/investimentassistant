@@ -220,23 +220,54 @@ def get_financial_growth_data(ticker, years=5):
     stock = yf.Ticker(ticker)
     
     # Obter dados financeiros anuais
-    financials = stock.financials
-    balance_sheet = stock.balance_sheet
-    
-    if financials.empty or balance_sheet.empty:
+    try:
+        financials = stock.financials
+        balance_sheet = stock.balance_sheet
+    except Exception as e:
+        print(f"Error fetching data for {ticker}: {e}")
         return None
     
-    # Calcular crescimento da receita
-    revenues = financials.loc['Total Revenue']
-    revenue_growth = (revenues.iloc[0] / revenues.iloc[-1]) ** (1/years) - 1 if len(revenues) >= years else None
+    if financials.empty or balance_sheet.empty:
+        print(f"No financial data available for {ticker}.")
+        return None
     
-    # Calcular crescimento do lucro
-    net_income = financials.loc['Net Income']
-    income_growth = (net_income.iloc[0] / net_income.iloc[-1]) ** (1/years) - 1 if len(net_income) >= years and net_income.iloc[-1] > 0 else None
-    
-    # Calcular estabilidade da dívida
-    total_debt = balance_sheet.loc['Total Debt']
-    debt_stability = -((total_debt.iloc[0] / total_debt.iloc[-1]) ** (1/years) - 1) if len(total_debt) >= years else None
+    try:
+        # Verificar se há dados financeiros suficientes
+        if 'Total Revenue' not in financials.index or 'Net Income' not in financials.index:
+            print(f"Necessary financial metrics not available for {ticker}.")
+            return None
+        
+        # Calcular crescimento da receita
+        revenues = financials.loc['Total Revenue'].dropna().sort_index()
+        if len(revenues) > 1:
+            available_years = min(len(revenues) - 1, years)
+            revenue_growth = (revenues.iloc[-1] / revenues.iloc[-(available_years+1)]) ** (1/available_years) - 1
+        else:
+            revenue_growth = None
+        
+        # Calcular crescimento do lucro
+        net_income = financials.loc['Net Income'].dropna().sort_index()
+        if len(net_income) > 1 and net_income.iloc[0] > 0:
+            available_years = min(len(net_income) - 1, years)
+            income_growth = (net_income.iloc[-1] / net_income.iloc[-(available_years+1)]) ** (1/available_years) - 1
+        else:
+            income_growth = None
+        
+        # Verificar se há dados de balanço suficientes
+        if 'Total Debt' not in balance_sheet.index:
+            print(f"Necessary balance sheet metrics not available for {ticker}.")
+            return None
+        
+        # Calcular estabilidade da dívida
+        total_debt = balance_sheet.loc['Total Debt'].dropna().sort_index()
+        if len(total_debt) > 1:
+            available_years = min(len(total_debt) - 1, years)
+            debt_stability = -((total_debt.iloc[-1] / total_debt.iloc[-(available_years+1)]) ** (1/available_years) - 1)
+        else:
+            debt_stability = None
+    except Exception as e:
+        print(f"Error calculating growth data for {ticker}: {e}")
+        return None
     
     return {
         'revenue_growth': revenue_growth,
