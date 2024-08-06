@@ -395,7 +395,7 @@ def main():
         tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
         tickers_raw
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=years*365)
+        start_date = end_date - timedelta(days=5*365)
         data = yf.download("NDVC34.SA", start=start_date, end=end_date)['Adj Close']
         data
         stock_data_raw = get_stock_data(tickers_raw)
