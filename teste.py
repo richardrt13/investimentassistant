@@ -100,14 +100,12 @@ def get_fundamental_data(ticker, max_retries=3):
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
-    start_date
-    end_date
+    
 
     for attempt in range(max_retries):
         try:
             data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
             return data
-            data
         except ConnectionError as e:
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
@@ -393,11 +391,7 @@ def main():
         )
 
         tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        tickers_raw
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=5*365)
-        data = yf.download("NDVC34.SA", start=start_date, end=end_date)['Adj Close']
-        data
+        
         stock_data_raw = get_stock_data(tickers_raw)
 
         # Detecção de anomalias e cálculo de RSI
