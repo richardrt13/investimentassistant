@@ -21,7 +21,7 @@ openai.api_key = "sk-proj-fOTGA-BetqmvenscqHs289mR5YdvNXE9MQotHQTQEpvJaPl7orDYau
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
 def call_gpt_api(prompt):
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é um analista financeiro especializado em BDRs e otimização de portfólio."},
