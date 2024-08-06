@@ -100,11 +100,14 @@ def get_fundamental_data(ticker, max_retries=3):
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
+    start_date
+    end_date
 
     for attempt in range(max_retries):
         try:
             data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
             return data
+            data
         except ConnectionError as e:
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
