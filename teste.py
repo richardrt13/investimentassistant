@@ -16,7 +16,7 @@ st.cache_data.clear()
 st.cache_resource.clear()
 
 # Configurar a chave da API
-openai.api_key = "sk-lMfMEthi0P4HRx7Ld4DKQ3rKTUCTRr9mpd798rTP36T3BlbkFJEPIT8xVbfsWkcoeL6IGB2veVFP32vqRIzoeRiKsvkA"
+openai.api_key = "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"
 
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
 def call_gpt_api(prompt):
