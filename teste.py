@@ -12,6 +12,9 @@ import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
 
+st.cache_data.clear()
+st.cache_resource.clear()
+
 # Configurar a chave da API
 openai.api_key = "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"
 
