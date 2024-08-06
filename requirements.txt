@@ -11,3 +11,5 @@ joblib
 pymongo
 PyPortfolioOpt
 statsmodels
+openai
+tenacity
