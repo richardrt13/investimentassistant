@@ -8,7 +8,57 @@ from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from statsmodels.tsa.arima.model import ARIMA
 import warnings
+import openai
+from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
+
+# Configurar a chave da API
+openai.api_key = "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"
+
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
+def call_gpt_api(prompt):
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Você é um analista financeiro especializado em BDRs e otimização de portfólio."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
+        )
+        return response.choices[0].message['content'].strip()
+    except Exception as e:
+        st.error(f"Erro ao chamar a API do GPT: {e}")
+        return None
+
+def generate_portfolio_report(allocation_df, portfolio_metrics, top_ativos):
+    prompt = f"""
+    Crie um relatório detalhado sobre o seguinte portfólio de BDRs:
+    
+    Alocação:
+    {allocation_df.to_string()}
+    
+    Métricas do portfólio:
+    - Retorno Anual Esperado: {portfolio_metrics['return']:.2%}
+    - Volatilidade Anual: {portfolio_metrics['volatility']:.2%}
+    - Índice de Sharpe: {portfolio_metrics['sharpe']:.2f}
+    
+    Top BDRs selecionados:
+    {top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Adjusted_Score']].to_string()}
+    
+    Por favor, explique:
+    1. As razões por trás da escolha desses ativos específicos.
+    2. A lógica da alocação de capital entre os ativos.
+    3. Como as métricas do portfólio se comparam ao mercado em geral.
+    4. Quaisquer riscos ou considerações importantes para o investidor.
+    5. Recomendações para monitoramento e possíveis ajustes futuros.
+    
+    Forneça uma análise concisa, mas completa, em um formato fácil de entender para investidores.
+    """
+    
+    report = call_gpt_api(prompt)
+    return report
 
 # Função para carregar os ativos do CSV
 @st.cache_data
@@ -434,6 +484,24 @@ def main():
         fig = plot_efficient_frontier(returns, adjusted_weights)
         st.plotly_chart(fig)
 
+        # Dentro da função main(), após calcular as métricas do portfólio
+
+        st.subheader('Relatório Personalizado do Portfólio')
+        with st.spinner('Gerando relatório personalizado...'):
+            report = generate_portfolio_report(
+                allocation_df,
+                {
+                    'return': portfolio_return,
+                    'volatility': portfolio_volatility,
+                    'sharpe': sharpe_ratio
+                },
+                top_ativos
+            )
+            if report:
+                st.markdown(report)
+            else:
+                st.error("Não foi possível gerar o relatório. Por favor, tente novamente mais tarde.")
+
         # Exibir informações sobre anomalias detectadas
         st.subheader('Análise de Anomalias')
         anomaly_data = []
@@ -455,46 +523,46 @@ def main():
         status_text.text('Análise concluída!')
         progress_bar.progress(100)
 
-def display_summary():
-    st.header("Lógica")
+# def display_summary():
+#     st.header("Lógica")
 
-    resumo = """
-    ***Racional do Código para Seleção de Ativos e Alocação de Investimentos***
+#     resumo = """
+#     ***Racional do Código para Seleção de Ativos e Alocação de Investimentos***
     
-    ***Objetivo:***
-    O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
+#     ***Objetivo:***
+#     O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
     
-    ***Importação de Dados:***
-    Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
+#     ***Importação de Dados:***
+#     Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
     
-    ***Cálculo de Indicadores Financeiros:***
-    Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
-    Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
+#     ***Cálculo de Indicadores Financeiros:***
+#     Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
+#     Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
     
-    ***Volatilidade:*** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
-    Volatilidade = sqrt((1/(N-1)) * Σ(Ri - Retorno Médio)^2)
+#     ***Volatilidade:*** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
+#     Volatilidade = sqrt((1/(N-1)) * Σ(Ri - Retorno Médio)^2)
     
-    ***Índice de Sharpe:*** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
-    Índice de Sharpe = (Retorno Médio - Rf) / Volatilidade, onde Rf é a taxa livre de risco.
+#     ***Índice de Sharpe:*** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
+#     Índice de Sharpe = (Retorno Médio - Rf) / Volatilidade, onde Rf é a taxa livre de risco.
     
-    Valuation (P/L - Preço/Lucro): É uma métrica que relaciona o preço da ação com o lucro por ação. Um P/L mais baixo pode indicar que a ação está subvalorizada.
-    P/L = Preço da Ação / Lucro por Ação
+#     Valuation (P/L - Preço/Lucro): É uma métrica que relaciona o preço da ação com o lucro por ação. Um P/L mais baixo pode indicar que a ação está subvalorizada.
+#     P/L = Preço da Ação / Lucro por Ação
     
-    ***Liquidez:*** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
+#     ***Liquidez:*** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
     
-    ***Seleção dos Melhores Ativos:***
-    O código classifica os ativos com base nos indicadores calculados, priorizando aqueles com maior índice de Sharpe, boa valuation (P/L), e alta liquidez.
+#     ***Seleção dos Melhores Ativos:***
+#     O código classifica os ativos com base nos indicadores calculados, priorizando aqueles com maior índice de Sharpe, boa valuation (P/L), e alta liquidez.
     
-    ***Simulação de Alocação de Capital:***
-    Utilizando os ativos selecionados, o código aplica métodos de otimização de carteira, como a Fronteira Eficiente de Markowitz. Esse método busca encontrar a combinação de ativos que oferece o maior retorno esperado para um dado nível de risco.
-    Minimizar σp^2 = Σ(wi * wj * σij), Sujeito a Σ(wi) = 1, onde wi é a proporção do capital alocada no ativo i e σij é a covariância entre os retornos dos ativos i e j.
+#     ***Simulação de Alocação de Capital:***
+#     Utilizando os ativos selecionados, o código aplica métodos de otimização de carteira, como a Fronteira Eficiente de Markowitz. Esse método busca encontrar a combinação de ativos que oferece o maior retorno esperado para um dado nível de risco.
+#     Minimizar σp^2 = Σ(wi * wj * σij), Sujeito a Σ(wi) = 1, onde wi é a proporção do capital alocada no ativo i e σij é a covariância entre os retornos dos ativos i e j.
     
-    ***Recomendação de Investimento:***
-    O código gera uma recomendação detalhada de como alocar seu capital nos ativos selecionados, mostrando a quantidade a ser investida em cada ativo. Ele também apresenta gráficos para visualizar o retorno esperado, o risco, e a alocação de capital.
-    """
-    st.markdown(resumo)
+#     ***Recomendação de Investimento:***
+#     O código gera uma recomendação detalhada de como alocar seu capital nos ativos selecionados, mostrando a quantidade a ser investida em cada ativo. Ele também apresenta gráficos para visualizar o retorno esperado, o risco, e a alocação de capital.
+#     """
+#     st.markdown(resumo)
 
 if __name__ == "__main__":
     main()
-    display_summary()
+    # display_summary()
 
