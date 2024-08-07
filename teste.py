@@ -394,227 +394,233 @@ def portfolio_tracking():
         st.write("Não há transações registradas ainda.")
 
 def main():
-    st.title('BDR Recommendation and Portfolio Optimization')
+    st.sidebar.title('Navegação')
+    page = st.sidebar.radio('Selecione uma página', ['BDR Recommendation', 'Portfolio Tracking'])
 
-    ativos_df = load_assets()
-    
-    ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
+    if page == 'BDR Recommendation':
 
-    # Substituir "-" por "Outros" na coluna "Sector"
-    ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
-
-    setores = sorted(set(ativos_df['Sector']))
-    setores.insert(0, 'Todos')
-
-    sector_filter = st.multiselect('Selecione o Setor', options=setores)
-
-    if 'Todos' not in sector_filter:
-        ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
-
-    invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
-
-    if st.button('Gerar Recomendação'):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        # Obter dados fundamentalistas
-        fundamental_data = []
-        for i, ticker in enumerate(ativos_df['Ticker']):
-            status_text.text(f'Carregando dados para {ticker}...')
-            progress_bar.progress((i + 1) / len(ativos_df))
-            data = get_fundamental_data(ticker + '.SA')
-            growth_data = get_financial_growth_data(ticker + '.SA')
-            if growth_data:
-                data.update(growth_data)
-            data['Ticker'] = ticker
-            fundamental_data.append(data)
-
-        fundamental_df = pd.DataFrame(fundamental_data)
-        ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
-
-        # Filtrar ativos com informações necessárias
-        ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
-  
+        ativos_df = load_assets()
         
-     
-        #Filtrar ativos com boa liquidez
-        #ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
-
-        # Verificar se há ativos suficientes para continuar
-        if len(ativos_df) < 10:
-            st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
-            return
-
-        # Análise fundamentalista e de liquidez
-        ativos_df['Score'] = (
-            ativos_df['ROE'] / ativos_df['P/L'] +
-            1 / ativos_df['P/VP'] +
-            np.log(ativos_df['Volume'])
-        )
-
-        tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-        
-        stock_data_raw = get_stock_data(tickers_raw)
-
-        # Detecção de anomalias e cálculo de RSI
-        for ticker in tickers_raw:
-            price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
-            rsi = calculate_rsi(stock_data_raw[ticker])
-            ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
-            ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
-
-        # Calcular score ajustado
-        ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
-        ativos_df
-
-        # Selecionar os top 10 ativos com base no score
-        top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
-        
-
-        tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
-        status_text.text('Obtendo dados históricos...')
-        stock_data = get_stock_data(tickers)
-
-        # Verificar se os dados históricos foram obtidos com sucesso
-        if stock_data.empty:
-            st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
-            return
-
-        # Calcular rentabilidade acumulada
-        cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
-        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
-
-        st.subheader('Top 10 BDRs Recomendados')
-        st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
-
-        # Otimização de portfólio
-        returns = calculate_returns(stock_data)
-
-        # Verificar se há retornos válidos para continuar
-        if returns.empty:
-            st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
-            return
-
-        # Calcular rentabilidade acumulada
-        cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
-        top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
-
-        # Otimização de portfólio
-        returns = calculate_returns(stock_data)
-
-        # Verificar se há retornos válidos para continuar
-        if returns.empty:
-            st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
-            return
-
-        global risk_free_rate
-        risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
-
-        status_text.text('Otimizando portfólio...')
-        try:
-            optimal_weights = optimize_portfolio(returns, risk_free_rate)
-            # Ajustar pesos com base nas anomalias
-            anomaly_scores = calculate_anomaly_scores(returns)
-            adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
-        except Exception as e:
-            st.error(f"Erro ao otimizar o portfólio: {e}")
-            return
-
-        st.subheader('Alocação Ótima do Portfólio')
-        allocation_data = []
-        for ticker, weight in zip(tickers, adjusted_weights):
-            price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
-            allocated_value = weight * invest_value
-            shares = allocated_value / price
-            cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
-            allocation_data.append({
-                'Ticker': ticker,
-                'Peso': f"{weight:.2%}",
-                'Valor Alocado': f"R$ {allocated_value:.2f}",
-                'Quantidade de Ações': f"{shares:.2f}",
-                'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A"
-            })
-
-        allocation_df = pd.DataFrame(allocation_data)
-        st.table(allocation_df)
-
-        portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
-        sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
-
-        st.subheader('Métricas do Portfólio')
-        st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
-        st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
-        st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
-
-        # Gerar e exibir o gráfico de dispersão
-        status_text.text('Gerando gráfico da fronteira eficiente...')
-        fig = plot_efficient_frontier(returns, adjusted_weights)
-        st.plotly_chart(fig)
-
-        # Dentro da função main(), após calcular as métricas do portfólio
-
-
-        # Exibir informações sobre anomalias detectadas
-        st.subheader('Análise de Anomalias')
-        anomaly_data = []
-        for ticker in tickers:
-            price_anomalies = detect_price_anomalies(stock_data[ticker])
-            rsi = calculate_rsi(stock_data[ticker])
-            rsi_anomalies = (rsi > 70) | (rsi < 30)
-            anomaly_data.append({
-                'Ticker': ticker[:-3],
-                'Anomalias de Preço (%)': f"{price_anomalies.mean()*100:.2f}%",
-                'Anomalias de RSI (%)': f"{rsi_anomalies.mean()*100:.2f}%"
-            })
-        
-        anomaly_df = pd.DataFrame(anomaly_data)
-        st.table(anomaly_df)
-
-        st.write("As anomalias de preço indicam movimentos incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
-
-        status_text.text('Análise concluída!')
-        progress_bar.progress(100)
-
-def display_summary():
-    st.header("Lógica")
-
-    resumo = """
-    ***Racional do Código para Seleção de Ativos e Alocação de Investimentos***
+        ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
     
-    ***Objetivo:***
-    O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
+        # Substituir "-" por "Outros" na coluna "Sector"
+        ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
     
-    ***Importação de Dados:***
-    Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
+        setores = sorted(set(ativos_df['Sector']))
+        setores.insert(0, 'Todos')
     
-    ***Cálculo de Indicadores Financeiros:***
-    Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
-    Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
+        sector_filter = st.multiselect('Selecione o Setor', options=setores)
     
-    ***Volatilidade:*** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
-    Volatilidade = sqrt((1/(N-1)) * Σ(Ri - Retorno Médio)^2)
+        if 'Todos' not in sector_filter:
+            ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
     
-    ***Índice de Sharpe:*** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
-    Índice de Sharpe = (Retorno Médio - Rf) / Volatilidade, onde Rf é a taxa livre de risco.
+        invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
-    Valuation (P/L - Preço/Lucro): É uma métrica que relaciona o preço da ação com o lucro por ação. Um P/L mais baixo pode indicar que a ação está subvalorizada.
-    P/L = Preço da Ação / Lucro por Ação
+        if st.button('Gerar Recomendação'):
+            progress_bar = st.progress(0)
+            status_text = st.empty()
     
-    ***Liquidez:*** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
+            # Obter dados fundamentalistas
+            fundamental_data = []
+            for i, ticker in enumerate(ativos_df['Ticker']):
+                status_text.text(f'Carregando dados para {ticker}...')
+                progress_bar.progress((i + 1) / len(ativos_df))
+                data = get_fundamental_data(ticker + '.SA')
+                growth_data = get_financial_growth_data(ticker + '.SA')
+                if growth_data:
+                    data.update(growth_data)
+                data['Ticker'] = ticker
+                fundamental_data.append(data)
     
-    ***Seleção dos Melhores Ativos:***
-    O código classifica os ativos com base nos indicadores calculados, priorizando aqueles com maior índice de Sharpe, boa valuation (P/L), e alta liquidez.
+            fundamental_df = pd.DataFrame(fundamental_data)
+            ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
     
-    ***Simulação de Alocação de Capital:***
-    Utilizando os ativos selecionados, o código aplica métodos de otimização de carteira, como a Fronteira Eficiente de Markowitz. Esse método busca encontrar a combinação de ativos que oferece o maior retorno esperado para um dado nível de risco.
-    Minimizar σp^2 = Σ(wi * wj * σij), Sujeito a Σ(wi) = 1, onde wi é a proporção do capital alocada no ativo i e σij é a covariância entre os retornos dos ativos i e j.
+            # Filtrar ativos com informações necessárias
+            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+      
+            
+         
+            #Filtrar ativos com boa liquidez
+            #ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
     
-    ***Recomendação de Investimento:***
-    O código gera uma recomendação detalhada de como alocar seu capital nos ativos selecionados, mostrando a quantidade a ser investida em cada ativo. Ele também apresenta gráficos para visualizar o retorno esperado, o risco, e a alocação de capital.
-    """
-    st.markdown(resumo)
+            # Verificar se há ativos suficientes para continuar
+            if len(ativos_df) < 10:
+                st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+                return
+    
+            # Análise fundamentalista e de liquidez
+            ativos_df['Score'] = (
+                ativos_df['ROE'] / ativos_df['P/L'] +
+                1 / ativos_df['P/VP'] +
+                np.log(ativos_df['Volume'])
+            )
+    
+            tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+            
+            stock_data_raw = get_stock_data(tickers_raw)
+    
+            # Detecção de anomalias e cálculo de RSI
+            for ticker in tickers_raw:
+                price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
+                rsi = calculate_rsi(stock_data_raw[ticker])
+                ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
+                ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+    
+            # Calcular score ajustado
+            ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
+            ativos_df
+    
+            # Selecionar os top 10 ativos com base no score
+            top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
+            
+    
+            tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+            status_text.text('Obtendo dados históricos...')
+            stock_data = get_stock_data(tickers)
+    
+            # Verificar se os dados históricos foram obtidos com sucesso
+            if stock_data.empty:
+                st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
+                return
+    
+            # Calcular rentabilidade acumulada
+            cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+    
+            st.subheader('Top 10 BDRs Recomendados')
+            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+    
+            # Otimização de portfólio
+            returns = calculate_returns(stock_data)
+    
+            # Verificar se há retornos válidos para continuar
+            if returns.empty:
+                st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+                return
+    
+            # Calcular rentabilidade acumulada
+            cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+    
+            # Otimização de portfólio
+            returns = calculate_returns(stock_data)
+    
+            # Verificar se há retornos válidos para continuar
+            if returns.empty:
+                st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+                return
+    
+            global risk_free_rate
+            risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
+    
+            status_text.text('Otimizando portfólio...')
+            try:
+                optimal_weights = optimize_portfolio(returns, risk_free_rate)
+                # Ajustar pesos com base nas anomalias
+                anomaly_scores = calculate_anomaly_scores(returns)
+                adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
+            except Exception as e:
+                st.error(f"Erro ao otimizar o portfólio: {e}")
+                return
+    
+            st.subheader('Alocação Ótima do Portfólio')
+            allocation_data = []
+            for ticker, weight in zip(tickers, adjusted_weights):
+                price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
+                allocated_value = weight * invest_value
+                shares = allocated_value / price
+                cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
+                allocation_data.append({
+                    'Ticker': ticker,
+                    'Peso': f"{weight:.2%}",
+                    'Valor Alocado': f"R$ {allocated_value:.2f}",
+                    'Quantidade de Ações': f"{shares:.2f}",
+                    'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A"
+                })
+    
+            allocation_df = pd.DataFrame(allocation_data)
+            st.table(allocation_df)
+    
+            portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
+            sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
+    
+            st.subheader('Métricas do Portfólio')
+            st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
+            st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
+            st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
+    
+            # Gerar e exibir o gráfico de dispersão
+            status_text.text('Gerando gráfico da fronteira eficiente...')
+            fig = plot_efficient_frontier(returns, adjusted_weights)
+            st.plotly_chart(fig)
+    
+            # Dentro da função main(), após calcular as métricas do portfólio
+    
+    
+            # Exibir informações sobre anomalias detectadas
+            st.subheader('Análise de Anomalias')
+            anomaly_data = []
+            for ticker in tickers:
+                price_anomalies = detect_price_anomalies(stock_data[ticker])
+                rsi = calculate_rsi(stock_data[ticker])
+                rsi_anomalies = (rsi > 70) | (rsi < 30)
+                anomaly_data.append({
+                    'Ticker': ticker[:-3],
+                    'Anomalias de Preço (%)': f"{price_anomalies.mean()*100:.2f}%",
+                    'Anomalias de RSI (%)': f"{rsi_anomalies.mean()*100:.2f}%"
+                })
+            
+            anomaly_df = pd.DataFrame(anomaly_data)
+            st.table(anomaly_df)
+    
+            st.write("As anomalias de preço indicam movimentos incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
+    
+            status_text.text('Análise concluída!')
+            progress_bar.progress(100)
+            pass
+    elif page == 'Portfolio Tracking':
+        portfolio_tracking()
+
+# def display_summary():
+#     st.header("Lógica")
+
+#     resumo = """
+#     ***Racional do Código para Seleção de Ativos e Alocação de Investimentos***
+    
+#     ***Objetivo:***
+#     O código foi desenvolvido para ajudá-lo a escolher os melhores ativos BDRs (Brazilian Depositary Receipts) e alocar seus investimentos de forma eficiente, maximizando o retorno e minimizando o risco.
+    
+#     ***Importação de Dados:***
+#     Primeiramente, o código importa dados históricos dos preços dos ativos. Esses dados são essenciais para calcular retornos e volatilidade, entre outros indicadores financeiros.
+    
+#     ***Cálculo de Indicadores Financeiros:***
+#     Retorno Médio: Calcula-se a média dos retornos diários ou mensais dos ativos ao longo de um período de tempo. O retorno médio é uma medida de desempenho histórico do ativo.
+#     Retorno Médio = (1/N) * Σ(Ri), onde Ri é o retorno no período i e N é o número total de períodos.
+    
+#     ***Volatilidade:*** Mede a dispersão dos retornos dos ativos. A volatilidade é calculada como o desvio padrão dos retornos.
+#     Volatilidade = sqrt((1/(N-1)) * Σ(Ri - Retorno Médio)^2)
+    
+#     ***Índice de Sharpe:*** Avalia a relação entre o retorno esperado e a volatilidade do ativo. Um índice de Sharpe mais alto indica uma melhor relação risco-retorno.
+#     Índice de Sharpe = (Retorno Médio - Rf) / Volatilidade, onde Rf é a taxa livre de risco.
+    
+#     Valuation (P/L - Preço/Lucro): É uma métrica que relaciona o preço da ação com o lucro por ação. Um P/L mais baixo pode indicar que a ação está subvalorizada.
+#     P/L = Preço da Ação / Lucro por Ação
+    
+#     ***Liquidez:*** Mede a facilidade de compra e venda do ativo sem afetar seu preço. A liquidez é importante para garantir que você possa entrar e sair de posições facilmente.
+    
+#     ***Seleção dos Melhores Ativos:***
+#     O código classifica os ativos com base nos indicadores calculados, priorizando aqueles com maior índice de Sharpe, boa valuation (P/L), e alta liquidez.
+    
+#     ***Simulação de Alocação de Capital:***
+#     Utilizando os ativos selecionados, o código aplica métodos de otimização de carteira, como a Fronteira Eficiente de Markowitz. Esse método busca encontrar a combinação de ativos que oferece o maior retorno esperado para um dado nível de risco.
+#     Minimizar σp^2 = Σ(wi * wj * σij), Sujeito a Σ(wi) = 1, onde wi é a proporção do capital alocada no ativo i e σij é a covariância entre os retornos dos ativos i e j.
+    
+#     ***Recomendação de Investimento:***
+#     O código gera uma recomendação detalhada de como alocar seu capital nos ativos selecionados, mostrando a quantidade a ser investida em cada ativo. Ele também apresenta gráficos para visualizar o retorno esperado, o risco, e a alocação de capital.
+#     """
+#     st.markdown(resumo)
 
 if __name__ == "__main__":
     main()
-    display_summary()
+    # display_summary()
 
