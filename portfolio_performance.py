@@ -383,7 +383,14 @@ def calculate_cumulative_returns(plot_data, transactions):
     df['Return'] = (df['Holdings'] / df['Holdings'].shift(1)) - 1
     df['Return'] = df['Return'].fillna(0)
     cumulative_return = ((1 + df['Return']).cumprod() - 1) * 100
-    return cumulative_return.reindex(plot_data.index, method='ffill')
+    
+    # Reindex to match plot_data index and forward fill
+    cumulative_return = cumulative_return.reindex(plot_data.index, method='ffill')
+    
+    # Fill NaN values at the beginning with 0
+    cumulative_return = cumulative_return.fillna(0)
+    
+    return cumulative_return
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -418,7 +425,7 @@ def portfolio_tracking():
             sell_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
 
     # Display portfolio performance
-    st.subheader('Desempenho da Carteira')
+   st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value, transactions = get_portfolio_performance()
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value, transactions)
