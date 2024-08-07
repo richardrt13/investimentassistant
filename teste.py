@@ -11,6 +11,7 @@ import warnings
 import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
+from pymongo import MongoClient
 
 
 # Função para carregar os ativos do CSV
@@ -282,6 +283,115 @@ def get_financial_growth_data(ticker, years=5):
         'debt_stability': debt_stability
     }
 
+# MongoDB Atlas connection
+mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
+client = MongoClient(mongo_uri)
+db = client['StockIdea']
+collection = db['transactions']
+
+# Function to initialize the database
+def init_db():
+    if 'transactions' not in db.list_collection_names():
+        collection.create_index([('Date', 1), ('Ticker', 1), ('Action', 1), ('Quantity', 1), ('Price', 1)])
+
+# Function to log transactions
+def log_transaction(date, ticker, action, quantity, price):
+    transaction = {
+        'Date': date,
+        'Ticker': ticker,
+        'Action': action,
+        'Quantity': quantity,
+        'Price': price
+    }
+    collection.insert_one(transaction)
+    st.success('Transação registrada com sucesso!')
+
+# Function to buy stocks
+def buy_stock(date, ticker, quantity, price):
+    log_transaction(date, ticker, 'BUY', quantity, price)
+
+# Function to sell stocks
+def sell_stock(date, ticker, quantity, price):
+    log_transaction(date, ticker, 'SELL', quantity, price)
+
+# Function to get portfolio performance
+def get_portfolio_performance():
+    transactions = list(collection.find())
+    if not transactions:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(transactions)
+    df['Date'] = pd.to_datetime(df['Date'])
+    df = df.sort_values('Date')
+
+    portfolio = {}
+    for _, row in df.iterrows():
+        ticker = row['Ticker']
+        if ticker not in portfolio:
+            portfolio[ticker] = 0
+        if row['Action'] == 'BUY':
+            portfolio[ticker] += row['Quantity']
+        else:  # SELL
+            portfolio[ticker] -= row['Quantity']
+
+    tickers = list(portfolio.keys())
+    end_date = datetime.now()
+    start_date = df['Date'].min()
+
+    prices = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    
+    daily_value = prices.copy()
+    for ticker in tickers:
+        daily_value[ticker] *= portfolio[ticker]
+
+    portfolio_value = daily_value.sum(axis=1)
+    portfolio_return = portfolio_value.pct_change()
+
+    return portfolio_return
+
+# New function for portfolio tracking page
+def portfolio_tracking():
+    st.title('Acompanhamento da Carteira')
+
+    # Initialize database
+    init_db()
+
+    # Get all assets
+    assets_df = load_assets()
+    tickers = assets_df['Ticker'].tolist()
+
+    # Transaction input
+    st.subheader('Registrar Transação')
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        transaction_date = st.date_input('Data da Transação', value=datetime.now())
+    with col2:
+        transaction_ticker = st.selectbox('Ticker', options=tickers)
+    with col3:
+        transaction_action = st.selectbox('Ação', options=['Compra', 'Venda'])
+    col4, col5 = st.columns(2)
+    with col4:
+        transaction_quantity = st.number_input('Quantidade', min_value=1, value=1, step=1)
+    with col5:
+        transaction_price = st.number_input('Preço', min_value=0.01, value=1.00, step=0.01)
+
+    if st.button('Registrar Transação'):
+        if transaction_action == 'Compra':
+            buy_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
+        else:
+            sell_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
+
+    # Display portfolio performance
+    st.subheader('Desempenho da Carteira')
+    portfolio_return = get_portfolio_performance()
+    if not portfolio_return.empty:
+        cumulative_return = (1 + portfolio_return).cumprod() - 1
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=cumulative_return.index, y=cumulative_return.values, mode='lines', name='Retorno Acumulado'))
+        fig.update_layout(title='Retorno Acumulado da Carteira', xaxis_title='Data', yaxis_title='Retorno Acumulado')
+        st.plotly_chart(fig)
+    else:
+        st.write("Não há transações registradas ainda.")
 
 def main():
     st.title('BDR Recommendation and Portfolio Optimization')
