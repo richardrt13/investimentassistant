@@ -363,7 +363,7 @@ def portfolio_tracking():
 
     # Get all assets
     assets_df = load_assets()
-    tickers = assets_df['Ticker'].tolist()
+    tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 
     # Transaction input
     st.subheader('Registrar Transação')
@@ -407,19 +407,39 @@ def portfolio_tracking():
             plot_data = portfolio_data[selected_asset]
             plot_title = f'Valor do Ativo {selected_asset} ao Longo do Tempo'
 
-        fig = px.line(x=plot_data.index, y=plot_data.values, 
-                      labels={'x': 'Data', 'y': 'Valor (R$)'}, 
-                      title=plot_title)
-        fig.update_layout(yaxis_tickformat = 'R$,.2f')
+        # Calculate cumulative returns
+        cumulative_returns = (plot_data / plot_data.iloc[0] - 1) * 100
+
+        # Create figure
+        fig = go.Figure()
+
+        # Add trace for value
+        fig.add_trace(go.Scatter(
+            x=plot_data.index, 
+            y=plot_data.values,
+            mode='lines',
+            name='Valor',
+            hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%',
+            text=cumulative_returns
+        ))
+
+        # Update layout
+        fig.update_layout(
+            title=plot_title,
+            xaxis_title='Data',
+            yaxis_title='Valor (R$)',
+            hovermode='x unified'
+        )
+        fig.update_yaxes(tickprefix='R$ ')
+
         st.plotly_chart(fig)
 
         # Retorno percentual
-        returns = plot_data.pct_change()
-        cumulative_returns = (1 + returns).cumprod() - 1
-        fig_returns = px.line(x=cumulative_returns.index, y=cumulative_returns.values * 100, 
+        fig_returns = px.line(x=cumulative_returns.index, y=cumulative_returns.values, 
                               labels={'x': 'Data', 'y': 'Retorno Acumulado (%)'}, 
                               title='Retorno Percentual Acumulado')
         fig_returns.update_layout(yaxis_tickformat = '.2f%')
+        fig_returns.update_traces(hovertemplate='Data: %{x}<br>Retorno: %{y:.2f}%')
         st.plotly_chart(fig_returns)
 
     else:
