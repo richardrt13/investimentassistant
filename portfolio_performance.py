@@ -351,46 +351,19 @@ def get_portfolio_performance():
     for ticker in tickers:
         daily_value[ticker] *= portfolio[ticker]
 
-    return daily_value, pd.Series(invested_value), df
+    return daily_value, pd.Series(invested_value)
 
 def get_ibovespa_data(start_date, end_date):
     ibov = yf.download('^BVSP', start=start_date, end=end_date)['Adj Close']
     ibov_return = (ibov / ibov.iloc[0] - 1) * 100
     return ibov_return
 
-def calculate_portfolio_metrics(portfolio_data, invested_value, transactions):
+def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
     current_value = portfolio_data.iloc[-1].sum()
-    
-    # Calculate time-weighted return
-    df = transactions.sort_values('Date')
-    df['Portfolio_Value'] = df.apply(lambda row: portfolio_data.loc[row['Date']:row['Date']].sum().sum() if row['Date'] in portfolio_data.index else np.nan, axis=1)
-    df['Cashflow'] = df.apply(lambda row: row['Quantity'] * row['Price'] if row['Action'] == 'BUY' else -row['Quantity'] * row['Price'], axis=1)
-    df['Portfolio_Value'] = df['Portfolio_Value'].fillna(method='ffill')
-    df['Holdings'] = df['Portfolio_Value'] - df['Cashflow']
-    df['Return'] = (df['Holdings'] / df['Holdings'].shift(1)) - 1
-    df['Return'] = df['Return'].fillna(0)
-    total_return = ((1 + df['Return']).cumprod().iloc[-1] - 1) * 100
-
+    total_return = ((current_value - total_invested) / total_invested) * 100
     return total_invested, current_value, total_return
 
-def calculate_cumulative_returns(plot_data, transactions):
-    df = transactions.sort_values('Date')
-    df['Portfolio_Value'] = df.apply(lambda row: plot_data.loc[row['Date']:row['Date']].sum() if row['Date'] in plot_data.index else np.nan, axis=1)
-    df['Cashflow'] = df.apply(lambda row: row['Quantity'] * row['Price'] if row['Action'] == 'BUY' else -row['Quantity'] * row['Price'], axis=1)
-    df['Portfolio_Value'] = df['Portfolio_Value'].fillna(method='ffill')
-    df['Holdings'] = df['Portfolio_Value'] - df['Cashflow']
-    df['Return'] = (df['Holdings'] / df['Holdings'].shift(1)) - 1
-    df['Return'] = df['Return'].fillna(0)
-    cumulative_return = ((1 + df['Return']).cumprod() - 1) * 100
-    
-    # Reindex to match plot_data index and forward fill
-    cumulative_return = cumulative_return.reindex(plot_data.index, method='ffill')
-    
-    # Fill NaN values at the beginning with 0
-    cumulative_return = cumulative_return.fillna(0)
-    
-    return cumulative_return
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -426,9 +399,9 @@ def portfolio_tracking():
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_data, invested_value, transactions = get_portfolio_performance()
+    portfolio_data, invested_value = get_portfolio_performance()
     if not portfolio_data.empty:
-        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value, transactions)
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
         col1, col2, col3 = st.columns(3)
         col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
@@ -446,7 +419,7 @@ def portfolio_tracking():
             plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
 
         # Calculate cumulative returns for portfolio
-        portfolio_cumulative_returns = calculate_cumulative_returns(plot_data, transactions)
+        portfolio_cumulative_returns = (plot_data / plot_data.iloc[0] - 1) * 100
 
         # Get Ibovespa data
         ibov_return = get_ibovespa_data(plot_data.index[0], plot_data.index[-1])
@@ -509,7 +482,7 @@ def portfolio_tracking():
 
     else:
         st.write("Não há transações registradas ainda.")
-        
+
 def main():
     st.sidebar.title('Navegação')
     page = st.sidebar.radio('Selecione uma página', ['BDR Recommendation', 'Portfolio Tracking'])
@@ -740,4 +713,3 @@ def main():
 if __name__ == "__main__":
     main()
     # display_summary()
-
