@@ -352,6 +352,11 @@ def get_portfolio_performance():
 
     return daily_value, pd.Series(invested_value)
 
+def get_ibovespa_data(start_date, end_date):
+    ibov = yf.download('^BVSP', start=start_date, end=end_date)['Adj Close']
+    ibov_return = (ibov / ibov.iloc[0] - 1) * 100
+    return ibov_return
+
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
     current_value = portfolio_data.iloc[-1].sum()
@@ -407,44 +412,71 @@ def portfolio_tracking():
         
         if selected_asset == 'Todos os ativos':
             plot_data = portfolio_data.sum(axis=1)
-            plot_title = 'Valor Total da Carteira ao Longo do Tempo'
+            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Tempo'
         else:
             plot_data = portfolio_data[selected_asset]
-            plot_title = f'Valor do Ativo {selected_asset} ao Longo do Tempo'
+            plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
 
-        # Calculate cumulative returns
-        cumulative_returns = (plot_data / plot_data.iloc[0] - 1) * 100
+        # Calculate cumulative returns for portfolio
+        portfolio_cumulative_returns = (plot_data / plot_data.iloc[0] - 1) * 100
 
-        # Create figure
-        fig = go.Figure()
+        # Get Ibovespa data
+        ibov_return = get_ibovespa_data(plot_data.index[0], plot_data.index[-1])
 
-        # Add trace for value
-        fig.add_trace(go.Scatter(
-            x=plot_data.index, 
-            y=plot_data.values,
-            mode='lines',
-            name='Valor',
-            hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%',
-            text=cumulative_returns
-        ))
+        # Create figure with secondary y-axis
+        fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+        # Add trace for portfolio value
+        fig.add_trace(
+            go.Scatter(
+                x=plot_data.index, 
+                y=plot_data.values,
+                mode='lines',
+                name='Valor da Carteira',
+                hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%',
+                text=portfolio_cumulative_returns
+            ),
+            secondary_y=False,
+        )
+
+        # Add trace for Ibovespa return
+        fig.add_trace(
+            go.Scatter(
+                x=ibov_return.index, 
+                y=ibov_return.values,
+                mode='lines',
+                name='Retorno Ibovespa',
+                hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%',
+            ),
+            secondary_y=True,
+        )
 
         # Update layout
         fig.update_layout(
             title=plot_title,
             xaxis_title='Data',
-            yaxis_title='Valor (R$)',
             hovermode='x unified'
         )
-        fig.update_yaxes(tickprefix='R$ ')
+        fig.update_yaxes(title_text="Valor da Carteira (R$)", secondary_y=False, tickprefix='R$ ')
+        fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
 
         st.plotly_chart(fig)
 
-        # Retorno percentual
-        fig_returns = px.line(x=cumulative_returns.index, y=cumulative_returns.values, 
-                              labels={'x': 'Data', 'y': 'Retorno Acumulado (%)'}, 
-                              title='Retorno Percentual Acumulado')
-        fig_returns.update_layout(yaxis_tickformat = '.2f%')
-        fig_returns.update_traces(hovertemplate='Data: %{x}<br>Retorno: %{y:.2f}%')
+        # Retorno percentual comparison
+        fig_returns = go.Figure()
+        fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
+                                         mode='lines', name='Carteira',
+                                         hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
+        fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
+                                         mode='lines', name='Ibovespa',
+                                         hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
+        fig_returns.update_layout(
+            title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa',
+            xaxis_title='Data',
+            yaxis_title='Retorno Acumulado (%)',
+            yaxis_tickformat = '.2f%',
+            hovermode='x unified'
+        )
         st.plotly_chart(fig_returns)
 
     else:
