@@ -5,6 +5,7 @@ import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from statsmodels.tsa.arima.model import ARIMA
