@@ -12,56 +12,6 @@ import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
 
-st.cache_data.clear()
-st.cache_resource.clear()
-
-# Configurar a chave da API
-openai.api_key = "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"
-
-@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def call_gpt_api(prompt):
-    try:
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Você é um analista financeiro especializado em BDRs e otimização de portfólio."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=1000
-        )
-        return response.choices[0].message['content'].strip()
-    except Exception as e:
-        st.error(f"Erro ao chamar a API do GPT: {e}")
-        return None
-
-def generate_portfolio_report(allocation_df, portfolio_metrics, top_ativos):
-    prompt = f"""
-    Crie um relatório detalhado sobre o seguinte portfólio de BDRs:
-    
-    Alocação:
-    {allocation_df.to_string()}
-    
-    Métricas do portfólio:
-    - Retorno Anual Esperado: {portfolio_metrics['return']:.2%}
-    - Volatilidade Anual: {portfolio_metrics['volatility']:.2%}
-    - Índice de Sharpe: {portfolio_metrics['sharpe']:.2f}
-    
-    Top BDRs selecionados:
-    {top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Adjusted_Score']].to_string()}
-    
-    Por favor, explique:
-    1. As razões por trás da escolha desses ativos específicos.
-    2. A lógica da alocação de capital entre os ativos.
-    3. Como as métricas do portfólio se comparam ao mercado em geral.
-    4. Quaisquer riscos ou considerações importantes para o investidor.
-    5. Recomendações para monitoramento e possíveis ajustes futuros.
-    
-    Forneça uma análise concisa, mas completa, em um formato fácil de entender para investidores.
-    """
-    
-    report = call_gpt_api(prompt)
-    return report
 
 # Função para carregar os ativos do CSV
 #@st.cache_data
@@ -337,6 +287,8 @@ def main():
     st.title('BDR Recommendation and Portfolio Optimization')
 
     ativos_df = load_assets()
+    
+    ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
 
     # Substituir "-" por "Outros" na coluna "Sector"
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
@@ -373,10 +325,10 @@ def main():
         # Filtrar ativos com informações necessárias
         ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
   
-        ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
+        
      
         #Filtrar ativos com boa liquidez
-        ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
+        #ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
 
         # Verificar se há ativos suficientes para continuar
         if len(ativos_df) < 10:
@@ -491,21 +443,6 @@ def main():
 
         # Dentro da função main(), após calcular as métricas do portfólio
 
-        st.subheader('Relatório Personalizado do Portfólio')
-        with st.spinner('Gerando relatório personalizado...'):
-            report = generate_portfolio_report(
-                allocation_df,
-                {
-                    'return': portfolio_return,
-                    'volatility': portfolio_volatility,
-                    'sharpe': sharpe_ratio
-                },
-                top_ativos
-            )
-            if report:
-                st.markdown(report)
-            else:
-                st.error("Não foi possível gerar o relatório. Por favor, tente novamente mais tarde.")
 
         # Exibir informações sobre anomalias detectadas
         st.subheader('Análise de Anomalias')
