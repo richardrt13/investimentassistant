@@ -459,7 +459,7 @@ def portfolio_tracking():
             hovermode='x unified'
         )
         fig.update_yaxes(title_text="Valor da Carteira (R$)", secondary_y=False, tickprefix='R$ ')
-        fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
+        #fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
 
         st.plotly_chart(fig)
 
