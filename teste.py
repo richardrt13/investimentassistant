@@ -4,6 +4,7 @@ import numpy as np
 import yfinance as yf
 from scipy.optimize import minimize
 import plotly.graph_objects as go
+import plotly.express as px
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from statsmodels.tsa.arima.model import ARIMA
@@ -344,10 +345,14 @@ def get_portfolio_performance():
     for ticker in tickers:
         daily_value[ticker] *= portfolio[ticker]
 
-    portfolio_value = daily_value.sum(axis=1)
-    portfolio_return = portfolio_value.pct_change()
+    return daily_value
 
-    return portfolio_return
+def calculate_portfolio_metrics(portfolio_data):
+    total_invested = portfolio_data.iloc[0].sum()
+    current_value = portfolio_data.iloc[-1].sum()
+    total_return = ((current_value - total_invested) / total_invested) * 100
+    return total_invested, current_value, total_return
+
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -383,13 +388,40 @@ def portfolio_tracking():
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_return = get_portfolio_performance()
-    if not portfolio_return.empty:
-        cumulative_return = (1 + portfolio_return).cumprod() - 1
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=cumulative_return.index, y=cumulative_return.values, mode='lines', name='Retorno Acumulado'))
-        fig.update_layout(title='Retorno Acumulado da Carteira', xaxis_title='Data', yaxis_title='Retorno Acumulado')
+    portfolio_data = get_portfolio_performance()
+    if not portfolio_data.empty:
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
+        col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
+        col3.metric("Retorno Total", f"{total_return:.2f}%")
+
+        # Filter for specific asset
+        selected_asset = st.selectbox('Selecione um ativo para filtrar (opcional)', ['Todos os ativos'] + list(portfolio_data.columns))
+        
+        if selected_asset == 'Todos os ativos':
+            plot_data = portfolio_data.sum(axis=1)
+            plot_title = 'Valor Total da Carteira ao Longo do Tempo'
+        else:
+            plot_data = portfolio_data[selected_asset]
+            plot_title = f'Valor do Ativo {selected_asset} ao Longo do Tempo'
+
+        fig = px.line(x=plot_data.index, y=plot_data.values, 
+                      labels={'x': 'Data', 'y': 'Valor (R$)'}, 
+                      title=plot_title)
+        fig.update_layout(yaxis_tickformat = 'R$,.2f')
         st.plotly_chart(fig)
+
+        # Retorno percentual
+        returns = plot_data.pct_change()
+        cumulative_returns = (1 + returns).cumprod() - 1
+        fig_returns = px.line(x=cumulative_returns.index, y=cumulative_returns.values * 100, 
+                              labels={'x': 'Data', 'y': 'Retorno Acumulado (%)'}, 
+                              title='Retorno Percentual Acumulado')
+        fig_returns.update_layout(yaxis_tickformat = '.2f%')
+        st.plotly_chart(fig_returns)
+
     else:
         st.write("Não há transações registradas ainda.")
 
