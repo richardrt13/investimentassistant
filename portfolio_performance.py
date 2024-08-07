@@ -467,7 +467,7 @@ def portfolio_tracking():
         fig_returns = go.Figure()
         fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
                                          mode='lines', name='Carteira',
-                                         hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%'))
+                                         hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
         fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
                                          mode='lines', name='Ibovespa',
                                          hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
