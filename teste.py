@@ -17,7 +17,7 @@ from pymongo import MongoClient
 # Função para carregar os ativos do CSV
 #@st.cache_data
 def load_assets():
-    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/bdrrecommendation/main/bdrs.csv?token=GHSAT0AAAAAACVUQYYGNEH6K6CGFVBR4KLMZVS5WKQ')
+    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/bdrs.csv')
 
 # Função para obter dados fundamentais de um ativo
 #@st.cache_data
