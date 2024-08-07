@@ -319,21 +319,26 @@ def sell_stock(date, ticker, quantity, price):
 def get_portfolio_performance():
     transactions = list(collection.find())
     if not transactions:
-        return pd.DataFrame()
+        return pd.DataFrame(), pd.DataFrame()
 
     df = pd.DataFrame(transactions)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date')
 
     portfolio = {}
+    invested_value = {}
     for _, row in df.iterrows():
         ticker = row['Ticker']
         if ticker not in portfolio:
             portfolio[ticker] = 0
+            invested_value[ticker] = 0
         if row['Action'] == 'BUY':
             portfolio[ticker] += row['Quantity']
+            invested_value[ticker] += row['Quantity'] * row['Price']
         else:  # SELL
+            sell_ratio = row['Quantity'] / portfolio[ticker]
             portfolio[ticker] -= row['Quantity']
+            invested_value[ticker] -= invested_value[ticker] * sell_ratio
 
     tickers = list(portfolio.keys())
     end_date = datetime.now()
@@ -345,10 +350,10 @@ def get_portfolio_performance():
     for ticker in tickers:
         daily_value[ticker] *= portfolio[ticker]
 
-    return daily_value
+    return daily_value, pd.Series(invested_value)
 
-def calculate_portfolio_metrics(portfolio_data):
-    total_invested = portfolio_data.iloc[0].sum()
+def calculate_portfolio_metrics(portfolio_data, invested_value):
+    total_invested = invested_value.sum()
     current_value = portfolio_data.iloc[-1].sum()
     total_return = ((current_value - total_invested) / total_invested) * 100
     return total_invested, current_value, total_return
@@ -388,10 +393,9 @@ def portfolio_tracking():
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_data = get_portfolio_performance()
-    portfolio_data
+    portfolio_data, invested_value = get_portfolio_performance()
     if not portfolio_data.empty:
-        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data)
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
         col1, col2, col3 = st.columns(3)
         col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
