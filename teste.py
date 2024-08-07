@@ -288,7 +288,7 @@ def main():
 
     ativos_df = load_assets()
     
-    #ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
+    ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
 
     # Substituir "-" por "Outros" na coluna "Sector"
     ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
