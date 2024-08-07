@@ -413,7 +413,7 @@ def portfolio_tracking():
         
         if selected_asset == 'Todos os ativos':
             plot_data = portfolio_data.sum(axis=1)
-            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Tempo'
+            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Temp'
         else:
             plot_data = portfolio_data[selected_asset]
             plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
