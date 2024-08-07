@@ -413,7 +413,7 @@ def portfolio_tracking():
         
         if selected_asset == 'Todos os ativos':
             plot_data = portfolio_data.sum(axis=1)
-            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Temp'
+            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Tempo'
         else:
             plot_data = portfolio_data[selected_asset]
             plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
@@ -459,7 +459,7 @@ def portfolio_tracking():
             hovermode='x unified'
         )
         fig.update_yaxes(title_text="Valor da Carteira (R$)", secondary_y=False, tickprefix='R$ ')
-        #fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
+        fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
 
         st.plotly_chart(fig)
 
@@ -467,7 +467,7 @@ def portfolio_tracking():
         fig_returns = go.Figure()
         fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
                                          mode='lines', name='Carteira',
-                                         hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
+                                         hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%'))
         fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
                                          mode='lines', name='Ibovespa',
                                          hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
