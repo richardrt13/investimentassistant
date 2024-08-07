@@ -425,7 +425,7 @@ def portfolio_tracking():
             sell_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
 
     # Display portfolio performance
-   st.subheader('Desempenho da Carteira')
+    st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value, transactions = get_portfolio_performance()
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value, transactions)
