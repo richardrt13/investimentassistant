@@ -375,7 +375,6 @@ def calculate_portfolio_metrics(portfolio_data, invested_value, transactions):
     return total_invested, current_value, total_return
 
 def calculate_cumulative_returns(plot_data, transactions):
-    plot_data = plot_data.set_index(['DT64'])
     df = transactions.sort_values('Date')
     df['Portfolio_Value'] = df.apply(lambda row: plot_data.loc[row['Date']:row['Date']].sum() if row['Date'] in plot_data.index else np.nan, axis=1)
     df['Cashflow'] = df.apply(lambda row: row['Quantity'] * row['Price'] if row['Action'] == 'BUY' else -row['Quantity'] * row['Price'], axis=1)
@@ -448,8 +447,8 @@ def portfolio_tracking():
             plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
 
         # Calculate cumulative returns for portfolio
-        plot_data
-        transactions
+        plot_data.info()
+        transactions.info()
         portfolio_cumulative_returns = calculate_cumulative_returns(plot_data, transactions)
 
         # Get Ibovespa data
