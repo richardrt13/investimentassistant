@@ -447,6 +447,8 @@ def portfolio_tracking():
             plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
 
         # Calculate cumulative returns for portfolio
+        plot_data
+        transactions
         portfolio_cumulative_returns = calculate_cumulative_returns(plot_data, transactions)
 
         # Get Ibovespa data
