@@ -132,6 +132,23 @@ def optimize_portfolio(returns, risk_free_rate):
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
 
+def enhanced_sharpe_ratio(weights, returns, growth_data, quality_data):
+    p_return, p_volatility = portfolio_performance(weights, returns)
+    growth_score = np.dot(weights, growth_data)
+    quality_score = np.dot(weights, quality_data)
+    return -(p_return + 0.2 * growth_score + 0.2 * quality_score - risk_free_rate) / p_volatility
+
+def optimize_enhanced_portfolio(returns, growth_data, quality_data):
+    num_assets = returns.shape[1]
+    args = (returns, growth_data, quality_data)
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bound = (0.0, 1.0)
+    bounds = tuple(bound for asset in range(num_assets))
+    result = minimize(enhanced_sharpe_ratio, num_assets*[1./num_assets], args=args,
+                      method='SLSQP', bounds=bounds, constraints=constraints)
+    return result.x
+
+
 # Função para gerar portfólios aleatórios
 def generate_random_portfolios(returns, num_portfolios=5000):
     results = []
@@ -602,6 +619,9 @@ def main():
     
             # Selecionar os top 10 ativos com base no score
             top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
+            growth_data = top_ativos[['revenue_growth', 'income_growth']].mean(axis=1).values
+            quality_data = top_ativos['ROIC'].values
+
             
     
             tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
@@ -645,10 +665,11 @@ def main():
     
             status_text.text('Otimizando portfólio...')
             try:
-                optimal_weights = optimize_portfolio(returns, risk_free_rate)
+                optimal_weights = optimize_enhanced_portfolio(returns, growth_data, quality_data)
                 # Ajustar pesos com base nas anomalias
                 anomaly_scores = calculate_anomaly_scores(returns)
-                adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
+                momentum_scores = calculate_momentum_scores(returns)  # Função a ser implementada
+                adjusted_weights = adjust_weights(optimal_weights, anomaly_scores, momentum_scores, growth_data, quality_data)
             except Exception as e:
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
