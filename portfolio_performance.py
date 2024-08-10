@@ -670,7 +670,7 @@ def main():
                 return
     
             global risk_free_rate
-            risk_free_rate = 0.05  # 5% como exemplo, ajuste conforme necessário
+            risk_free_rate = 0.1
     
             status_text.text('Otimizando portfólio...')
             try:
