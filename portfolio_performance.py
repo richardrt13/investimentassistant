@@ -565,7 +565,6 @@ def main():
     
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
-            ativos_df
     
             # Filtrar ativos com informações necessárias
             ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
@@ -600,7 +599,6 @@ def main():
     
             # Calcular score ajustado
             ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
-            ativos_df
     
             # Selecionar os top 10 ativos com base no score
             top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
