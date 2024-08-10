@@ -18,12 +18,12 @@ import time
 
 
 # Função para carregar os ativos do CSV
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def load_assets():
     return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/bdrs.csv')
 
 # Função para obter dados fundamentais de um ativo
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -72,7 +72,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -90,7 +90,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 return pd.DataFrame()
 
 # Função para calcular o retorno acumulado
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_cumulative_return(ticker):
     stock = yf.Ticker(ticker)
     end_date = datetime.now()
@@ -266,7 +266,7 @@ def calculate_anomaly_scores(returns):
     anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
     return anomaly_scores
     
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 def get_financial_growth_data(ticker, years=5):
     stock = yf.Ticker(ticker)
     
@@ -415,7 +415,7 @@ def buy_stock(date, ticker, quantity, price):
 def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
 
-@st.cache_data(ttl=3600)
+#@st.cache_data(ttl=3600)
 # Function to get portfolio performance
 def get_portfolio_performance():
     transactions = list(collection.find())
