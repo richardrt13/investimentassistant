@@ -712,6 +712,7 @@ def main():
                 fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
                 growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['revenue_growth', 'income_growth']].to_dict('records')[0]
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['Anomalias de Preço (%)', 'Anomalias de RSI (%)']].to_dict('records')[0]
+                anomaly_data
                 
                 explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data)
                 
