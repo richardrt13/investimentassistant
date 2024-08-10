@@ -29,18 +29,27 @@ def get_fundamental_data(ticker, max_retries=3):
             stock = yf.Ticker(ticker)
             info = stock.info
             
-            # Obter dados para calcular o ROIC
-            net_income = info.get('netIncomeToCommon', np.nan)
-            total_assets = info.get('totalAssets', np.nan)
-            total_liabilities = info.get('totalLiab', np.nan)
-            cash = info.get('cash', np.nan)
+            # Tentar obter o ROIC diretamente, se disponível
+            roic = info.get('returnOnInvestment', np.nan)
             
-            # Calcular o ROIC
-            if not np.isnan(net_income) and not np.isnan(total_assets) and not np.isnan(total_liabilities) and not np.isnan(cash):
-                invested_capital = total_assets - total_liabilities - cash
-                roic = net_income / invested_capital if invested_capital != 0 else np.nan
-            else:
-                roic = np.nan
+            # Se o ROIC não estiver disponível diretamente, tentar calculá-lo
+            if np.isnan(roic):
+                # Obter dados financeiros dos últimos 4 trimestres
+                financials = stock.quarterly_financials
+                
+                if not financials.empty:
+                    net_income = financials.loc['Net Income'].sum()
+                    total_assets = financials.loc['Total Assets'].iloc[-1]  # Último trimestre
+                    total_liabilities = financials.loc['Total Liabilities Net Minority Interest'].iloc[-1]  # Último trimestre
+                    cash = financials.loc['Cash and Cash Equivalents'].iloc[-1]  # Último trimestre
+                    
+                    invested_capital = total_assets - total_liabilities - cash
+                    if invested_capital != 0:
+                        roic = (net_income / invested_capital) * 100  # em percentagem
+                    else:
+                        roic = np.nan
+                else:
+                    roic = np.nan
             
             return {
                 'P/L': info.get('trailingPE', np.nan),
@@ -50,7 +59,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic
             }
-        except ConnectionError as e:
+        except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(2 ** attempt)  # Exponential backoff
             else:
