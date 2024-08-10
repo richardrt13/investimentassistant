@@ -331,14 +331,14 @@ def calculate_asset_sharpe(returns_series, risk_free_rate):
     asset_volatility = returns_series.std() * np.sqrt(252)
     return (asset_return - risk_free_rate) / asset_volatility
 
-def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
+def generate_allocation_explanation(ticker, shares, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
     ticker = ticker.replace('.SA', '')
     explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
     
     # Calcular Sharpe individual do ativo
     asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
 
-    if weight == 0:
+    if shares == 0:
         explanation = f"Explicação para a não alocação em {ticker}:\n"
         explanation += f"Este ativo apresenta {asset_sharpe:.2f} de índice de sharpe e não foi incluído na alocação final do portfólio otimizado.\n"
         explanation += "Isso pode ocorrer devido a várias razões:\n"
@@ -748,7 +748,7 @@ def main():
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
                 
                 
-                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
+                explanation = generate_allocation_explanation(ticker, shares, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
                 
                 allocation_data.append({
                     'Ticker': ticker,
