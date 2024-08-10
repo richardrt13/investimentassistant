@@ -622,7 +622,7 @@ def main():
             top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
     
             st.subheader('Top 10 BDRs Recomendados')
-            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
     
             # Otimização de portfólio
             returns = calculate_returns(stock_data)
