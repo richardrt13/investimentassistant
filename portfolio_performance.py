@@ -132,19 +132,52 @@ def optimize_portfolio(returns, risk_free_rate):
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
 
-def enhanced_sharpe_ratio(weights, returns, growth_data, quality_data):
-    p_return, p_volatility = portfolio_performance(weights, returns)
-    growth_score = np.dot(weights, growth_data)
-    quality_score = np.dot(weights, quality_data)
-    return -(p_return + 0.2 * growth_score + 0.2 * quality_score - risk_free_rate) / p_volatility
+def calculate_long_term_growth_scores(ativos_df):
+    """
+    Calcula scores de crescimento de longo prazo para cada ativo.
+    
+    :param ativos_df: DataFrame com dados fundamentalistas dos ativos
+    :return: Series com os scores de crescimento de longo prazo para cada ativo
+    """
+    # Definir os pesos para cada métrica
+    weights = {
+        'revenue_growth': 0.2,
+        'income_growth': 0.2,
+        'ROE': 0.2,
+        'ROIC': 0.2,
+        'debt_stability': 0.1,
+        'P/L': 0.05,
+        'P/VP': 0.05
+    }
+    
+    # Inicializar o score
+    long_term_score = pd.Series(0, index=ativos_df.index)
+    
+    for metric, weight in weights.items():
+        if metric in ['P/L', 'P/VP']:  # Métricas onde valores menores são melhores
+            normalized_metric = (ativos_df[metric].max() - ativos_df[metric]) / (ativos_df[metric].max() - ativos_df[metric].min())
+        else:  # Métricas onde valores maiores são melhores
+            normalized_metric = (ativos_df[metric] - ativos_df[metric].min()) / (ativos_df[metric].max() - ativos_df[metric].min())
+        
+        long_term_score += weight * normalized_metric
+    
+    # Normalizar o score final
+    long_term_score = (long_term_score - long_term_score.mean()) / long_term_score.std()
+    
+    return long_term_score
 
-def optimize_enhanced_portfolio(returns, growth_data, quality_data):
+def enhanced_long_term_sharpe_ratio(weights, returns, long_term_scores):
+    p_return, p_volatility = portfolio_performance(weights, returns)
+    long_term_score = np.dot(weights, long_term_scores)
+    return -(p_return + 0.5 * long_term_score - risk_free_rate) / p_volatility
+
+def optimize_long_term_portfolio(returns, long_term_scores):
     num_assets = returns.shape[1]
-    args = (returns, growth_data, quality_data)
+    args = (returns, long_term_scores)
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bound = (0.0, 1.0)
     bounds = tuple(bound for asset in range(num_assets))
-    result = minimize(enhanced_sharpe_ratio, num_assets*[1./num_assets], args=args,
+    result = minimize(enhanced_long_term_sharpe_ratio, num_assets*[1./num_assets], args=args,
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
 
@@ -341,6 +374,7 @@ def get_financial_growth_data(ticker, years=5):
         'income_growth': income_growth,
         'debt_stability': debt_stability
     }
+
 
 # MongoDB Atlas connection
 mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
@@ -665,11 +699,12 @@ def main():
     
             status_text.text('Otimizando portfólio...')
             try:
-                optimal_weights = optimize_enhanced_portfolio(returns, growth_data, quality_data)
-                # Ajustar pesos com base nas anomalias
+                long_term_scores = calculate_long_term_growth_scores(top_ativos)
+                optimal_weights = optimize_long_term_portfolio(returns, long_term_scores)
+
+                # Ajustar pesos com base em anomalias, se necessário
                 anomaly_scores = calculate_anomaly_scores(returns)
-                momentum_scores = calculate_momentum_scores(returns)  # Função a ser implementada
-                adjusted_weights = adjust_weights(optimal_weights, anomaly_scores, momentum_scores, growth_data, quality_data)
+                adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
             except Exception as e:
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
