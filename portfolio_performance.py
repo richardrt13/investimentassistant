@@ -326,6 +326,31 @@ def get_financial_growth_data(ticker, years=5):
         'debt_stability': debt_stability
     }
 
+def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data):
+    explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
+    
+    # Explicar com base em dados fundamentalistas
+    explanation += f"- P/L: {fundamental_data['P/L']:.2f} "
+    explanation += "(favorável) " if fundamental_data['P/L'] < 15 else "(desfavorável) "
+    explanation += f"- P/VP: {fundamental_data['P/VP']:.2f} "
+    explanation += "(favorável) " if fundamental_data['P/VP'] < 1.5 else "(desfavorável) "
+    explanation += f"- ROE: {fundamental_data['ROE']:.2%} "
+    explanation += "(alto) " if fundamental_data['ROE'] > 0.15 else "(baixo) "
+    
+    # Explicar com base em dados de crescimento
+    explanation += f"\n- Crescimento de receita: {growth_data['revenue_growth']:.2%} "
+    explanation += "(forte) " if growth_data['revenue_growth'] > 0.1 else "(fraco) "
+    explanation += f"- Crescimento de lucro: {growth_data['income_growth']:.2%} "
+    explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
+    
+    # Explicar com base em anomalias
+    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} "
+    explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
+    explanation += f"- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
+    explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
+    
+    return explanation
+
 # MongoDB Atlas connection
 mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
 client = MongoClient(mongo_uri)
@@ -664,16 +689,30 @@ def main():
                 allocated_value = weight * invest_value
                 shares = allocated_value / price
                 cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
+                
+                # Obter dados para explicação
+                fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
+                growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['revenue_growth', 'income_growth']].to_dict('records')[0]
+                anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
+                
+                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data)
+                
                 allocation_data.append({
                     'Ticker': ticker,
                     'Peso': f"{weight:.2%}",
                     'Valor Alocado': f"R$ {allocated_value:.2f}",
                     'Quantidade de Ações': f"{shares:.2f}",
-                    'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A"
+                    'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A",
+                    'Explicação': explanation
                 })
-    
+            
             allocation_df = pd.DataFrame(allocation_data)
-            st.table(allocation_df)
+            st.table(allocation_df[['Ticker', 'Peso', 'Valor Alocado', 'Quantidade de Ações', 'Rentabilidade Acumulada (5 anos)']])
+            
+            # Exibir explicações
+            for _, row in allocation_df.iterrows():
+                with st.expander(f"Explicação para {row['Ticker']}"):
+                    st.write(row['Explicação'])
     
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
