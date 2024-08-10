@@ -344,10 +344,10 @@ def generate_allocation_explanation(ticker, weight, fundamental_data, growth_dat
     explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
     
     # Explicar com base em anomalias
-    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} "
-    explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
-    explanation += f"- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
-    explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
+    explanation += f"\n- Anomalias de preço: {anomaly_data['Anomalias de Preço (%)']:.2%} " 
+    explanation += "(poucas) " if anomaly_data['Anomalias de Preço (%)'] < 0.1 else "(muitas) "
+    explanation += f"- Anomalias de RSI: {anomaly_data['Anomalias de RSI (%)']:.2%} "
+    explanation += "(poucas) " if anomaly_data['Anomalias de RSI (%)'] < 0.1 else "(muitas) "
     
     return explanation
 
