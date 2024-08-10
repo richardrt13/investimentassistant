@@ -727,8 +727,6 @@ def main():
             fig = plot_efficient_frontier(returns, adjusted_weights)
             st.plotly_chart(fig)
     
-            # Dentro da função main(), após calcular as métricas do portfólio
-    
     
             # Exibir informações sobre anomalias detectadas
             st.subheader('Análise de Anomalias')
@@ -746,7 +744,7 @@ def main():
             anomaly_df = pd.DataFrame(anomaly_data)
             st.table(anomaly_df)
     
-            st.write("As anomalias de preço indicam movimentos incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
+            st.write("As anomalias de preço indicam moviments incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
     
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
