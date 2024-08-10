@@ -121,16 +121,6 @@ def negative_sharpe_ratio(weights, returns, risk_free_rate):
     p_return, p_volatility = portfolio_performance(weights, returns)
     return -(p_return - risk_free_rate) / p_volatility
 
-# Função para otimizar o portfólio
-def optimize_portfolio(returns, risk_free_rate):
-    num_assets = returns.shape[1]
-    args = (returns, risk_free_rate)
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    bound = (0.0, 1.0)
-    bounds = tuple(bound for asset in range(num_assets))
-    result = minimize(negative_sharpe_ratio, num_assets*[1./num_assets], args=args,
-                      method='SLSQP', bounds=bounds, constraints=constraints)
-    return result.x
 
 def calculate_long_term_growth_scores(ativos_df):
     """
