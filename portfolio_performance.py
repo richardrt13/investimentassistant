@@ -14,6 +14,7 @@ import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
 from pymongo import MongoClient
+import time
 
 
 # Função para carregar os ativos do CSV
