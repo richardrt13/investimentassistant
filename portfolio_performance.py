@@ -28,12 +28,27 @@ def get_fundamental_data(ticker, max_retries=3):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
+            
+            # Obter dados para calcular o ROIC
+            net_income = info.get('netIncomeToCommon', np.nan)
+            total_assets = info.get('totalAssets', np.nan)
+            total_liabilities = info.get('totalLiab', np.nan)
+            cash = info.get('cash', np.nan)
+            
+            # Calcular o ROIC
+            if not np.isnan(net_income) and not np.isnan(total_assets) and not np.isnan(total_liabilities) and not np.isnan(cash):
+                invested_capital = total_assets - total_liabilities - cash
+                roic = net_income / invested_capital if invested_capital != 0 else np.nan
+            else:
+                roic = np.nan
+            
             return {
                 'P/L': info.get('trailingPE', np.nan),
                 'P/VP': info.get('priceToBook', np.nan),
                 'ROE': info.get('returnOnEquity', np.nan),
                 'Volume': info.get('averageVolume', np.nan),
-                'Price': info.get('currentPrice', np.nan)
+                'Price': info.get('currentPrice', np.nan),
+                'ROIC': roic
             }
         except ConnectionError as e:
             if attempt < max_retries - 1:
@@ -45,7 +60,8 @@ def get_fundamental_data(ticker, max_retries=3):
                     'P/VP': np.nan,
                     'ROE': np.nan,
                     'Volume': np.nan,
-                    'Price': np.nan
+                    'Price': np.nan,
+                    'ROIC': np.nan
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
@@ -544,7 +560,7 @@ def main():
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
     
             # Filtrar ativos com informações necessárias
-            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
       
             
          
