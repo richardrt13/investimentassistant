@@ -326,28 +326,50 @@ def get_financial_growth_data(ticker, years=5):
         'debt_stability': debt_stability
     }
 
-def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data):
+def calculate_asset_sharpe(returns, risk_free_rate):
+    asset_return = returns.mean() * 252
+    asset_volatility = returns.std() * np.sqrt(252)
+    return (asset_return - risk_free_rate) / asset_volatility
+
+def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
     explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
     
-    # Explicar com base em dados fundamentalistas
-    explanation += f"- P/L: {fundamental_data['P/L']:.2f} "
+    # Calcular Sharpe individual do ativo
+    asset_sharpe = calculate_asset_sharpe(returns[ticker], risk_free_rate)
+    
+    explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
+    explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
+    
+    if asset_sharpe > portfolio_sharpe:
+        explanation += "O ativo tem um Sharpe individual superior ao do portfólio, contribuindo positivamente para o desempenho geral.\n"
+    else:
+        explanation += "Embora o Sharpe individual seja menor que o do portfólio, este ativo ajuda na diversificação e na otimização geral.\n"
+    
+    # Adicionar explicações sobre dados fundamentalistas
+    explanation += f"\nDados fundamentalistas:"
+    explanation += f"\n- P/L: {fundamental_data['P/L']:.2f} "
     explanation += "(favorável) " if fundamental_data['P/L'] < 15 else "(desfavorável) "
-    explanation += f"- P/VP: {fundamental_data['P/VP']:.2f} "
+    explanation += f"\n- P/VP: {fundamental_data['P/VP']:.2f} "
     explanation += "(favorável) " if fundamental_data['P/VP'] < 1.5 else "(desfavorável) "
-    explanation += f"- ROE: {fundamental_data['ROE']:.2%} "
+    explanation += f"\n- ROE: {fundamental_data['ROE']:.2%} "
     explanation += "(alto) " if fundamental_data['ROE'] > 0.15 else "(baixo) "
     
-    # Explicar com base em dados de crescimento
+    # Adicionar explicações sobre dados de crescimento
+    explanation += f"\n\nDados de crescimento:"
     explanation += f"\n- Crescimento de receita: {growth_data['revenue_growth']:.2%} "
     explanation += "(forte) " if growth_data['revenue_growth'] > 0.1 else "(fraco) "
-    explanation += f"- Crescimento de lucro: {growth_data['income_growth']:.2%} "
+    explanation += f"\n- Crescimento de lucro: {growth_data['income_growth']:.2%} "
     explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
     
-    #Explicar com base em anomalias
-    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} " 
+    # Adicionar explicações sobre anomalias
+    explanation += f"\n\nAnálise de anomalias:"
+    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} "
     explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
-    explanation += f"- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
+    explanation += f"\n- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
     explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
+    
+    explanation += "\n\nA alocação final é resultado da otimização do portfólio para maximizar o índice de Sharpe, "
+    explanation += "considerando o equilíbrio entre retorno esperado, risco e correlações entre os ativos."
     
     return explanation
 
@@ -699,7 +721,10 @@ def main():
             st.table(anomaly_df)
     
             st.write("As anomalias de preço indicam moviments incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
-    
+
+            portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
+            portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
+
             st.subheader('Alocação Ótima do Portfólio')
             allocation_data = []
             for ticker, weight in zip(tickers, adjusted_weights):
@@ -714,7 +739,7 @@ def main():
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
                 
                 
-                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data)
+                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
                 
                 allocation_data.append({
                     'Ticker': ticker,
