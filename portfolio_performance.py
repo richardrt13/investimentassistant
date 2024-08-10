@@ -337,8 +337,10 @@ def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental
     
     # Calcular Sharpe individual do ativo
     asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
-    type(allocated_value)
-    if allocated_value <= 0:
+
+    shares = int(shares)
+
+    if shares <= 0:
         explanation = f"Explicação para a não alocação em {ticker}:\n"
         explanation += f"Este ativo apresenta {asset_sharpe:.2f} de índice de sharpe e não foi incluído na alocação final do portfólio otimizado.\n"
         explanation += "Isso pode ocorrer devido a várias razões:\n"
