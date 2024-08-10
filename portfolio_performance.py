@@ -558,6 +558,7 @@ def main():
     
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
+            ativos_df
     
             # Filtrar ativos com informações necessárias
             ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
