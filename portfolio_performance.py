@@ -117,55 +117,21 @@ def portfolio_performance(weights, returns):
     return portfolio_return, portfolio_volatility
 
 
-def calculate_long_term_growth_scores(ativos_df):
-    """
-    Calcula scores de crescimento de longo prazo para cada ativo.
-    
-    :param ativos_df: DataFrame com dados fundamentalistas dos ativos
-    :return: Series com os scores de crescimento de longo prazo para cada ativo
-    """
-    # Definir os pesos para cada métrica
-    weights = {
-        'revenue_growth': 0.2,
-        'income_growth': 0.2,
-        'ROE': 0.2,
-        'ROIC': 0.2,
-        'debt_stability': 0.1,
-        'P/L': 0.05,
-        'P/VP': 0.05
-    }
-    
-    # Inicializar o score
-    long_term_score = pd.Series(0, index=ativos_df.index)
-    
-    for metric, weight in weights.items():
-        if metric in ['P/L', 'P/VP']:  # Métricas onde valores menores são melhores
-            normalized_metric = (ativos_df[metric].max() - ativos_df[metric]) / (ativos_df[metric].max() - ativos_df[metric].min())
-        else:  # Métricas onde valores maiores são melhores
-            normalized_metric = (ativos_df[metric] - ativos_df[metric].min()) / (ativos_df[metric].max() - ativos_df[metric].min())
-        
-        long_term_score += weight * normalized_metric
-    
-    # Normalizar o score final
-    long_term_score = (long_term_score - long_term_score.mean()) / long_term_score.std()
-    
-    return long_term_score
-
-def enhanced_long_term_sharpe_ratio(weights, returns, long_term_scores):
+# Função para calcular o índice de Sharpe negativo (para otimização)
+def negative_sharpe_ratio(weights, returns, risk_free_rate):
     p_return, p_volatility = portfolio_performance(weights, returns)
-    long_term_score = np.dot(weights, long_term_scores)
-    return -(p_return + 0.5 * long_term_score - risk_free_rate) / p_volatility
+    return -(p_return - risk_free_rate) / p_volatility
 
-def optimize_long_term_portfolio(returns, long_term_scores):
+# Função para otimizar o portfólio
+def optimize_portfolio(returns, risk_free_rate):
     num_assets = returns.shape[1]
-    args = (returns, long_term_scores)
+    args = (returns, risk_free_rate)
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bound = (0.0, 1.0)
     bounds = tuple(bound for asset in range(num_assets))
-    result = minimize(enhanced_long_term_sharpe_ratio, num_assets*[1./num_assets], args=args,
+    result = minimize(negative_sharpe_ratio, num_assets*[1./num_assets], args=args,
                       method='SLSQP', bounds=bounds, constraints=constraints)
     return result.x
-
 
 # Função para gerar portfólios aleatórios
 def generate_random_portfolios(returns, num_portfolios=5000):
@@ -254,32 +220,27 @@ def calculate_rsi(prices, window=14):
     return 100 - (100 / (1 + rs))
 
 def calculate_adjusted_score(row):
-    # Fatores de crescimento e estabilidade
-    growth_factor = (row['revenue_growth'] + row['income_growth']) / 2
-    stability_factor = row['debt_stability']
-
-    # Cálculo do score base com pesos ajustados
     base_score = (
-        row['ROE'] / row['P/L'] * 1.5 +  # Aumentado o peso do ROE/P/L
-        1 / row['P/VP'] * 1.2 +          # Ligeiramente aumentado o peso do P/VP inverso
-        np.log(row['Volume']) * 0.8 +    # Reduzido um pouco o peso do volume
-        growth_factor * 15 +             # Aumentado o peso do fator de crescimento
-        stability_factor * 8             # Aumentado o peso da estabilidade da dívida
+        row['ROE'] / row['P/L'] +
+        1 / row['P/VP'] +
+        np.log(row['Volume']) +
+        row['revenue_growth'] * 10 +  # Multiplicador para dar mais peso
+        row['income_growth'] * 10 +   # Multiplicador para dar mais peso
+        row['debt_stability'] * 5      # Multiplicador para dar mais peso
     )
-
-    # Fator de qualidade
-    quality_factor = (row['ROE'] + row['ROIC']) / 2
-    
-    # Aplicação do fator de qualidade
-    adjusted_base_score = base_score * (1 + quality_factor * 0.1)
-
-    # Cálculo da penalidade por anomalias
     anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
-    
-    # Aplicação da penalidade por anomalias
-    final_score = adjusted_base_score * (1 - 0.15 * anomaly_penalty)
+    return base_score * (1 - 0.1 * anomaly_penalty)
 
-    return final_score
+def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
+    anomaly_scores = calculate_anomaly_scores(returns)
+    growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
+    
+    # Normalizar os scores
+    growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
+    
+    # Ajustar pesos
+    adjusted_weights = weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
+    return adjusted_weights / adjusted_weights.sum()
 
 def adjust_weights_for_anomalies(weights, anomaly_scores):
     adjusted_weights = weights * (1 - anomaly_scores)
@@ -348,7 +309,6 @@ def get_financial_growth_data(ticker, years=5):
         'income_growth': income_growth,
         'debt_stability': debt_stability
     }
-
 
 # MongoDB Atlas connection
 mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
@@ -673,10 +633,8 @@ def main():
     
             status_text.text('Otimizando portfólio...')
             try:
-                long_term_scores = calculate_long_term_growth_scores(top_ativos)
-                optimal_weights = optimize_long_term_portfolio(returns, long_term_scores)
-
-                # Ajustar pesos com base em anomalias, se necessário
+                optimal_weights = optimize_portfolio(returns, risk_free_rate)
+                # Ajustar pesos com base nas anomalias
                 anomaly_scores = calculate_anomaly_scores(returns)
                 adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
             except Exception as e:
