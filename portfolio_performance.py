@@ -326,7 +326,7 @@ def get_financial_growth_data(ticker, years=5):
         'debt_stability': debt_stability
     }
 
-def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data):#, anomaly_data):
+def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data):
     explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
     
     # Explicar com base em dados fundamentalistas
@@ -343,11 +343,11 @@ def generate_allocation_explanation(ticker, weight, fundamental_data, growth_dat
     explanation += f"- Crescimento de lucro: {growth_data['income_growth']:.2%} "
     explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
     
-    # Explicar com base em anomalias
-    # explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} " 
-    # explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
-    # explanation += f"- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
-    # explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
+    Explicar com base em anomalias
+    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} " 
+    explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
+    explanation += f"- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
+    explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
     
     return explanation
 
@@ -691,8 +691,8 @@ def main():
                 rsi_anomalies = (rsi > 70) | (rsi < 30)
                 anomaly_data.append({
                     'Ticker': ticker[:-3],
-                    'price_anomaly': f"{price_anomalies.mean()*100:.2f}%",
-                    'rsi_anomaly': f"{rsi_anomalies.mean()*100:.2f}%"
+                    'price_anomaly': price_anomalies.mean()*100,
+                    'rsi_anomaly': rsi_anomalies.mean()*100
                 })
             
             anomaly_df = pd.DataFrame(anomaly_data)
@@ -712,11 +712,9 @@ def main():
                 fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
                 growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['revenue_growth', 'income_growth']].to_dict('records')[0]
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
-                growth_data
-                anomaly_data
                 
                 
-                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data)
+                explanation = generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data)
                 
                 allocation_data.append({
                     'Ticker': ticker,
