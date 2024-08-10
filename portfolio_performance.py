@@ -337,14 +337,22 @@ def generate_allocation_explanation(ticker, weight, fundamental_data, growth_dat
     
     # Calcular Sharpe individual do ativo
     asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
-    
-    explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
-    explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
-    
-    if asset_sharpe > portfolio_sharpe:
-        explanation += "O ativo tem um Sharpe individual superior ao do portfólio, contribuindo positivamente para o desempenho geral.\n"
+
+    if weight == 0:
+        explanation = f"Explicação para a não alocação em {ticker}:\n"
+        explanation += "Este ativo não foi incluído na alocação final do portfólio otimizado.\n"
+        explanation += "Isso pode ocorrer devido a várias razões:\n"
+        explanation += "- O ativo pode não contribuir significativamente para a melhoria do índice de Sharpe do portfólio.\n"
+        explanation += "- Outros ativos podem oferecer melhor relação risco-retorno ou benefícios de diversificação.\n"
+        explanation += "- As restrições de otimização podem ter levado à exclusão deste ativo.\n\n"
     else:
-        explanation += "Embora o Sharpe individual seja menor que o do portfólio, este ativo ajuda na diversificação e na otimização geral.\n"
+        explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
+        explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
+        
+        if asset_sharpe > portfolio_sharpe:
+            explanation += "O ativo tem um Sharpe individual superior ao do portfólio, contribuindo positivamente para o desempenho geral.\n"
+        else:
+            explanation += "Embora o Sharpe individual seja menor que o do portfólio, este ativo ajuda na diversificação e na otimização geral.\n"
     
     # Adicionar explicações sobre dados fundamentalistas
     explanation += f"\nDados fundamentalistas:"
