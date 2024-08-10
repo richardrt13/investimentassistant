@@ -332,6 +332,7 @@ def calculate_asset_sharpe(returns, risk_free_rate):
     return (asset_return - risk_free_rate) / asset_volatility
 
 def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
+    ticker = ticker.replace('.SA', '')
     explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
     
     # Calcular Sharpe individual do ativo
