@@ -326,9 +326,9 @@ def get_financial_growth_data(ticker, years=5):
         'debt_stability': debt_stability
     }
 
-def calculate_asset_sharpe(returns, risk_free_rate):
-    asset_return = returns.mean() * 252
-    asset_volatility = returns.std() * np.sqrt(252)
+def calculate_asset_sharpe(returns_series, risk_free_rate):
+    asset_return = returns_series.mean() * 252
+    asset_volatility = returns_series.std() * np.sqrt(252)
     return (asset_return - risk_free_rate) / asset_volatility
 
 def generate_allocation_explanation(ticker, weight, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
