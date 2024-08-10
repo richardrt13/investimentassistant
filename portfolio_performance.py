@@ -336,7 +336,7 @@ def generate_allocation_explanation(ticker, weight, fundamental_data, growth_dat
     explanation = f"Explicação para a alocação de {weight:.2%} em {ticker}:\n"
     
     # Calcular Sharpe individual do ativo
-    asset_sharpe = calculate_asset_sharpe(returns[ticker], risk_free_rate)
+    asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
     
     explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
     explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
