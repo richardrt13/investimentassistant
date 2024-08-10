@@ -681,6 +681,24 @@ def main():
             except Exception as e:
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
+
+            # Exibir informações sobre anomalias detectadas
+            st.subheader('Análise de Anomalias')
+            anomaly_data = []
+            for ticker in tickers:
+                price_anomalies = detect_price_anomalies(stock_data[ticker])
+                rsi = calculate_rsi(stock_data[ticker])
+                rsi_anomalies = (rsi > 70) | (rsi < 30)
+                anomaly_data.append({
+                    'Ticker': ticker[:-3],
+                    'Anomalias de Preço (%)': f"{price_anomalies.mean()*100:.2f}%",
+                    'Anomalias de RSI (%)': f"{rsi_anomalies.mean()*100:.2f}%"
+                })
+            
+            anomaly_df = pd.DataFrame(anomaly_data)
+            st.table(anomaly_df)
+    
+            st.write("As anomalias de preço indicam moviments incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
     
             st.subheader('Alocação Ótima do Portfólio')
             allocation_data = []
@@ -727,24 +745,6 @@ def main():
             fig = plot_efficient_frontier(returns, adjusted_weights)
             st.plotly_chart(fig)
     
-    
-            # Exibir informações sobre anomalias detectadas
-            st.subheader('Análise de Anomalias')
-            anomaly_data = []
-            for ticker in tickers:
-                price_anomalies = detect_price_anomalies(stock_data[ticker])
-                rsi = calculate_rsi(stock_data[ticker])
-                rsi_anomalies = (rsi > 70) | (rsi < 30)
-                anomaly_data.append({
-                    'Ticker': ticker[:-3],
-                    'Anomalias de Preço (%)': f"{price_anomalies.mean()*100:.2f}%",
-                    'Anomalias de RSI (%)': f"{rsi_anomalies.mean()*100:.2f}%"
-                })
-            
-            anomaly_df = pd.DataFrame(anomaly_data)
-            st.table(anomaly_df)
-    
-            st.write("As anomalias de preço indicam moviments incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
     
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
