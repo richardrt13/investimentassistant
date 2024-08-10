@@ -692,7 +692,7 @@ def main():
                 anomaly_data.append({
                     'Ticker': ticker[:-3],
                     'price_anomaly': f"{price_anomalies.mean()*100:.2f}%",
-                    'rsi_anomaliy': f"{rsi_anomalies.mean()*100:.2f}%"
+                    'rsi_anomaly': f"{rsi_anomalies.mean()*100:.2f}%"
                 })
             
             anomaly_df = pd.DataFrame(anomaly_data)
