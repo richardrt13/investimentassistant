@@ -694,7 +694,6 @@ def main():
     
             # Otimização de portfólio
             returns = calculate_returns(stock_data)
-            returns
     
             # Verificar se há retornos válidos para continuar
             if returns.empty:
