@@ -340,7 +340,7 @@ def generate_allocation_explanation(ticker, weight, fundamental_data, growth_dat
 
     if weight == 0:
         explanation = f"Explicação para a não alocação em {ticker}:\n"
-        explanation += "Este ativo não foi incluído na alocação final do portfólio otimizado.\n"
+        explanation += f"Este ativo apresenta {asset_sharpe:.2f} de índice de sharpe e não foi incluído na alocação final do portfólio otimizado.\n"
         explanation += "Isso pode ocorrer devido a várias razões:\n"
         explanation += "- O ativo pode não contribuir significativamente para a melhoria do índice de Sharpe do portfólio.\n"
         explanation += "- Outros ativos podem oferecer melhor relação risco-retorno ou benefícios de diversificação.\n"
