@@ -116,11 +116,6 @@ def portfolio_performance(weights, returns):
     portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
     return portfolio_return, portfolio_volatility
 
-# Função para calcular o índice de Sharpe negativo (para otimização)
-def negative_sharpe_ratio(weights, returns, risk_free_rate):
-    p_return, p_volatility = portfolio_performance(weights, returns)
-    return -(p_return - risk_free_rate) / p_volatility
-
 
 def calculate_long_term_growth_scores(ativos_df):
     """
