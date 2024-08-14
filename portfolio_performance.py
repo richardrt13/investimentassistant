@@ -480,7 +480,7 @@ def portfolio_tracking():
     st.subheader('Registrar Transação')
     col1, col2, col3 = st.columns(3)
     with col1:
-        transaction_date = st.date_input('Data da Transação', value=datetime.now().date())
+        transaction_date = st.date_input('Data da Transação', value=datetime.now().date()
     with col2:
         transaction_ticker = st.selectbox('Ticker', options=tickers)
     with col3:
@@ -492,10 +492,11 @@ def portfolio_tracking():
         transaction_price = st.number_input('Preço', min_value=0.01, value=1.00, step=0.01)
 
     if st.button('Registrar Transação'):
+        transaction_date_str = transaction_date.strftime('%Y-%m-%d')
         if transaction_action == 'Compra':
-            buy_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
+            buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
         else:
-            sell_stock(transaction_date, transaction_ticker, transaction_quantity, transaction_price)
+            sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
