@@ -492,7 +492,7 @@ def portfolio_tracking():
         transaction_price = st.number_input('Preço', min_value=0.01, value=1.00, step=0.01)
 
     if st.button('Registrar Transação'):
-        transaction_date_str = transaction_date.strftime('%Y-%m-%d')
+        transaction_date_str = transaction_date.strftime('%Y-%m-%d %H:%M:%S')
         if transaction_action == 'Compra':
             buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
         else:
