@@ -480,7 +480,7 @@ def portfolio_tracking():
     st.subheader('Registrar Transação')
     col1, col2, col3 = st.columns(3)
     with col1:
-        transaction_date = st.date_input('Data da Transação', value=datetime.now())
+        transaction_date = st.date_input('Data da Transação', value=datetime.now().date())
     with col2:
         transaction_ticker = st.selectbox('Ticker', options=tickers)
     with col3:
