@@ -551,8 +551,18 @@ def portfolio_tracking():
 
         st.plotly_chart(fig_asset_returns)
 
-        # Calculate cumulative returns for portfolio
-        portfolio_cumulative_returns = (portfolio_data.sum(axis=1) / portfolio_data.sum(axis=1).iloc[0] - 1) * 100
+         # Calculate daily portfolio value
+        daily_portfolio_value = portfolio_data.sum(axis=1)
+
+        # Calculate daily returns
+        daily_returns = daily_portfolio_value.pct_change()
+
+        # Calculate cumulative returns
+        portfolio_cumulative_returns = (1 + daily_returns).cumprod() - 1
+        portfolio_cumulative_returns = portfolio_cumulative_returns * 100  # Convert to percentage
+
+        # Ensure the final return matches the total return
+        portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
 
         # Get Ibovespa data
         ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
