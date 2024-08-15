@@ -509,62 +509,55 @@ def portfolio_tracking():
         col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
         col3.metric("Retorno Total", f"{total_return:.2f}%")
 
-        # Filter for specific asset
-        selected_asset = st.selectbox('Selecione um ativo para filtrar (opcional)', ['Todos os ativos'] + list(portfolio_data.columns))
-        
-        if selected_asset == 'Todos os ativos':
-            plot_data = portfolio_data.sum(axis=1)
-            plot_title = 'Valor Total da Carteira e Retorno do Ibovespa ao Longo do Tempo'
-        else:
-            plot_data = portfolio_data[selected_asset]
-            plot_title = f'Valor do Ativo {selected_asset} e Retorno do Ibovespa ao Longo do Tempo'
+        # Calculate returns for each asset
+        asset_returns = {}
+        for ticker in portfolio_data.columns:
+            initial_value = invested_value[ticker]
+            current_value = portfolio_data[ticker].iloc[-1]
+            if initial_value > 0:
+                asset_return = ((current_value - initial_value) / initial_value) * 100
+                asset_returns[ticker] = {
+                    'return': asset_return,
+                    'current_value': current_value
+                }
+
+        # Sort assets by return
+        sorted_assets = sorted(asset_returns.items(), key=lambda x: x[1]['return'], reverse=True)
+
+        # Create bar chart for asset returns
+        fig_asset_returns = go.Figure()
+        tickers = []
+        returns = []
+        current_values = []
+        for ticker, data in sorted_assets:
+            tickers.append(ticker)
+            returns.append(data['return'])
+            current_values.append(data['current_value'])
+
+        fig_asset_returns.add_trace(go.Bar(
+            x=tickers,
+            y=returns,
+            text=[f"{r:.2f}%<br>R$ {v:.2f}" for r, v in zip(returns, current_values)],
+            textposition='auto',
+            name='Retorno Acumulado'
+        ))
+
+        fig_asset_returns.update_layout(
+            title='Retorno Acumulado por Ativo',
+            xaxis_title='Ativo',
+            yaxis_title='Retorno Acumulado (%)',
+            yaxis_tickformat = '.2f%'
+        )
+
+        st.plotly_chart(fig_asset_returns)
 
         # Calculate cumulative returns for portfolio
-        portfolio_cumulative_returns = (plot_data / plot_data.iloc[0] - 1) * 100
+        portfolio_cumulative_returns = (portfolio_data.sum(axis=1) / portfolio_data.sum(axis=1).iloc[0] - 1) * 100
 
         # Get Ibovespa data
-        ibov_return = get_ibovespa_data(plot_data.index[0], plot_data.index[-1])
+        ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
 
-        # Create figure with secondary y-axis
-        fig = make_subplots(specs=[[{"secondary_y": True}]])
-
-        # Add trace for portfolio value
-        fig.add_trace(
-            go.Scatter(
-                x=plot_data.index, 
-                y=plot_data.values,
-                mode='lines',
-                name='Valor da Carteira',
-                hovertemplate='Data: %{x}<br>Valor: R$ %{y:.2f}<br>Retorno: %{text:.2f}%',
-                text=portfolio_cumulative_returns
-            ),
-            secondary_y=False,
-        )
-
-        # Add trace for Ibovespa return
-        fig.add_trace(
-            go.Scatter(
-                x=ibov_return.index, 
-                y=ibov_return.values,
-                mode='lines',
-                name='Retorno Ibovespa',
-                hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%',
-            ),
-            secondary_y=True,
-        )
-
-        # Update layout
-        fig.update_layout(
-            title=plot_title,
-            xaxis_title='Data',
-            hovermode='x unified'
-        )
-        fig.update_yaxes(title_text="Valor da Carteira (R$)", secondary_y=False, tickprefix='R$ ')
-        fig.update_yaxes(title_text="Retorno Ibovespa (%)", secondary_y=True, ticksuffix='%')
-
-        st.plotly_chart(fig)
-
-        # Retorno percentual comparison
+        # Create figure for cumulative returns comparison
         fig_returns = go.Figure()
         fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
                                          mode='lines', name='Carteira',
