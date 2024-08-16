@@ -385,7 +385,7 @@ def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental
     return explanation
 
 # MongoDB Atlas connection
-mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"
+mongo_uri = st.secrets["mongo_uri"]
 client = MongoClient(mongo_uri)
 db = client['StockIdea']
 collection = db['transactions']
