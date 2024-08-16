@@ -16,6 +16,9 @@ warnings.filterwarnings('ignore')
 from pymongo import MongoClient
 import time
 
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
 
 # Função para carregar os ativos do CSV
 #@st.cache_data(ttl=3600)
@@ -388,24 +391,35 @@ def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental
 mongo_uri = st.secrets["mongo_uri"]
 client = MongoClient(mongo_uri)
 db = client['StockIdea']
-collection = db['transactions']
+users_collection = db['users']
+transactions_collection = db['transactions']
 
 # Function to initialize the database
 def init_db():
     if 'transactions' not in db.list_collection_names():
-        collection.create_index([('Date', 1), ('Ticker', 1), ('Action', 1), ('Quantity', 1), ('Price', 1)])
+        transactions_collection.create_index([('Date', 1), ('Ticker', 1), ('Action', 1), ('Quantity', 1), ('Price', 1)])
+
+def register_user(username, password_hash):
+    users_collection.insert_one({
+        "username": username,
+        "password_hash": password_hash
+    })
 
 # Function to log transactions
 def log_transaction(date, ticker, action, quantity, price):
     transaction = {
+        'user_id': user_id,
         'Date': date,
         'Ticker': ticker,
         'Action': action,
         'Quantity': quantity,
         'Price': price
     }
-    collection.insert_one(transaction)
+    transactions_collection.insert_one(transaction)
     st.success('Transação registrada com sucesso!')
+
+def get_user_portfolio(user_id):
+    return list(transactions_collection.find({"user_id": user_id}))
 
 # Function to buy stocks
 def buy_stock(date, ticker, quantity, price):
@@ -588,6 +602,24 @@ def portfolio_tracking():
         st.write("Não há transações registradas ainda.")
 
 def main():
+    with open('config.yaml') as file:
+        config = yaml.load(file, Loader=SafeLoader)
+
+    authenticator = stauth.Authenticate(
+        config['credentials'],
+        config['cookie']['name'],
+        config['cookie']['key'],
+        config['cookie']['expiry_days'],
+        config['preauthorized']
+    )
+
+    # Tela de login
+    name, authentication_status, username = authenticator.login('Login', 'main')
+
+    if authentication_status:
+        st.write(f'Bem-vindo *{name}*')
+        user_portfolio = get_user_portfolio(username)
+        
     st.sidebar.title('Navegação')
     page = st.sidebar.radio('Selecione uma página', ['BDR Recommendation', 'Portfolio Tracking'])
 
@@ -792,6 +824,13 @@ def main():
             pass
     elif page == 'Portfolio Tracking':
         portfolio_tracking()
+        
+    authenticator.logout('Logout', 'main')
+        
+    elif authentication_status == False:
+        st.error('Nome de usuário/senha incorretos')
+    elif authentication_status == None:
+        st.warning('Por favor, insira seu nome de usuário e senha')
 
 if __name__ == "__main__":
     main()
