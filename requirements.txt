@@ -13,3 +13,5 @@ PyPortfolioOpt
 statsmodels
 openai
 tenacity
+streamlit-authenticator
+pyyaml
