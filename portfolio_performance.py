@@ -594,6 +594,7 @@ def main():
     if page == 'BDR Recommendation':
 
         ativos_df = load_assets()
+        ativos_df
         
         #ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
     
