@@ -589,9 +589,9 @@ def portfolio_tracking():
 
 def main():
     st.sidebar.title('Navegação')
-    page = st.sidebar.radio('Selecione uma página', ['BDR Recommendation', 'Portfolio Tracking'])
+    page = st.sidebar.radio('Selecione uma página', ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
 
-    if page == 'BDR Recommendation':
+    if page == 'Recomendação de Ativos':
 
         ativos_df = load_assets()
         ativos_df = ativos_df.dropna(subset=['Type'])
@@ -799,7 +799,7 @@ def main():
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
             pass
-    elif page == 'Portfolio Tracking':
+    elif page == 'Acompanhamento da Carteira':
         portfolio_tracking()
 
 if __name__ == "__main__":
