@@ -9,6 +9,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from statsmodels.tsa.arima.model import ARIMA
+from pandas.tseries.offsets import DateOffset
 import warnings
 import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
@@ -568,15 +569,39 @@ def portfolio_tracking():
         ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
 
         # Create figure for cumulative returns comparison
+        # Create figure for cumulative returns comparison
         fig_returns = go.Figure()
+        
+        # Generate forecasts
+        portfolio_forecast = generate_forecast(portfolio_cumulative_returns)
+        ibov_forecast = generate_forecast(ibov_return)
+        
+        # Add forecast to dataframes
+        portfolio_with_forecast = add_forecast_to_dataframe(portfolio_cumulative_returns, portfolio_forecast)
+        ibov_with_forecast = add_forecast_to_dataframe(ibov_return, ibov_forecast)
+        
+        # Plot actual data
         fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
                                          mode='lines', name='Carteira',
                                          hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
         fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
                                          mode='lines', name='Ibovespa',
                                          hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
+        
+        # Plot forecast data
+        fig_returns.add_trace(go.Scatter(x=portfolio_with_forecast.index[portfolio_cumulative_returns.shape[0]:], 
+                                         y=portfolio_with_forecast['forecast'].values, 
+                                         mode='lines', name='Carteira (Previsão)',
+                                         line=dict(dash='dash'),
+                                         hovertemplate='Data: %{x}<br>Retorno Carteira (Previsão): %{y:.2f}%'))
+        fig_returns.add_trace(go.Scatter(x=ibov_with_forecast.index[ibov_return.shape[0]:], 
+                                         y=ibov_with_forecast['forecast'].values, 
+                                         mode='lines', name='Ibovespa (Previsão)',
+                                         line=dict(dash='dash'),
+                                         hovertemplate='Data: %{x}<br>Retorno Ibovespa (Previsão): %{y:.2f}%'))
+        
         fig_returns.update_layout(
-            title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa',
+            title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa (com Previsão)',
             xaxis_title='Data',
             yaxis_title='Retorno Acumulado (%)',
             yaxis_tickformat = '.2f%',
@@ -586,6 +611,19 @@ def portfolio_tracking():
 
     else:
         st.write("Não há transações registradas ainda.")
+        
+def generate_forecast(data, periods=30):
+    model = ARIMA(data, order=(1,1,1))
+    results = model.fit()
+    forecast = results.forecast(steps=periods)
+    return forecast
+
+def add_forecast_to_dataframe(df, forecast):
+    last_date = df.index[-1]
+    future_dates = [last_date + DateOffset(days=x) for x in range(1, len(forecast) + 1)]
+    future_df = pd.DataFrame(index=future_dates, data={'forecast': forecast})
+    return pd.concat([df, future_df])
+
 
 def main():
     st.sidebar.title('Navegação')
