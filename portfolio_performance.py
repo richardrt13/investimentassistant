@@ -20,7 +20,7 @@ import time
 # Função para carregar os ativos do CSV
 #@st.cache_data(ttl=3600)
 def load_assets():
-    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/bdrs.csv')
+    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/ativos.csv')
 
 # Função para obter dados fundamentais de um ativo
 #@st.cache_data(ttl=3600)
@@ -595,7 +595,7 @@ def main():
 
         ativos_df = load_assets()
         
-        ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
+        #ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
     
         # Substituir "-" por "Outros" na coluna "Sector"
         ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
@@ -604,9 +604,17 @@ def main():
         setores.insert(0, 'Todos')
     
         sector_filter = st.multiselect('Selecione o Setor', options=setores)
+
+        tipo = sorted(set(ativos_df['Type']))
+        tipo.insert(0, 'Todos')
     
-        if 'Todos' not in sector_filter:
-            ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
+        type_filter = st.multiselect('Selecione o tipo de ativo', options=tipo)
+    
+        if 'Todos' not in sector_filter or 'Todos' not in type_filter:
+            if 'Todos' not in sector_filter:
+                ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
+            if 'Todos' not in type_filter:
+                ativos_df = ativos_df[ativos_df['Type'].isin(type_filter)]
     
         invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
