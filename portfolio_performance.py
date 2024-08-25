@@ -437,6 +437,8 @@ def update_historical_prices():
     first_transaction = collection.find_one(sort=[('Date', 1)])
     if first_transaction:
         global_start_date = first_transaction['Date']
+        if isinstance(global_start_date, str):
+            global_start_date = datetime.strptime(global_start_date, '%Y-%m-%d %H:%M:%S')
     else:
         global_start_date = datetime.now() - timedelta(days=365*5)  # 5 anos atrás se não houver transações
 
@@ -469,7 +471,6 @@ def update_historical_prices():
         return f"Dados atualizados para: {', '.join(updated_tickers)}"
     else:
         return "Nenhum dado novo para atualizar."
-
 
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
