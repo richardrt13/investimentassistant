@@ -425,7 +425,7 @@ def get_historical_prices(ticker, start_date, end_date):
     
     # Se não houver dados suficientes, informar o usuário
     if not data or data[0]['date'] > start_date:
-        st.warning(f"Dados insuficientes para {ticker}. Por favor, atualize os dados históricos.")
+        st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}. Por favor, atualize os dados históricos.")
     
     return pd.DataFrame(data).set_index('date')
 
@@ -433,14 +433,21 @@ def update_historical_prices():
     tickers = list(set([doc['Ticker'] for doc in collection.find({}, {'Ticker': 1})]))
     tickers.append('^BVSP')  # Adicionar Ibovespa
 
+    # Encontrar a data da primeira transação
+    first_transaction = collection.find_one(sort=[('Date', 1)])
+    if first_transaction:
+        global_start_date = first_transaction['Date']
+    else:
+        global_start_date = datetime.now() - timedelta(days=365*5)  # 5 anos atrás se não houver transações
+
     updated_tickers = []
     for ticker in tickers:
         last_date = prices_collection.find_one({'ticker': ticker}, sort=[('date', -1)])
         
         if last_date:
-            start_date = last_date['date'] + timedelta(days=1)
+            start_date = max(last_date['date'] + timedelta(days=1), global_start_date)
         else:
-            start_date = datetime.now() - timedelta(days=365*5)  # Iniciar com 5 anos de dados
+            start_date = global_start_date
 
         end_date = datetime.now() - timedelta(days=1)  # Dados até d-1
 
@@ -462,6 +469,7 @@ def update_historical_prices():
         return f"Dados atualizados para: {', '.join(updated_tickers)}"
     else:
         return "Nenhum dado novo para atualizar."
+
 
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
@@ -491,7 +499,7 @@ def get_portfolio_performance():
 
     tickers = list(portfolio.keys())
     end_date = datetime.now() - timedelta(days=1)  # d-1
-    start_date = df['Date'].min()
+    start_date = df['Date'].min()  # Data da primeira transação
 
     prices = pd.DataFrame()
     for ticker in tickers:
@@ -503,7 +511,7 @@ def get_portfolio_performance():
         daily_value[ticker] *= portfolio[ticker]
 
     return daily_value, pd.Series(invested_value)
-
+    
 def get_ibovespa_data(start_date, end_date):
     ibov = get_historical_prices('^BVSP', start_date, end_date)
     ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0] - 1) * 100
