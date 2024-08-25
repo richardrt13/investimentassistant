@@ -389,6 +389,7 @@ mongo_uri = st.secrets["mongo_uri"]
 client = MongoClient(mongo_uri)
 db = client['StockIdea']
 collection = db['transactions']
+prices_collection = db['historical_prices']
 
 # Function to initialize the database
 def init_db():
@@ -414,6 +415,53 @@ def buy_stock(date, ticker, quantity, price):
 # Function to sell stocks
 def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
+
+def get_historical_prices(ticker, start_date, end_date):
+    # Buscar dados do MongoDB
+    data = list(prices_collection.find(
+        {'ticker': ticker, 'date': {'$gte': start_date, '$lte': end_date}},
+        {'date': 1, 'adjusted_close': 1, '_id': 0}
+    ).sort('date', 1))
+    
+    # Se não houver dados suficientes, informar o usuário
+    if not data or data[0]['date'] > start_date:
+        st.warning(f"Dados insuficientes para {ticker}. Por favor, atualize os dados históricos.")
+    
+    return pd.DataFrame(data).set_index('date')
+
+def update_historical_prices():
+    tickers = list(set([doc['Ticker'] for doc in collection.find({}, {'Ticker': 1})]))
+    tickers.append('^BVSP')  # Adicionar Ibovespa
+
+    updated_tickers = []
+    for ticker in tickers:
+        last_date = prices_collection.find_one({'ticker': ticker}, sort=[('date', -1)])
+        
+        if last_date:
+            start_date = last_date['date'] + timedelta(days=1)
+        else:
+            start_date = datetime.now() - timedelta(days=365*5)  # Iniciar com 5 anos de dados
+
+        end_date = datetime.now() - timedelta(days=1)  # Dados até d-1
+
+        if start_date < end_date:
+            data = yf.download(ticker, start=start_date, end=end_date)
+            
+            for date, row in data.iterrows():
+                prices_collection.update_one(
+                    {'ticker': ticker, 'date': date.to_pydatetime()},
+                    {'$set': {
+                        'close': row['Close'],
+                        'adjusted_close': row['Adj Close']
+                    }},
+                    upsert=True
+                )
+            updated_tickers.append(ticker)
+
+    if updated_tickers:
+        return f"Dados atualizados para: {', '.join(updated_tickers)}"
+    else:
+        return "Nenhum dado novo para atualizar."
 
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
@@ -442,10 +490,13 @@ def get_portfolio_performance():
             invested_value[ticker] -= invested_value[ticker] * sell_ratio
 
     tickers = list(portfolio.keys())
-    end_date = datetime.now()
+    end_date = datetime.now() - timedelta(days=1)  # d-1
     start_date = df['Date'].min()
 
-    prices = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+    prices = pd.DataFrame()
+    for ticker in tickers:
+        ticker_prices = get_historical_prices(ticker, start_date, end_date)
+        prices[ticker] = ticker_prices['adjusted_close']
     
     daily_value = prices.copy()
     for ticker in tickers:
@@ -454,9 +505,16 @@ def get_portfolio_performance():
     return daily_value, pd.Series(invested_value)
 
 def get_ibovespa_data(start_date, end_date):
-    ibov = yf.download('^BVSP', start=start_date, end=end_date)['Adj Close']
-    ibov_return = (ibov / ibov.iloc[0] - 1) * 100
+    ibov = get_historical_prices('^BVSP', start_date, end_date)
+    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0] - 1) * 100
     return ibov_return
+
+def update_daily_prices():
+    today = datetime.now().date()
+    last_update = prices_collection.find_one(sort=[('date', -1)])
+    
+    if last_update and last_update['date'].date() < today - timedelta(days=1):
+        update_historical_prices()
 
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
@@ -471,6 +529,22 @@ def portfolio_tracking():
 
     # Initialize database
     init_db()
+
+    # Adicionar botão para atualizar dados
+    if st.button('Atualizar Dados Históricos'):
+        with st.spinner('Atualizando dados...'):
+            update_message = update_historical_prices()
+        st.success(update_message)
+
+    # Get portfolio performance
+    portfolio_data, invested_value = get_portfolio_performance()
+    if not portfolio_data.empty:
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
+        col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
+        col3.metric("Retorno Total", f"{total_return:.2f}%")
 
     # Get all assets
     assets_df = load_assets()
