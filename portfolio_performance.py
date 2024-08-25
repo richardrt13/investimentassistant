@@ -873,7 +873,7 @@ def main():
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
             pass
-    elif page == 'Acompanhamento da Carteira':
+    elif page == 'Acompanhamento da Carteia':
         portfolio_tracking()
 
 if __name__ == "__main__":
