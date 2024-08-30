@@ -246,7 +246,7 @@ def calculate_adjusted_score(row):
     anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
 
     # Aplicação da penalidade por anomalias
-    final_score = adjusted_base_score * (1 - 0.15 * anomaly_penalty)
+    final_score = adjusted_base_score * (1 - 0.05 * anomaly_penalty)
 
     return final_score
 
@@ -723,7 +723,6 @@ def main():
                 data['Ticker'] = ticker
                 fundamental_data.append(data)
 
-            fundamental_data
     
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
