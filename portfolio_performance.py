@@ -56,7 +56,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic,
-                'Dividend Yield': info.get('dividendYield', np.nan)  # Adicionando Dividend Yield
+                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan)  # Adicionando Dividend Yield
             }
         except Exception as e:
             if attempt < max_retries - 1:
@@ -233,7 +233,7 @@ def calculate_adjusted_score(row):
         np.log(row['Volume']) * 0.8 +    # Reduzido um pouco o peso do volume
         growth_factor * 15 +             # Aumentado o peso do fator de crescimento
         stability_factor * 8 +           # Aumentado o peso da estabilidade da dívida
-        row['Dividend Yield'] * 10       # Adicionando peso para o Dividend Yield
+        row['Dividend Yield'] * 100      # Adicionando peso para o Dividend Yield
     )
 
     # Fator de qualidade
