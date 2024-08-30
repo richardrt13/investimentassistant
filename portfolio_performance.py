@@ -29,18 +29,18 @@ def get_fundamental_data(ticker, max_retries=3):
         try:
             stock = yf.Ticker(ticker)
             info = stock.info
-            
+
             # Obter dados do balanço patrimonial e demonstração financeira
             balance_sheet = stock.balance_sheet
             financials = stock.financials
-            
+
             # Calcular o ROIC
             if not balance_sheet.empty and not financials.empty:
                 net_income = financials.loc['Net Income'].iloc[0]  # Último ano fiscal
                 total_assets = balance_sheet.loc['Total Assets'].iloc[0]  # Último ano fiscal
                 total_liabilities = balance_sheet.loc['Total Liabilities Net Minority Interest'].iloc[0]  # Último ano fiscal
                 cash = balance_sheet.loc['Cash And Cash Equivalents'].iloc[0]  # Último ano fiscal
-                
+
                 invested_capital = total_assets - total_liabilities - cash
                 if invested_capital != 0:
                     roic = (net_income / invested_capital) * 100  # em percentagem
@@ -48,14 +48,15 @@ def get_fundamental_data(ticker, max_retries=3):
                     roic = np.nan
             else:
                 roic = np.nan
-            
+
             return {
                 'P/L': info.get('trailingPE', np.nan),
                 'P/VP': info.get('priceToBook', np.nan),
                 'ROE': info.get('returnOnEquity', np.nan),
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
-                'ROIC': roic
+                'ROIC': roic,
+                'Dividend Yield': info.get('dividendYield', np.nan)  # Adicionando Dividend Yield
             }
         except Exception as e:
             if attempt < max_retries - 1:
@@ -68,7 +69,8 @@ def get_fundamental_data(ticker, max_retries=3):
                     'ROE': np.nan,
                     'Volume': np.nan,
                     'Price': np.nan,
-                    'ROIC': np.nan
+                    'ROIC': np.nan,
+                    'Dividend Yield': np.nan  # Adicionando Dividend Yield
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
@@ -230,18 +232,19 @@ def calculate_adjusted_score(row):
         1 / row['P/VP'] * 1.2 +          # Ligeiramente aumentado o peso do P/VP inverso
         np.log(row['Volume']) * 0.8 +    # Reduzido um pouco o peso do volume
         growth_factor * 15 +             # Aumentado o peso do fator de crescimento
-        stability_factor * 8             # Aumentado o peso da estabilidade da dívida
+        stability_factor * 8 +           # Aumentado o peso da estabilidade da dívida
+        row['Dividend Yield'] * 10       # Adicionando peso para o Dividend Yield
     )
 
     # Fator de qualidade
     quality_factor = (row['ROE'] + row['ROIC']) / 2
-    
+
     # Aplicação do fator de qualidade
     adjusted_base_score = base_score * (1 + quality_factor * 0.1)
 
     # Cálculo da penalidade por anomalias
     anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
-    
+
     # Aplicação da penalidade por anomalias
     final_score = adjusted_base_score * (1 - 0.15 * anomaly_penalty)
 
@@ -331,10 +334,10 @@ def calculate_asset_sharpe(returns_series, risk_free_rate):
     asset_volatility = returns_series.std() * np.sqrt(252)
     return (asset_return - risk_free_rate) / asset_volatility
 
-def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
+def generate_allocation_explanation(ticker, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
     ticker = ticker.replace('.SA', '')
     explanation = f"Explicação para a alocação de R$ {allocated_value:.2f} em {ticker}:\n"
-    
+
     # Calcular Sharpe individual do ativo
     asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
 
@@ -350,12 +353,12 @@ def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental
     else:
         explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
         explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
-        
+
         if asset_sharpe > portfolio_sharpe:
             explanation += "O ativo tem um Sharpe individual superior ao do portfólio, contribuindo positivamente para o desempenho geral.\n"
         else:
             explanation += "Embora o Sharpe individual seja menor que o do portfólio, este ativo ajuda na diversificação e na otimização geral.\n"
-    
+
     # Adicionar explicações sobre dados fundamentalistas
     explanation += f"\nDados fundamentalistas:"
     explanation += f"\n- P/L: {fundamental_data['P/L']:.2f} "
@@ -364,24 +367,26 @@ def generate_allocation_explanation(ticker, allocated_value ,shares, fundamental
     explanation += "(favorável) " if fundamental_data['P/VP'] < 1.5 else "(desfavorável) "
     explanation += f"\n- ROE: {fundamental_data['ROE']:.2%} "
     explanation += "(alto) " if fundamental_data['ROE'] > 0.15 else "(baixo) "
-    
+    explanation += f"\n- Dividend Yield: {fundamental_data['Dividend Yield']:.2%} "
+    explanation += "(atrativo) " if fundamental_data['Dividend Yield'] > 0.04 else "(baixo) "
+
     # Adicionar explicações sobre dados de crescimento
     explanation += f"\n\nDados de crescimento:"
     explanation += f"\n- Crescimento de receita: {growth_data['revenue_growth']:.2%} "
     explanation += "(forte) " if growth_data['revenue_growth'] > 0.1 else "(fraco) "
     explanation += f"\n- Crescimento de lucro: {growth_data['income_growth']:.2%} "
     explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
-    
+
     # Adicionar explicações sobre anomalias
     explanation += f"\n\nAnálise de anomalias:"
     explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} "
     explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
     explanation += f"\n- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
     explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
-    
+
     explanation += "\n\nA alocação final é resultado da otimização do portfólio para maximizar o índice de Sharpe, "
     explanation += "considerando o equilíbrio entre retorno esperado, risco e correlações entre os ativos."
-    
+
     return explanation
 
 # MongoDB Atlas connection
