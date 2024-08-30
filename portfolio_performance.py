@@ -722,6 +722,8 @@ def main():
                     data.update(growth_data)
                 data['Ticker'] = ticker
                 fundamental_data.append(data)
+
+            fundamental_data
     
             fundamental_df = pd.DataFrame(fundamental_data)
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
