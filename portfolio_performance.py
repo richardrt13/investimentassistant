@@ -771,7 +771,7 @@ def main():
     
             # Calcular score ajustado
             cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
-            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
+            ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
             optimized_weights = optimize_weights(ativos_df)
             ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
     
@@ -792,8 +792,8 @@ def main():
                 return
     
             # Calcular rentabilidade acumulada
-            cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
-            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+            #cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+            #top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
     
             st.subheader('Top 10 BDRs Recomendados')
             st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
