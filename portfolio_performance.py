@@ -850,13 +850,11 @@ def main():
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
 
-            adjusted_weights
-            optimal_weights
 
-            st.subheader('Pesos Otimizados')
-            weight_names = ['ROE/P/L', '1/P/VP', 'log(Volume)', 'Crescimento de Receita', 'Crescimento de Lucro', 'Estabilidade da Dívida', 'Dividend Yield']
-            weight_df = pd.DataFrame({'Indicador': weight_names, 'Peso': optimized_weights})
-            st.table(weight_df)
+            # st.subheader('Pesos Otimizados')
+            # weight_names = ['ROE/P/L', '1/P/VP', 'log(Volume)', 'Crescimento de Receita', 'Crescimento de Lucro', 'Estabilidade da Dívida', 'Dividend Yield']
+            # weight_df = pd.DataFrame({'Indicador': weight_names, 'Peso': optimized_weights})
+            # st.table(weight_df)
 
             # Exibir informações sobre anomalias detectadas
             st.subheader('Análise de Anomalias')
