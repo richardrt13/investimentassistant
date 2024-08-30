@@ -56,7 +56,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic,
-                'Dividend Yield': info.get('dividendYield', np.nan)  # Adicionando Dividend Yield
+                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan)  # Adicionando Dividend Yield
             }
         except Exception as e:
             if attempt < max_retries - 1:
@@ -727,7 +727,7 @@ def main():
             ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
     
             # Filtrar ativos com informações necessárias
-            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
       
             
          
@@ -781,7 +781,7 @@ def main():
             top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
     
             st.subheader('Top 10 BDRs Recomendados')
-            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
     
             # Otimização de portfólio
             returns = calculate_returns(stock_data)
