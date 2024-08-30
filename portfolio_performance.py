@@ -230,10 +230,10 @@ def calculate_adjusted_score(row):
     base_score = (
         row['ROE'] / row['P/L'] * 1.5 +  # Aumentado o peso do ROE/P/L
         1 / row['P/VP'] * 1.2 +          # Ligeiramente aumentado o peso do P/VP inverso
-        np.log(row['Volume']) * 0.8 +    # Reduzido um pouco o peso do volume
+        np.log(row['Volume']) * 10 +    # Reduzido um pouco o peso do volume
         growth_factor * 15 +             # Aumentado o peso do fator de crescimento
         stability_factor * 8 +           # Aumentado o peso da estabilidade da dívida
-        row['Dividend Yield'] * 100      # Adicionando peso para o Dividend Yield
+        row['Dividend Yield'] * 10      # Adicionando peso para o Dividend Yield
     )
 
     # Fator de qualidade
