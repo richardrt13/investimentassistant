@@ -221,19 +221,49 @@ def calculate_rsi(prices, window=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-def calculate_adjusted_score(row):
-    # Fatores de crescimento e estabilidade
-    growth_factor = (row['revenue_growth'] + row['income_growth']) / 2
-    stability_factor = row['debt_stability']
+def optimize_weights(ativos_df):
+    def objective(weights):
+        # Calcular o score usando os pesos
+        scores = calculate_score(ativos_df, weights)
+        
+        # Calcular a correlação entre os scores e a rentabilidade acumulada
+        correlation = np.corrcoef(scores, ativos_df['Rentabilidade Acumulada (5 anos)'])[0, 1]
+        
+        # Retornar o negativo da correlação (queremos maximizar)
+        return -correlation
 
-    # Cálculo do score base com pesos ajustados
+    # Restrições: soma dos pesos = 1 e todos os pesos >= 0
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1},)
+    bounds = [(0, 1) for _ in range(7)]  # 7 pesos a serem otimizados
+
+    # Pesos iniciais
+    initial_weights = np.array([1/7] * 7)
+
+    # Otimização
+    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+
+    return result.x
+
+def calculate_score(ativos_df, weights):
+    return (
+        weights[0] * ativos_df['ROE'] / ativos_df['P/L'] +
+        weights[1] / ativos_df['P/VP'] +
+        weights[2] * np.log(ativos_df['Volume']) +
+        weights[3] * ativos_df['revenue_growth'] +
+        weights[4] * ativos_df['income_growth'] +
+        weights[5] * ativos_df['debt_stability'] +
+        weights[6] * ativos_df['Dividend Yield']
+    )
+
+def calculate_adjusted_score(row, optimized_weights):
     base_score = (
-        row['ROE'] / row['P/L'] * 1.5 +  # Aumentado o peso do ROE/P/L
-        1 / row['P/VP'] * 1.2 +          # Ligeiramente aumentado o peso do P/VP inverso
-        np.log(row['Volume']) * 10 +    # Reduzido um pouco o peso do volume
-        growth_factor * 15 +             # Aumentado o peso do fator de crescimento
-        stability_factor * 8 +           # Aumentado o peso da estabilidade da dívida
-        row['Dividend Yield'] * 10      # Adicionando peso para o Dividend Yield
+        optimized_weights[0] * row['ROE'] / row['P/L'] +
+        optimized_weights[1] / row['P/VP'] +
+        optimized_weights[2] * np.log(row['Volume']) +
+        optimized_weights[3] * row['revenue_growth'] +
+        optimized_weights[4] * row['income_growth'] +
+        optimized_weights[5] * row['debt_stability'] +
+        optimized_weights[6] * row['Dividend Yield']
     )
 
     # Fator de qualidade
@@ -249,25 +279,6 @@ def calculate_adjusted_score(row):
     final_score = adjusted_base_score * (1 - 0.05 * anomaly_penalty)
 
     return final_score
-
-def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
-    anomaly_scores = calculate_anomaly_scores(returns)
-    growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
-    
-    # Normalizar os scores
-    growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
-    
-    # Ajustar pesos
-    adjusted_weights = weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
-    return adjusted_weights / adjusted_weights.sum()
-
-def adjust_weights_for_anomalies(weights, anomaly_scores):
-    adjusted_weights = weights * (1 - anomaly_scores)
-    return adjusted_weights / adjusted_weights.sum()
-
-def calculate_anomaly_scores(returns):
-    anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
-    return anomaly_scores
     
 #@st.cache_data(ttl=3600)
 def get_financial_growth_data(ticker, years=5):
@@ -759,7 +770,10 @@ def main():
                 ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
     
             # Calcular score ajustado
-            ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
+            cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
+            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
+            optimized_weights = optimize_weights(ativos_df)
+            ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
     
             # Selecionar os top 10 ativos com base no score
             top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
@@ -816,6 +830,11 @@ def main():
             except Exception as e:
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
+
+            st.subheader('Pesos Otimizados')
+            weight_names = ['ROE/P/L', '1/P/VP', 'log(Volume)', 'Crescimento de Receita', 'Crescimento de Lucro', 'Estabilidade da Dívida', 'Dividend Yield']
+            weight_df = pd.DataFrame({'Indicador': weight_names, 'Peso': optimized_weights})
+            st.table(weight_df)
 
             # Exibir informações sobre anomalias detectadas
             st.subheader('Análise de Anomalias')
