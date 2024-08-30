@@ -279,6 +279,25 @@ def calculate_adjusted_score(row, optimized_weights):
     final_score = adjusted_base_score * (1 - 0.05 * anomaly_penalty)
 
     return final_score
+
+def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
+    anomaly_scores = calculate_anomaly_scores(returns)
+    growth_scores = growth_data.mean(axis=1)  # Média dos fatores de crescimento
+    
+    # Normalizar os scores
+    growth_scores = (growth_scores - growth_scores.min()) / (growth_scores.max() - growth_scores.min())
+    
+    # Ajustar pesos
+    adjusted_weights = weights * (1 - 0.5 * anomaly_scores + 0.5 * growth_scores)
+    return adjusted_weights / adjusted_weights.sum()
+
+def adjust_weights_for_anomalies(weights, anomaly_scores):
+    adjusted_weights = weights * (1 - anomaly_scores)
+    return adjusted_weights / adjusted_weights.sum()
+
+def calculate_anomaly_scores(returns):
+    anomaly_scores = returns.apply(lambda x: detect_price_anomalies(x).mean())
+    return anomaly_scores
     
 #@st.cache_data(ttl=3600)
 def get_financial_growth_data(ticker, years=5):
