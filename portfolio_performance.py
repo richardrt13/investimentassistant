@@ -804,8 +804,9 @@ def main():
                 ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
                 ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
     
-            # Calcular score ajustado
-            #ativos_df['Adjusted_Score'] = ativos_df.apply(optimize_and_calculate_scores, axis=1)
+            tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+            cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
+            ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
             ativos_df, optimized_weights = optimize_and_calculate_scores(ativos_df) # Selecionar os top 10 ativos com
     
             # Selecionar os top 10 ativos com base no score
