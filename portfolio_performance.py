@@ -367,8 +367,8 @@ def generate_allocation_explanation(ticker, allocated_value, shares, fundamental
     explanation += "(favorável) " if fundamental_data['P/VP'] < 1.5 else "(desfavorável) "
     explanation += f"\n- ROE: {fundamental_data['ROE']:.2%} "
     explanation += "(alto) " if fundamental_data['ROE'] > 0.15 else "(baixo) "
-    explanation += f"\n- Dividend Yield: {fundamental_data['Dividend Yield']:.2%} "
-    explanation += "(atrativo) " if fundamental_data['Dividend Yield'] > 0.04 else "(baixo) "
+    #explanation += f"\n- Dividend Yield: {fundamental_data['Dividend Yield']:.2%} "
+    #explanation += "(atrativo) " if fundamental_data['Dividend Yield'] > 0.04 else "(baixo) "
 
     # Adicionar explicações sobre dados de crescimento
     explanation += f"\n\nDados de crescimento:"
