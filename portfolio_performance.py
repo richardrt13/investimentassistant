@@ -15,7 +15,6 @@ from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
 from pymongo import MongoClient
 import time
-from sklearn.preprocessing import MinMaxScaler
 
 
 # Função para carregar os ativos do CSV
@@ -222,79 +221,34 @@ def calculate_rsi(prices, window=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-
-def test_weights(weights, data):
-    roe_pl_weight, pvp_weight, volume_weight, growth_weight, stability_weight, dividend_weight, quality_weight = weights
-    
-    scores = (
-        data['ROE'] / data['P/L'] * roe_pl_weight +
-        1 / data['P/VP'] * pvp_weight +
-        np.log(data['Volume']) * volume_weight +
-        ((data['revenue_growth'] + data['income_growth']) / 2) * growth_weight +
-        data['debt_stability'] * stability_weight +
-        data['Dividend Yield'] * dividend_weight
-    )
-    
-    quality_factor = (data['ROE'] + data['ROIC']) / 2
-    adjusted_scores = scores * (1 + quality_factor * quality_weight)
-    
-    return -np.corrcoef(adjusted_scores, data['5y_return'])[0, 1]
-
-def optimize_weights(data):
-    bounds = [(0, 1) for _ in range(7)]  # 7 weights to optimize
-    constraint = {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}
-    
-    result = minimize(
-        test_weights,
-        [1/7] * 7,  # Start with equal weights
-        args=(data,),
-        method='SLSQP',
-        bounds=bounds,
-        constraints=constraint
-    )
-    
-    return result.x
-
-def calculate_adjusted_score(row, optimized_weights):
-    roe_pl_weight, pvp_weight, volume_weight, growth_weight, stability_weight, dividend_weight, quality_weight = optimized_weights
-    
+def calculate_adjusted_score(row):
+    # Fatores de crescimento e estabilidade
     growth_factor = (row['revenue_growth'] + row['income_growth']) / 2
     stability_factor = row['debt_stability']
-    
-    base_score = (
-        row['ROE'] / row['P/L'] * roe_pl_weight +
-        1 / row['P/VP'] * pvp_weight +
-        np.log(row['Volume']) * volume_weight +
-        growth_factor * growth_weight +
-        stability_factor * stability_weight +
-        row['Dividend Yield'] * dividend_weight
-    )
-    
-    quality_factor = (row['ROE'] + row['ROIC']) / 2
-    adjusted_base_score = base_score * (1 + quality_factor * quality_weight)
-    
-    anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
-    final_score = adjusted_base_score * (1 - 0.05 * anomaly_penalty)
-    
-    return final_score
 
-# Função principal para otimizar os pesos e calcular os scores
-def optimize_and_calculate_scores(ativos_df):
-    # Adicionar retorno de 5 anos aos dados (assumindo que você tem essa informação)
-    ativos_df['5y_return'] = ativos_df['Rentabilidade Acumulada (5 anos)']
-    
-    # Normalizar os dados para a otimização
-    scaler = MinMaxScaler()
-    columns_to_scale = ['ROE', 'P/L', 'P/VP', 'Volume', 'revenue_growth', 'income_growth', 'debt_stability', 'Dividend Yield', 'ROIC', '5y_return']
-    ativos_df[columns_to_scale] = scaler.fit_transform(ativos_df[columns_to_scale])
-    
-    # Otimizar os pesos
-    optimized_weights = optimize_weights(ativos_df)
-    
-    # Calcular os scores usando os pesos otimizados
-    ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
-    
-    return ativos_df, optimized_weights
+    # Cálculo do score base com pesos ajustados
+    base_score = (
+        row['ROE'] / row['P/L'] * 1.5 +  # Aumentado o peso do ROE/P/L
+        1 / row['P/VP'] * 1.2 +          # Ligeiramente aumentado o peso do P/VP inverso
+        np.log(row['Volume']) * 10 +    # Reduzido um pouco o peso do volume
+        growth_factor * 15 +             # Aumentado o peso do fator de crescimento
+        stability_factor * 8 +           # Aumentado o peso da estabilidade da dívida
+        row['Dividend Yield'] * 10      # Adicionando peso para o Dividend Yield
+    )
+
+    # Fator de qualidade
+    quality_factor = (row['ROE'] + row['ROIC']) / 2
+
+    # Aplicação do fator de qualidade
+    adjusted_base_score = base_score * (1 + quality_factor * 0.1)
+
+    # Cálculo da penalidade por anomalias
+    anomaly_penalty = sum([row[col] for col in ['price_anomaly', 'rsi_anomaly']])
+
+    # Aplicação da penalidade por anomalias
+    final_score = adjusted_base_score * (1 - 0.05 * anomaly_penalty)
+
+    return final_score
 
 def adjust_weights_for_growth_and_anomalies(weights, returns, growth_data):
     anomaly_scores = calculate_anomaly_scores(returns)
@@ -804,10 +758,8 @@ def main():
                 ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
                 ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
     
-            tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-            cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
-            ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
-            ativos_df, optimized_weights = optimize_and_calculate_scores(ativos_df) # Selecionar os top 10 ativos com
+            # Calcular score ajustado
+            ativos_df['Adjusted_Score'] = ativos_df.apply(calculate_adjusted_score, axis=1)
     
             # Selecionar os top 10 ativos com base no score
             top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
