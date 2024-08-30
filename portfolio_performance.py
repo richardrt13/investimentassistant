@@ -56,7 +56,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic,
-                'Dividend Yield': info.get('fiveYearAvgDividendYield', np.nan)  # Adicionando Dividend Yield
+                'Dividend Yield': info.get('dividendYield', np.nan)  # Adicionando Dividend Yield
             }
         except Exception as e:
             if attempt < max_retries - 1:
