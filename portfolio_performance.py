@@ -608,10 +608,6 @@ def portfolio_tracking():
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
-        col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
-        col3.metric("Retorno Total", f"{total_return:.2f}%")
 
     # Get all assets
     assets_df = load_assets()
