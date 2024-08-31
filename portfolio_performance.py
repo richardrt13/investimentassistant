@@ -566,6 +566,29 @@ def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_return = ((current_value - total_invested) / total_invested) * 100
     return total_invested, current_value, total_return
 
+def calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount):
+    """
+    Calcula a distribuição ótima do aporte entre os ativos existentes na carteira.
+    """
+    tickers = portfolio_data.columns
+    current_weights = portfolio_data.iloc[-1] / portfolio_data.iloc[-1].sum()
+    
+    returns = portfolio_data.pct_change().dropna()
+    
+    def objective(weights):
+        portfolio_return = np.sum(returns.mean() * weights) * 252
+        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
+        return -portfolio_return / portfolio_volatility  # Negative Sharpe Ratio (we'll minimize this)
+
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
+    bounds = tuple((0, 1) for _ in range(len(tickers)))
+    
+    result = minimize(objective, current_weights, method='SLSQP', bounds=bounds, constraints=constraints)
+    
+    optimal_weights = result.x
+    contribution_per_asset = optimal_weights * contribution_amount
+    
+    return pd.Series(contribution_per_asset, index=tickers)
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -704,6 +727,34 @@ def portfolio_tracking():
 
     else:
         st.write("Não há transações registradas ainda.")
+
+    st.subheader('Aporte na Carteira')
+    contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
+    
+    if st.button('Calcular Distribuição Ótima do Aporte'):
+        portfolio_data, invested_value = get_portfolio_performance()
+        if not portfolio_data.empty:
+            optimal_contribution = calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount)
+            
+            st.write("Distribuição Ótima do Aporte:")
+            contribution_df = pd.DataFrame({
+                'Ativo': optimal_contribution.index,
+                'Valor do Aporte': optimal_contribution.values,
+                'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
+            })
+            contribution_df = contribution_df.sort_values('Valor do Aporte', ascending=False)
+            contribution_df['Valor do Aporte'] = contribution_df['Valor do Aporte'].map('R$ {:.2f}'.format)
+            contribution_df['Porcentagem do Aporte'] = contribution_df['Porcentagem do Aporte'].map('{:.2f}%'.format)
+            
+            st.table(contribution_df)
+            
+            # Criar gráfico de pizza para a distribuição do aporte
+            fig = go.Figure(data=[go.Pie(labels=contribution_df['Ativo'], values=optimal_contribution.values)])
+            fig.update_layout(title='Distribuição do Aporte')
+            st.plotly_chart(fig)
+        else:
+            st.write("Não há dados suficientes para calcular a distribuição do aporte.")
+
 
 def main():
     st.sidebar.title('Navegação')
