@@ -56,7 +56,7 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic,
-                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan)
+                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan),
                 'Debt to Equity': info.get('debtToEquity', np.nan)
             }
         except Exception as e:
@@ -71,7 +71,7 @@ def get_fundamental_data(ticker, max_retries=3):
                     'Volume': np.nan,
                     'Price': np.nan,
                     'ROIC': np.nan,
-                    'Dividend Yield': np.nan 
+                    'Dividend Yield': np.nan,
                     'Debt to Equity': np.nan
                 }
 
