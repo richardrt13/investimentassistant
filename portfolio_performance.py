@@ -56,7 +56,8 @@ def get_fundamental_data(ticker, max_retries=3):
                 'Volume': info.get('averageVolume', np.nan),
                 'Price': info.get('currentPrice', np.nan),
                 'ROIC': roic,
-                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan)  # Adicionando Dividend Yield
+                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan)
+                'Debt to Equity': info.get('debtToEquity', np.nan)
             }
         except Exception as e:
             if attempt < max_retries - 1:
@@ -70,7 +71,8 @@ def get_fundamental_data(ticker, max_retries=3):
                     'Volume': np.nan,
                     'Price': np.nan,
                     'ROIC': np.nan,
-                    'Dividend Yield': np.nan  # Adicionando Dividend Yield
+                    'Dividend Yield': np.nan 
+                    'Debt to Equity': np.nan
                 }
 
 # Função para obter dados históricos de preços com tratamento de erro
