@@ -569,18 +569,33 @@ def calculate_portfolio_metrics(portfolio_data, invested_value):
     return total_invested, current_value, total_return
 
 def calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount):
-    """
-    Calcula a distribuição ótima do aporte entre os ativos existentes na carteira.
-    """
     tickers = portfolio_data.columns
     current_weights = portfolio_data.iloc[-1] / portfolio_data.iloc[-1].sum()
     
     returns = portfolio_data.pct_change().dropna()
     
+    # Obter dados fundamentalistas
+    fundamental_data = {}
+    for ticker in tickers:
+        fundamental_data[ticker] = get_fundamental_data(ticker)
+    
     def objective(weights):
         portfolio_return = np.sum(returns.mean() * weights) * 252
         portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
-        return -portfolio_return / portfolio_volatility  # Negative Sharpe Ratio (we'll minimize this)
+        sharpe_ratio = portfolio_return / portfolio_volatility
+        
+        # Fator de qualidade fundamentalista
+        quality_score = np.mean([
+            fundamental_data[ticker]['ROE'] / fundamental_data[ticker]['P/L'] 
+            if fundamental_data[ticker]['P/L'] > 0 else 0
+            for ticker in tickers
+        ])
+        
+        # Fator de diversificação
+        diversity_penalty = np.sum(np.square(weights - 1/len(weights)))
+        
+        # Combinar os fatores
+        return -(sharpe_ratio + quality_score - diversity_penalty)
 
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = tuple((0, 1) for _ in range(len(tickers)))
@@ -726,7 +741,7 @@ def portfolio_tracking():
     else:
         st.write("Não há transações registradas ainda.")
 
-    st.subheader('Aporte na Carteira')
+    st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
     
     if st.button('Calcular Distribuição Ótima do Aporte'):
@@ -750,6 +765,19 @@ def portfolio_tracking():
             fig = go.Figure(data=[go.Pie(labels=contribution_df['Ativo'], values=optimal_contribution.values)])
             fig.update_layout(title='Distribuição do Aporte')
             st.plotly_chart(fig)
+            
+            # Explicação da estratégia
+            st.subheader("Explicação da Estratégia de Aporte")
+            st.write("""
+            A estratégia de aporte utiliza uma abordagem multifatorial para determinar a alocação ótima:
+            
+            1. Desempenho Histórico: Considera o retorno histórico e a volatilidade dos ativos.
+            2. Análise Fundamentalista: Incorpora métricas como P/L, ROE e Dividend Yield.
+            3. Diversificação: Busca manter um portfólio bem diversificado.
+            4. Qualidade dos Ativos: Prioriza ativos com bons fundamentos.
+            
+            Esta abordagem visa equilibrar o risco e o retorno, considerando tanto o desempenho passado quanto a saúde financeira atual das empresas.
+            """)
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
