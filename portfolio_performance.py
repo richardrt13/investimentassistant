@@ -781,9 +781,9 @@ def portfolio_tracking():
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
-def perform_backtest(start_date, end_date, invest_value, df=top_ativos):
+def perform_backtest(start_date, end_date, invest_value, top_ativos):
     # Obter dados fundamentais para a data de início
-    backtest_top_ativos = df['Ticker']
+    backtest_top_ativos = top_ativos['Ticker']
     tickers = backtest_top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
     
     # Obter dados históricos
