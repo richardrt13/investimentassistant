@@ -1098,7 +1098,7 @@ def main():
             st.plotly_chart(fig)
 
             # Mostrar alocação inicial
-            st.subheader('Alocação Inicial do Portfólio')
+            st.subheader('Alocação Inicia do Portfólio')
             initial_allocation_df = pd.DataFrame(list(backtest_results['initial_allocation'].items()), 
                                                  columns=['Ativo', 'Quantidade'])
             st.table(initial_allocation_df)
