@@ -1055,7 +1055,7 @@ def main():
 
         if st.button('Realizar Backtesting'):
             with st.spinner('Realizando backtesting...'):
-                backtest_results = perform_backtest(backtest_start_date, backtest_end_date, backtest_invest_value)
+                backtest_results = perform_backtest(backtest_start_date, backtest_end_date, backtest_invest_value, top_ativos)
             
             st.write(f"Retorno total: {backtest_results['total_return']:.2%}")
             st.write(f"Retorno anualizado: {backtest_results['annualized_return']:.2%}")
