@@ -782,34 +782,9 @@ def portfolio_tracking():
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
 def perform_backtest(start_date, end_date, invest_value):
-    # Carregar ativos e dados fundamentais
-    ativos_df = load_assets()
-    ativos_df = ativos_df.dropna(subset=['Type'])
-    
     # Obter dados fundamentais para a data de início
-    fundamental_data = []
-    for ticker in ativos_df['Ticker']:
-        data = get_fundamental_data(ticker + '.SA', start_date)
-        growth_data = get_financial_growth_data(ticker + '.SA', start_date)
-        if growth_data:
-            data.update(growth_data)
-        data['Ticker'] = ticker
-        fundamental_data.append(data)
-    
-    fundamental_df = pd.DataFrame(fundamental_data)
-    ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
-    
-    # Filtrar e calcular scores
-    ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
-    ativos_df['Score'] = (
-        ativos_df['ROE'] / ativos_df['P/L'] +
-        1 / ativos_df['P/VP'] +
-        np.log(ativos_df['Volume'])
-    )
-    
-    # Selecionar top 10 ativos
-    top_ativos = ativos_df.nlargest(10, 'Score')
-    tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+    backtest_top_ativos = top_ativos['Ticker']
+    tickers = backtest_top_ativos['Ticker'].tolist()
     
     # Obter dados históricos
     stock_data = get_stock_data(tickers, start_date=start_date, end_date=end_date)
