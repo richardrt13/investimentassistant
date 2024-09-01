@@ -1046,6 +1046,8 @@ def main():
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
             pass
+
+        top_ativos
             
         st.subheader('Backtesting')
         backtest_start_date = st.date_input('Data de início do backtesting', value=datetime(2022, 1, 1))
