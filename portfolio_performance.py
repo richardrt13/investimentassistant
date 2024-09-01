@@ -781,6 +781,73 @@ def portfolio_tracking():
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
+def perform_backtest(start_date, end_date, invest_value):
+    # Carregar ativos e dados fundamentais
+    ativos_df = load_assets()
+    ativos_df = ativos_df.dropna(subset=['Type'])
+    
+    # Obter dados fundamentais para a data de início
+    fundamental_data = []
+    for ticker in ativos_df['Ticker']:
+        data = get_fundamental_data(ticker + '.SA', start_date)
+        growth_data = get_financial_growth_data(ticker + '.SA', start_date)
+        if growth_data:
+            data.update(growth_data)
+        data['Ticker'] = ticker
+        fundamental_data.append(data)
+    
+    fundamental_df = pd.DataFrame(fundamental_data)
+    ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
+    
+    # Filtrar e calcular scores
+    ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield', 'Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+    ativos_df['Score'] = (
+        ativos_df['ROE'] / ativos_df['P/L'] +
+        1 / ativos_df['P/VP'] +
+        np.log(ativos_df['Volume'])
+    )
+    
+    # Selecionar top 10 ativos
+    top_ativos = ativos_df.nlargest(10, 'Score')
+    tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+    
+    # Obter dados históricos
+    stock_data = get_stock_data(tickers, start_date=start_date, end_date=end_date)
+    returns = calculate_returns(stock_data)
+    
+    # Otimizar portfólio
+    risk_free_rate = 0.1
+    optimal_weights = optimize_portfolio(returns, risk_free_rate)
+    
+    # Calcular alocação inicial
+    initial_allocation = {}
+    for ticker, weight in zip(tickers, optimal_weights):
+        price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
+        allocated_value = weight * invest_value
+        shares = allocated_value / price
+        initial_allocation[ticker] = shares
+    
+    # Simular desempenho do portfólio
+    portfolio_value = pd.Series(index=stock_data.index, dtype=float)
+    for date in stock_data.index:
+        date_value = sum(initial_allocation[ticker] * stock_data.loc[date, ticker] for ticker in tickers)
+        portfolio_value[date] = date_value
+    
+    # Calcular métricas de desempenho
+    total_return = (portfolio_value.iloc[-1] / invest_value) - 1
+    annualized_return = (1 + total_return) ** (252 / len(portfolio_value)) - 1
+    volatility = portfolio_value.pct_change().std() * np.sqrt(252)
+    sharpe_ratio = (annualized_return - risk_free_rate) / volatility
+    
+    return {
+        'initial_allocation': initial_allocation,
+        'portfolio_value': portfolio_value,
+        'total_return': total_return,
+        'annualized_return': annualized_return,
+        'volatility': volatility,
+        'sharpe_ratio': sharpe_ratio
+    }
+
 
 def main():
     st.sidebar.title('Navegação')
@@ -1004,6 +1071,39 @@ def main():
             status_text.text('Análise concluída!')
             progress_bar.progress(100)
             pass
+            
+        st.subheader('Backtesting')
+        backtest_start_date = st.date_input('Data de início do backtesting', value=datetime(2022, 1, 1))
+        backtest_end_date = st.date_input('Data de fim do backtesting', value=datetime.now())
+        backtest_invest_value = st.number_input('Valor inicial do investimento para backtesting (R$)', min_value=100.0, value=10000.0, step=100.0)
+
+        if st.button('Realizar Backtesting'):
+            with st.spinner('Realizando backtesting...'):
+                backtest_results = perform_backtest(backtest_start_date, backtest_end_date, backtest_invest_value)
+            
+            st.write(f"Retorno total: {backtest_results['total_return']:.2%}")
+            st.write(f"Retorno anualizado: {backtest_results['annualized_return']:.2%}")
+            st.write(f"Volatilidade anual: {backtest_results['volatility']:.2%}")
+            st.write(f"Índice de Sharpe: {backtest_results['sharpe_ratio']:.2f}")
+
+            # Plotar evolução do valor do portfólio
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=backtest_results['portfolio_value'].index, 
+                                     y=backtest_results['portfolio_value'].values,
+                                     mode='lines',
+                                     name='Valor do Portfólio'))
+            fig.update_layout(title='Evolução do Valor do Portfólio',
+                              xaxis_title='Data',
+                              yaxis_title='Valor (R$)')
+            st.plotly_chart(fig)
+
+            # Mostrar alocação inicial
+            st.subheader('Alocação Inicial do Portfólio')
+            initial_allocation_df = pd.DataFrame(list(backtest_results['initial_allocation'].items()), 
+                                                 columns=['Ativo', 'Quantidade'])
+            st.table(initial_allocation_df)
+         
+    
     elif page == 'Acompanhamento da Carteira':
         portfolio_tracking()
 
