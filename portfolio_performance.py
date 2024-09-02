@@ -1001,7 +1001,7 @@ def main():
             st.plotly_chart(fig)
     
     
-            status_text.text('Análise concluída!')
+            status_text.text('Anális concluída!')
             progress_bar.progress(100)
             pass
          
