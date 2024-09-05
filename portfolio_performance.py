@@ -488,7 +488,7 @@ def update_historical_prices():
         else:
             start_date = global_start_date
 
-        end_date = datetime.now() - timedelta(days=1)  # Dados até d-1
+        end_date = datetime.now()
 
         if start_date < end_date:
             data = yf.download(ticker, start=start_date, end=end_date)
