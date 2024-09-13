@@ -536,7 +536,7 @@ def get_portfolio_performance():
             invested_value[ticker] -= invested_value[ticker] * sell_ratio
 
     tickers = list(portfolio.keys())
-    end_date = datetime.now() - timedelta(days=1)  # d-1
+    end_date = datetime.now()
     start_date = df['Date'].min() # Data da primeira transação
 
     prices = pd.DataFrame()
