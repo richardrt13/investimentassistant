@@ -552,7 +552,7 @@ def get_portfolio_performance():
     
 def get_ibovespa_data(start_date, end_date):
     ibov = get_historical_prices('^BVSP', start_date, end_date)
-    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0]) * 100
+    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0] - 1) * 100
     return ibov_return
 
 def update_daily_prices():
