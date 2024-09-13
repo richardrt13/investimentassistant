@@ -552,15 +552,13 @@ def get_portfolio_performance():
     
 def get_ibovespa_data(start_date, end_date):
     ibov = get_historical_prices('^BVSP', start_date, end_date)
-    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0] - 1) * 100
+    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0]) * 100
     return ibov_return
 
 def update_daily_prices():
     today = datetime.now().date()
-    last_update = prices_collection.find_one(sort=[('date', -1)])
-    
-    if last_update and last_update['date'].date() < today - timedelta(days=1):
-        update_historical_prices()
+    last_update = prices_collection.find_one(sort=[('date')])
+    update_historical_prices()
 
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
