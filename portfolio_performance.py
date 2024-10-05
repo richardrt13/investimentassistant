@@ -455,11 +455,16 @@ def sell_stock(date, ticker, quantity, price):
 
 def get_historical_prices(ticker, start_date, end_date):
     # Sempre buscar dados atualizados do Yahoo Finance
+    end_date = datetime.now()  # Usar a data e hora atual
     data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     
     # Se não houver dados suficientes, informar o usuário
     if data.empty or data.index[0] > start_date:
         st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}.")
+    
+    # Garantir que temos o dado mais recente
+    if not data.empty and data.index[-1].date() < end_date.date():
+        st.warning(f"Dados mais recentes para {ticker} são de {data.index[-1].date()}. Pode haver um atraso na atualização.")
     
     return pd.DataFrame({'date': data.index, 'adjusted_close': data.values})
 
@@ -490,7 +495,7 @@ def get_portfolio_performance():
             invested_value[ticker] -= invested_value[ticker] * sell_ratio
 
     tickers = list(portfolio.keys())
-    end_date = datetime.now()
+    end_date = datetime.now()  # Sempre usar a data e hora atual
     start_date = df['Date'].min()  # Data da primeira transação
 
     prices = pd.DataFrame()
