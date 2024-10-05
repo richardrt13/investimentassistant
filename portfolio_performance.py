@@ -894,7 +894,7 @@ def main():
             anomaly_df = pd.DataFrame(anomaly_data)
             st.table(anomaly_df)
     
-            st.write("As anomalias de preço indicam movimentos incomuns nos preços dos ativos, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
+            st.write("As anomalias de preço indicam movimentos incomuns nos preços dos atios, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
 
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
