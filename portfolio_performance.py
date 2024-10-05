@@ -789,7 +789,7 @@ def main():
     
             # Verificar se há ativos suficientes para continuar
             if len(ativos_df) < 10:
-                st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+                st.error("Não há ativs suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
                 return
     
             # Análise fundamentalista e de liquidez
