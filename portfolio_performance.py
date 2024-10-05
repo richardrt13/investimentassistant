@@ -454,60 +454,14 @@ def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
 
 def get_historical_prices(ticker, start_date, end_date):
-    # Buscar dados do MongoDB
-    data = list(prices_collection.find(
-        {'ticker': ticker, 'date': {'$gte': start_date, '$lte': end_date}},
-        {'date': 1, 'adjusted_close': 1, '_id': 0}
-    ).sort('date', 1))
+    # Sempre buscar dados atualizados do Yahoo Finance
+    data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     
     # Se não houver dados suficientes, informar o usuário
-    if not data or data[0]['date'] > start_date:
-        st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}. Por favor, atualize os dados históricos.")
+    if data.empty or data.index[0] > start_date:
+        st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}.")
     
-    return pd.DataFrame(data).set_index('date')
-
-def update_historical_prices():
-    tickers = list(set([doc['Ticker'] for doc in collection.find({}, {'Ticker': 1})]))
-    tickers.append('^BVSP')  # Adicionar Ibovespa
-
-    # Encontrar a data da primeira transação
-    first_transaction = collection.find_one(sort=[('Date', 1)])
-    if first_transaction:
-        global_start_date = first_transaction['Date']
-        if isinstance(global_start_date, str):
-            global_start_date = datetime.strptime(global_start_date, '%Y-%m-%d %H:%M:%S')
-    else:
-        global_start_date = datetime.now() - timedelta(days=365*5)  # 5 anos atrás se não houver transações
-
-    updated_tickers = []
-    for ticker in tickers:
-        last_date = prices_collection.find_one({'ticker': ticker}, sort=[('date', -1)])
-        
-        if last_date:
-            start_date = max(last_date['date'] + timedelta(days=1), global_start_date)
-        else:
-            start_date = global_start_date
-
-        end_date = datetime.now()
-
-        if start_date < end_date:
-            data = yf.download(ticker, start=start_date, end=end_date)
-            
-            for date, row in data.iterrows():
-                prices_collection.update_one(
-                    {'ticker': ticker, 'date': date.to_pydatetime()},
-                    {'$set': {
-                        'close': row['Close'],
-                        'adjusted_close': row['Adj Close']
-                    }},
-                    upsert=True
-                )
-            updated_tickers.append(ticker)
-
-    if updated_tickers:
-        return f"Dados atualizados para: {', '.join(updated_tickers)}"
-    else:
-        return "Nenhum dado novo para atualizar."
+    return pd.DataFrame({'date': data.index, 'adjusted_close': data.values})
 
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
@@ -537,12 +491,12 @@ def get_portfolio_performance():
 
     tickers = list(portfolio.keys())
     end_date = datetime.now()
-    start_date = df['Date'].min() # Data da primeira transação
+    start_date = df['Date'].min()  # Data da primeira transação
 
     prices = pd.DataFrame()
     for ticker in tickers:
         ticker_prices = get_historical_prices(ticker, start_date, end_date)
-        prices[ticker] = ticker_prices['adjusted_close']
+        prices[ticker] = ticker_prices.set_index('date')['adjusted_close']
     
     daily_value = prices.copy()
     for ticker in tickers:
@@ -552,13 +506,8 @@ def get_portfolio_performance():
     
 def get_ibovespa_data(start_date, end_date):
     ibov = get_historical_prices('^BVSP', start_date, end_date)
-    ibov_return = (ibov['adjusted_close'] / ibov['adjusted_close'].iloc[0] - 1) * 100
+    ibov_return = (ibov.set_index('date')['adjusted_close'] / ibov.set_index('date')['adjusted_close'].iloc[0] - 1) * 100
     return ibov_return
-
-def update_daily_prices():
-    today = datetime.now().date()
-    last_update = prices_collection.find_one(sort=[('date')])
-    update_historical_prices()
 
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
@@ -612,17 +561,10 @@ def portfolio_tracking():
     # Initialize database
     init_db()
 
-    # Adicionar botão para atualizar dados
-    if st.button('Atualizar Dados Históricos'):
-        with st.spinner('Atualizando dados...'):
-            update_message = update_historical_prices()
-        st.success(update_message)
-
     # Get portfolio performance
     portfolio_data, invested_value = get_portfolio_performance()
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
-        
 
     # Get all assets
     assets_df = load_assets()
