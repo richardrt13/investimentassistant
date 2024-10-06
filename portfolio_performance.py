@@ -462,10 +462,6 @@ def get_historical_prices(ticker, start_date, end_date):
     if data.empty or data.index[0] > start_date:
         st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}.")
     
-    # Garantir que temos o dado mais recente
-    if not data.empty and data.index[-1].date() < end_date.date():
-        st.warning(f"Dados mais recentes para {ticker} são de {data.index[-1].date()}. Pode haver um atraso na atualização.")
-    
     return pd.DataFrame({'date': data.index, 'adjusted_close': data.values})
 
 #@st.cache_data(ttl=3600)
