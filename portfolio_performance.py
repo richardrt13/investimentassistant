@@ -933,7 +933,6 @@ def main():
             prices = top_ativos.set_index('Ticker')['Price']
             allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
             
-            prices
 
             st.subheader('Alocação Ótima do Portfólio')
             allocation_data = []
@@ -948,6 +947,8 @@ def main():
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
 
                 ticr = f"{ticker}.sa"
+                ticker 
+                ticr
                 
                 explanation = generate_allocation_explanation(ticr, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticr], risk_free_rate, portfolio_sharpe)
 
