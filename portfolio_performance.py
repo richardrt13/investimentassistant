@@ -946,9 +946,10 @@ def main():
                 fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
                 growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['revenue_growth', 'income_growth']].to_dict('records')[0]
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
+
+                ticr = f"{ticker}.sa"
                 
-                
-                explanation = generate_allocation_explanation(ticker, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
+                explanation = generate_allocation_explanation(ticr, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticr], risk_free_rate, portfolio_sharpe)
 
                 allocation_data.append({
                     'Ticker': ticker,
