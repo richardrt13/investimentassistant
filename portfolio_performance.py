@@ -938,7 +938,7 @@ def main():
             st.subheader('Alocação Ótima do Portfólio')
             allocation_data = []
             for ticker, shares in allocation.items():
-                price = prices[ticker[:-3]]  # Remove o '.SA' do ticker
+                price = prices[Ticker[:-3]]  # Remove o '.SA' do ticker
                 allocated_value = shares * price
                 cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
                 
