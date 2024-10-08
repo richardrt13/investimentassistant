@@ -555,6 +555,41 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     
     return pd.Series(contribution_per_asset, index=tickers)
 
+def allocate_portfolio_integer_shares(invest_value, prices, weights):
+    allocation = {}
+    remaining_value = invest_value
+    
+    # Ordenar os ativos por peso, do maior para o menor
+    sorted_assets = sorted(zip(weights, prices.index), reverse=True)
+    
+    for weight, ticker in sorted_assets:
+        price = prices[ticker]
+        target_value = invest_value * weight
+        shares = int(target_value / price)  # Arredonda para baixo para obter um número inteiro de ações
+        
+        if shares > 0 and price * shares <= remaining_value:
+            allocation[ticker] = shares
+            remaining_value -= price * shares
+    
+    # Tenta alocar o valor restante em mais ações, se possível
+    for weight, ticker in sorted_assets:
+        price = prices[ticker]
+        if price <= remaining_value:
+            additional_shares = int(remaining_value / price)
+            if additional_shares > 0:
+                allocation[ticker] = allocation.get(ticker, 0) + additional_shares
+                remaining_value -= price * additional_shares
+    
+    return allocation, remaining_value
+
+# Exemplo de uso:
+# invest_value = 300
+# prices = pd.Series({'AAPL': 150, 'GOOGL': 2500, 'MSFT': 300, 'AMZN': 3300})
+# weights = np.array([0.3, 0.2, 0.3, 0.2])
+# allocation, remaining = allocate_portfolio_integer_shares(invest_value, prices, weights)
+# print(allocation)
+# print(f"Valor não investido: R$ {remaining:.2f}")
+
 # New function for portfolio tracking page
 def portfolio_tracking():
     st.title('Acompanhamento da Carteira')
@@ -895,12 +930,14 @@ def main():
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
 
+            prices = top_ativos.set_index('Ticker')['Price']
+            allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
+
             st.subheader('Alocação Ótima do Portfólio')
             allocation_data = []
-            for ticker, weight in zip(tickers, adjusted_weights):
-                price = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Price'].values[0]
-                allocated_value = weight * invest_value
-                shares = allocated_value / price
+            for ticker, shares in allocation.items():
+                price = prices[ticker[:-3]]  # Remove o '.SA' do ticker
+                allocated_value = shares * price
                 cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
                 
                 # Obter dados para explicação
@@ -910,18 +947,19 @@ def main():
                 
                 
                 explanation = generate_allocation_explanation(ticker, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
-                
+
                 allocation_data.append({
                     'Ticker': ticker,
-                    'Peso': f"{weight:.2%}",
+                    'Quantidade de Ações': f"{shares}",
                     'Valor Alocado': f"R$ {allocated_value:.2f}",
-                    'Quantidade de Ações': f"{shares:.2f}",
                     'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A",
                     'Explicação': explanation
                 })
-            
+
             allocation_df = pd.DataFrame(allocation_data)
-            st.table(allocation_df[['Ticker', 'Peso', 'Valor Alocado', 'Quantidade de Ações', 'Rentabilidade Acumulada (5 anos)']])
+            st.table(allocation_df[['Ticker', 'Quantidade de Ações', 'Valor Alocado', 'Rentabilidade Acumulada (5 anos)']])
+
+            st.write(f"Valor não investido: R$ {remaining_value:.2f}")
             
             # Exibir explicações
             for _, row in allocation_df.iterrows():
