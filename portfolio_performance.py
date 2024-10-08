@@ -940,12 +940,12 @@ def main():
             for ticker, shares in allocation.items():
                 price = prices[ticker]  # Remove o '.SA' do ticker
                 allocated_value = shares * price
-                cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], 'Rentabilidade Acumulada (5 anos)'].values[0]
+                cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker, 'Rentabilidade Acumulada (5 anos)'].values[0]
                 
                 # Obter dados para explicação
-                fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
-                growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker[:-3], ['revenue_growth', 'income_growth']].to_dict('records')[0]
-                anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker[:-3], ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
+                fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
+                growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['revenue_growth', 'income_growth']].to_dict('records')[0]
+                anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
                 
                 
                 explanation = generate_allocation_explanation(ticker, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticker], risk_free_rate, portfolio_sharpe)
