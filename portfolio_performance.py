@@ -947,8 +947,6 @@ def main():
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
 
                 ticr = f"{ticker}.SA"
-                ticker 
-                ticr
                 
                 explanation = generate_allocation_explanation(ticr, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticr], risk_free_rate, portfolio_sharpe)
 
