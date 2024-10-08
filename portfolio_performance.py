@@ -946,7 +946,7 @@ def main():
                 growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['revenue_growth', 'income_growth']].to_dict('records')[0]
                 anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
 
-                ticr = f"{ticker}.sa"
+                ticr = f"{ticker}.SA"
                 ticker 
                 ticr
                 
