@@ -932,6 +932,7 @@ def main():
 
             prices = top_ativos.set_index('Ticker')['Price']
             allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
+            
             prices
 
             st.subheader('Alocação Ótima do Portfólio')
