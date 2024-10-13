@@ -706,7 +706,8 @@ def portfolio_tracking():
         )
         st.plotly_chart(fig_returns)   
 
-        collection
+        transactions1 = list(collection.find())
+        transactions1
 
     else:
         st.write("Não há transações registradas ainda.")
