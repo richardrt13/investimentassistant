@@ -204,7 +204,6 @@ def plot_efficient_frontier(returns, optimal_portfolio):
 
     return fig
 
-# Novas funções para detecção de anomalias e cálculo de indicadores
 
 def detect_price_anomalies(prices, window=20, threshold=2):
     returns = prices.pct_change().dropna()
