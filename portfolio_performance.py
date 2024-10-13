@@ -706,6 +706,8 @@ def portfolio_tracking():
         )
         st.plotly_chart(fig_returns)   
 
+        collection
+
     else:
         st.write("Não há transações registradas ainda.")
 
@@ -915,8 +917,6 @@ def main():
 
             prices = top_ativos.set_index('Ticker')['Price']
             allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
-
-            collection
             
 
             st.subheader('Alocação Ótima do Portfólio')
