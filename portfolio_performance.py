@@ -582,13 +582,77 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
-# Exemplo de uso:
-# invest_value = 300
-# prices = pd.Series({'AAPL': 150, 'GOOGL': 2500, 'MSFT': 300, 'AMZN': 3300})
-# weights = np.array([0.3, 0.2, 0.3, 0.2])
-# allocation, remaining = allocate_portfolio_integer_shares(invest_value, prices, weights)
-# print(allocation)
-# print(f"Valor não investido: R$ {remaining:.2f}")
+def calculate_monthly_returns(transactions, prices):
+    # Converter datas para datetime
+    transactions['Date'] = pd.to_datetime(transactions['Date'])
+    prices.index = pd.to_datetime(prices.index)
+
+    # Ordenar transações por data
+    transactions = transactions.sort_values('Date')
+
+    # Inicializar DataFrame para armazenar valores mensais
+    monthly_data = pd.DataFrame(columns=['Date', 'Portfolio Value', 'Invested Value'])
+
+    # Inicializar variáveis
+    portfolio = {}
+    invested_value = 0
+
+    # Iterar por cada mês
+    current_date = transactions['Date'].min().replace(day=1)
+    end_date = prices.index.max()
+
+    while current_date <= end_date:
+        next_month = current_date + pd.offsets.MonthEnd(1)
+
+        # Processar transações do mês
+        month_transactions = transactions[(transactions['Date'] >= current_date) & (transactions['Date'] <= next_month)]
+        for _, transaction in month_transactions.iterrows():
+            ticker = transaction['Ticker']
+            if transaction['Action'] == 'BUY':
+                portfolio[ticker] = portfolio.get(ticker, 0) + transaction['Quantity']
+                invested_value += transaction['Quantity'] * transaction['Price']
+            else:  # SELL
+                portfolio[ticker] -= transaction['Quantity']
+                invested_value -= transaction['Quantity'] * transaction['Price']
+
+        # Calcular valor do portfólio no final do mês
+        portfolio_value = sum(portfolio.get(ticker, 0) * prices.loc[next_month, ticker] 
+                              for ticker in portfolio if ticker in prices.columns)
+
+        # Adicionar dados ao DataFrame mensal
+        monthly_data = monthly_data.append({
+            'Date': next_month,
+            'Portfolio Value': portfolio_value,
+            'Invested Value': invested_value
+        }, ignore_index=True)
+
+        current_date = next_month + pd.Timedelta(days=1)
+
+    # Calcular retornos mensais
+    monthly_data['Monthly Return'] = (monthly_data['Portfolio Value'].pct_change() * 100).fillna(0)
+
+    return monthly_data
+
+def plot_monthly_returns(monthly_data):
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=monthly_data['Date'],
+        y=monthly_data['Monthly Return'],
+        name='Retorno Mensal',
+        marker_color=monthly_data['Monthly Return'].apply(lambda x: 'green' if x >= 0 else 'red')
+    ))
+
+    fig.update_layout(
+        title='Retorno Mensal da Carteira',
+        xaxis_title='Data',
+        yaxis_title='Retorno Mensal (%)',
+        barmode='relative',
+        hovermode='x unified'
+    )
+
+    return fig
+
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -713,6 +777,19 @@ def portfolio_tracking():
             hovermode='x unified'
         )
         st.plotly_chart(fig_returns)
+        
+        # Calcular retornos mensais
+        transactions = pd.DataFrame(list(collection.find()))
+        monthly_returns = calculate_monthly_returns(transactions, portfolio_data)
+
+        # Plotar gráfico de retornos mensais
+        fig_monthly_returns = plot_monthly_returns(monthly_returns)
+        st.plotly_chart(fig_monthly_returns)
+
+        # Exibir tabela de retornos mensais
+        st.subheader('Retornos Mensais')
+        st.dataframe(monthly_returns[['Date', 'Monthly Return']].set_index('Date'))
+    
 
     else:
         st.write("Não há transações registradas ainda.")
