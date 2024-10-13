@@ -929,7 +929,6 @@ def main():
             growth_data = top_ativos[['revenue_growth', 'income_growth']].mean(axis=1).values
             quality_data = top_ativos['ROIC'].values
 
-            
     
             tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
             status_text.text('Obtendo dados históricos...')
@@ -940,9 +939,6 @@ def main():
                 st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
                 return
     
-            # Calcular rentabilidade acumulada
-            #cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
-            #top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
     
             st.subheader('Top 10 BDRs Recomendados')
             st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
@@ -980,11 +976,6 @@ def main():
                 st.error(f"Erro ao otimizar o portfólio: {e}")
                 return
 
-
-            # st.subheader('Pesos Otimizados')
-            # weight_names = ['ROE/P/L', '1/P/VP', 'log(Volume)', 'Crescimento de Receita', 'Crescimento de Lucro', 'Estabilidade da Dívida', 'Dividend Yield']
-            # weight_df = pd.DataFrame({'Indicador': weight_names, 'Peso': optimized_weights})
-            # st.table(weight_df)
 
             # Exibir informações sobre anomalias detectadas
             st.subheader('Análise de Anomalias')
