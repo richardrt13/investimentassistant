@@ -590,8 +590,10 @@ def calculate_monthly_returns(transactions, prices):
     # Ordenar transações por data
     transactions = transactions.sort_values('Date')
 
-    # Inicializar DataFrame para armazenar valores mensais
-    monthly_data = pd.DataFrame(columns=['Date', 'Portfolio Value', 'Invested Value'])
+    # Inicializar listas para armazenar dados mensais
+    dates = []
+    portfolio_values = []
+    invested_values = []
 
     # Inicializar variáveis
     portfolio = {}
@@ -612,21 +614,26 @@ def calculate_monthly_returns(transactions, prices):
                 portfolio[ticker] = portfolio.get(ticker, 0) + transaction['Quantity']
                 invested_value += transaction['Quantity'] * transaction['Price']
             else:  # SELL
-                portfolio[ticker] -= transaction['Quantity']
+                portfolio[ticker] = portfolio.get(ticker, 0) - transaction['Quantity']
                 invested_value -= transaction['Quantity'] * transaction['Price']
 
         # Calcular valor do portfólio no final do mês
-        portfolio_value = sum(portfolio.get(ticker, 0) * prices.loc[next_month, ticker] 
+        portfolio_value = sum(portfolio.get(ticker, 0) * prices.loc[prices.index <= next_month, ticker].iloc[-1]
                               for ticker in portfolio if ticker in prices.columns)
 
-        # Adicionar dados ao DataFrame mensal
-        monthly_data = monthly_data.append({
-            'Date': next_month,
-            'Portfolio Value': portfolio_value,
-            'Invested Value': invested_value
-        }, ignore_index=True)
+        # Adicionar dados às listas
+        dates.append(next_month)
+        portfolio_values.append(portfolio_value)
+        invested_values.append(invested_value)
 
         current_date = next_month + pd.Timedelta(days=1)
+
+    # Criar DataFrame com os dados mensais
+    monthly_data = pd.DataFrame({
+        'Date': dates,
+        'Portfolio Value': portfolio_values,
+        'Invested Value': invested_values
+    })
 
     # Calcular retornos mensais
     monthly_data['Monthly Return'] = (monthly_data['Portfolio Value'].pct_change() * 100).fillna(0)
@@ -789,6 +796,7 @@ def portfolio_tracking():
         # Exibir tabela de retornos mensais
         st.subheader('Retornos Mensais')
         st.dataframe(monthly_returns[['Date', 'Monthly Return']].set_index('Date'))
+
     
 
     else:
