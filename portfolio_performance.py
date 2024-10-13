@@ -593,11 +593,9 @@ def calculate_monthly_returns(transactions, prices):
     # Inicializar listas para armazenar dados mensais
     dates = []
     portfolio_values = []
-    invested_values = []
 
-    # Inicializar variáveis
+    # Inicializar portfólio
     portfolio = {}
-    invested_value = 0
 
     # Iterar por cada mês
     current_date = transactions['Date'].min().replace(day=1)
@@ -606,25 +604,22 @@ def calculate_monthly_returns(transactions, prices):
     while current_date <= end_date:
         next_month = current_date + pd.offsets.MonthEnd(1)
 
-        # Processar transações do mês
+        # Processar transações do mês (sem considerar os valores investidos diretamente)
         month_transactions = transactions[(transactions['Date'] >= current_date) & (transactions['Date'] <= next_month)]
         for _, transaction in month_transactions.iterrows():
             ticker = transaction['Ticker']
             if transaction['Action'] == 'BUY':
                 portfolio[ticker] = portfolio.get(ticker, 0) + transaction['Quantity']
-                invested_value += transaction['Quantity'] * transaction['Price']
             else:  # SELL
                 portfolio[ticker] = portfolio.get(ticker, 0) - transaction['Quantity']
-                invested_value -= transaction['Quantity'] * transaction['Price']
 
-        # Calcular valor do portfólio no final do mês
+        # Calcular valor do portfólio no final do mês (apenas com base na evolução dos ativos)
         portfolio_value = sum(portfolio.get(ticker, 0) * prices.loc[prices.index <= next_month, ticker].iloc[-1]
                               for ticker in portfolio if ticker in prices.columns)
 
         # Adicionar dados às listas
         dates.append(next_month)
         portfolio_values.append(portfolio_value)
-        invested_values.append(invested_value)
 
         current_date = next_month + pd.Timedelta(days=1)
 
@@ -632,10 +627,9 @@ def calculate_monthly_returns(transactions, prices):
     monthly_data = pd.DataFrame({
         'Date': dates,
         'Portfolio Value': portfolio_values,
-        'Invested Value': invested_values
     })
 
-    # Calcular retornos mensais
+    # Calcular retornos mensais apenas com base na valorização dos ativos
     monthly_data['Monthly Return'] = (monthly_data['Portfolio Value'].pct_change() * 100).fillna(0)
 
     return monthly_data
