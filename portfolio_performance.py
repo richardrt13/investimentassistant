@@ -708,6 +708,7 @@ def portfolio_tracking():
 
         transactions1 = list(collection.find())
         transactions1_df = pd.DataFrame(transactions1)
+        transactions1_df = transactions1_df.groupby(["Date", "Ticker", "Action"])[["Quantity", "Price"]].sum()
 
         transactions1_df
 
