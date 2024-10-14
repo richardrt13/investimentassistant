@@ -705,11 +705,6 @@ def portfolio_tracking():
         )
         st.plotly_chart(fig_returns)   
 
-        transactions = list(collection.find())
-        transactions_df = pd.DataFrame(transactions1)
-        grouped_df = transactions1_df.groupby(["Date", "Ticker", "Action"])[["Quantity", "Price"]].sum()
-
-        grouped_df
 
     else:
         st.write("Não há transações registradas ainda.")
