@@ -521,27 +521,26 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     
     returns = portfolio_data.pct_change().dropna()
     
-    # Obter dados fundamentalistas
+    # Obter dados fundamentalistas e preços atuais
     fundamental_data = {}
+    current_prices = {}
     for ticker in tickers:
         fundamental_data[ticker] = get_fundamental_data(ticker)
+        current_prices[ticker] = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
     
     def objective(weights):
         portfolio_return = np.sum(returns.mean() * weights) * 252
         portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
         sharpe_ratio = portfolio_return / portfolio_volatility
         
-        # Fator de qualidade fundamentalista
         quality_score = np.mean([
             fundamental_data[ticker]['ROE'] / fundamental_data[ticker]['P/L'] 
             if fundamental_data[ticker]['P/L'] > 0 else 0
             for ticker in tickers
         ])
         
-        # Fator de diversificação
         diversity_penalty = np.sum(np.square(weights - 1/len(weights)))
         
-        # Combinar os fatores
         return -(sharpe_ratio + quality_score - diversity_penalty)
 
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
@@ -550,9 +549,38 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     result = minimize(objective, current_weights, method='SLSQP', bounds=bounds, constraints=constraints)
     
     optimal_weights = result.x
-    contribution_per_asset = optimal_weights * contribution_amount
     
-    return pd.Series(contribution_per_asset, index=tickers)
+    # Calcular a contribuição inicial por ativo
+    initial_contribution = optimal_weights * contribution_amount
+    
+    # Ajustar a contribuição para garantir pelo menos uma ação de cada ativo
+    final_contribution = {}
+    remaining_amount = contribution_amount
+    
+    for ticker, amount in zip(tickers, initial_contribution):
+        price = current_prices[ticker]
+        shares = max(1, int(amount / price))  # Garantir pelo menos uma ação
+        allocated_amount = shares * price
+        
+        if allocated_amount <= remaining_amount:
+            final_contribution[ticker] = allocated_amount
+            remaining_amount -= allocated_amount
+        else:
+            break  # Se não houver fundos suficientes, pare de alocar
+    
+    # Distribuir o valor restante, se houver
+    while remaining_amount > 0:
+        for ticker in final_contribution.keys():
+            price = current_prices[ticker]
+            if price <= remaining_amount:
+                final_contribution[ticker] += price
+                remaining_amount -= price
+                if remaining_amount < min(current_prices.values()):
+                    break
+        else:
+            break  # Se não foi possível alocar mais, saia do loop
+    
+    return pd.Series(final_contribution)
 
 def allocate_portfolio_integer_shares(invest_value, prices, weights):
     allocation = {}
@@ -711,22 +739,23 @@ def portfolio_tracking():
 
     st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
-    
+
     if st.button('Calcular Distribuição Ótima do Aporte'):
         portfolio_data, invested_value = get_portfolio_performance()
         if not portfolio_data.empty:
             optimal_contribution = calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount)
-            
+        
             st.write("Distribuição Ótima do Aporte:")
             contribution_df = pd.DataFrame({
                 'Ativo': optimal_contribution.index,
                 'Valor do Aporte': optimal_contribution.values,
+                'Quantidade de Ações': (optimal_contribution / [yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1] for ticker in optimal_contribution.index]).astype(int),
                 'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
             })
             contribution_df = contribution_df.sort_values('Valor do Aporte', ascending=False)
             contribution_df['Valor do Aporte'] = contribution_df['Valor do Aporte'].map('R$ {:.2f}'.format)
             contribution_df['Porcentagem do Aporte'] = contribution_df['Porcentagem do Aporte'].map('{:.2f}%'.format)
-            
+        
             st.table(contribution_df)
             
             # Criar gráfico de pizza para a distribuição do aporte
@@ -812,7 +841,7 @@ def main():
     
             # Verificar se há ativos suficientes para continuar
             if len(ativos_df) < 10:
-                st.error("Não há ativs suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+                st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
                 return
     
             # Análise fundamentalista e de liquidez
