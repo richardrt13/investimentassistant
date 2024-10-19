@@ -3,17 +3,15 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 from scipy.optimize import minimize
-from sklearn.covariance import LedoitWolf
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime, timedelta
 from requests.exceptions import ConnectionError
 from statsmodels.tsa.arima.model import ARIMA
-from statsmodels.tsa.statespace.sarimax import SARIMAX
 import warnings
+import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
-from pypfopt import expected_returns, risk_models, objective_functions
 warnings.filterwarnings('ignore')
 from pymongo import MongoClient
 import time
@@ -611,141 +609,6 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
-def get_market_data(tickers, start_date, end_date):
-    """Obtém dados de mercado para os tickers especificados."""
-    data = yf.download(tickers, start=start_date, end=end_date)
-    return data['Adj Close']
-
-def get_fundamental_data(tickers):
-    """Obtém dados fundamentalistas para os tickers especificados."""
-    fundamental_data = {}
-    for ticker in tickers:
-        stock = yf.Ticker(ticker)
-        info = stock.info
-        fundamental_data[ticker] = {
-            'P/E': info.get('trailingPE', np.nan),
-            'P/B': info.get('priceToBook', np.nan),
-            'ROE': info.get('returnOnEquity', np.nan),
-            'Debt/Equity': info.get('debtToEquity', np.nan),
-            'Dividend Yield': info.get('dividendYield', np.nan)
-        }
-    return pd.DataFrame(fundamental_data).T
-
-def calculate_momentum(returns, window=12):
-    """Calcula o momentum dos ativos."""
-    return returns.rolling(window=window).mean()
-
-def estimate_future_returns(returns, window=60):
-    """Estima retornos futuros usando um modelo ARIMA."""
-    future_returns = {}
-    for column in returns.columns:
-        model = SARIMAX(returns[column], order=(1,1,1), seasonal_order=(1,1,1,12))
-        results = model.fit()
-        forecast = results.forecast(steps=12)
-        future_returns[column] = forecast.mean()
-    return pd.Series(future_returns)
-
-def get_sector_data(tickers):
-    """Obtém dados de setor para os tickers especificados."""
-    sector_data = {}
-    for ticker in tickers:
-        stock = yf.Ticker(ticker)
-        sector_data[ticker] = stock.info.get('sector', 'Unknown')
-    return pd.Series(sector_data)
-
-def calculate_transaction_costs(current_weights, new_weights, cost_per_trade=0.001):
-    """Calcula os custos de transação para o rebalanceamento."""
-    return np.sum(np.abs(new_weights - current_weights)) * cost_per_trade
-
-def black_litterman_returns(market_prices, market_caps, risk_aversion, tau, P, Q):
-    """Calcula retornos esperados usando o modelo Black-Litterman."""
-    from pypfopt import black_litterman
-    delta = black_litterman.market_implied_risk_aversion(market_prices)
-    S = risk_models.CovarianceShrinkage(market_prices).ledoit_wolf()
-    pi = delta * S.dot(market_caps)
-    bl = black_litterman.BlackLittermanModel(S, pi=pi, absolute_views=Q, P=P, tau=tau)
-    return bl.bl_returns()
-
-def optimize_portfolio(returns, fundamental_data, momentum, estimated_future_returns, sector_data, current_weights, risk_free_rate, risk_aversion, sector_constraints, style_constraints):
-    """Otimiza a alocação da carteira considerando múltiplos fatores."""
-    
-    # Combinar diferentes fontes de retornos esperados
-    expected_returns = 0.3 * returns.mean() + 0.3 * momentum.iloc[-1] + 0.4 * estimated_future_returns
-    
-    # Ajustar retornos esperados com base em dados fundamentalistas
-    fundamental_score = (fundamental_data['ROE'] / fundamental_data['P/E']) * (1 / fundamental_data['Debt/Equity'])
-    expected_returns += 0.1 * fundamental_score
-    
-    # Calcular matriz de covariância usando o método Ledoit-Wolf
-    cov_matrix = LedoitWolf().fit(returns).covariance_
-    
-    # Definir função objetivo
-    def objective(weights):
-        portfolio_return = np.sum(weights * expected_returns)
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(cov_matrix, weights)))
-        sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
-        transaction_costs = calculate_transaction_costs(current_weights, weights)
-        return -sharpe_ratio + risk_aversion * transaction_costs
-    
-    # Definir restrições
-    constraints = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]  # Soma dos pesos = 1
-    
-    # Adicionar restrições de setor
-    for sector, (min_weight, max_weight) in sector_constraints.items():
-        sector_assets = sector_data[sector_data == sector].index
-        constraints.append({'type': 'ineq', 'fun': lambda x, sector_assets=sector_assets: np.sum(x[sector_assets]) - min_weight})
-        constraints.append({'type': 'ineq', 'fun': lambda x, sector_assets=sector_assets: max_weight - np.sum(x[sector_assets])})
-    
-    # Adicionar restrições de estilo
-    for style, (min_weight, max_weight) in style_constraints.items():
-        if style == 'value':
-            style_assets = fundamental_data[fundamental_data['P/B'] < fundamental_data['P/B'].median()].index
-        elif style == 'growth':
-            style_assets = fundamental_data[fundamental_data['ROE'] > fundamental_data['ROE'].median()].index
-        elif style == 'dividend':
-            style_assets = fundamental_data[fundamental_data['Dividend Yield'] > 0].index
-        constraints.append({'type': 'ineq', 'fun': lambda x, style_assets=style_assets: np.sum(x[style_assets]) - min_weight})
-        constraints.append({'type': 'ineq', 'fun': lambda x, style_assets=style_assets: max_weight - np.sum(x[style_assets])})
-    
-    # Otimização
-    bounds = tuple((0, 1) for _ in range(len(returns.columns)))
-    initial_weights = current_weights if current_weights is not None else np.array([1/len(returns.columns)] * len(returns.columns))
-    result = minimize(objective, initial_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-    
-    return result.x
-
-def rebalance_portfolio(tickers, current_weights, investment_amount, risk_free_rate=0.03, risk_aversion=1, sector_constraints={}, style_constraints={}):
-    """Função principal para rebalancear a carteira."""
-    
-    # Obter dados
-    market_data = get_market_data(tickers, start_date='2010-01-01', end_date=datetime.now().strftime('%Y-%m-%d'))
-    returns = market_data.pct_change().dropna()
-    fundamental_data = get_fundamental_data(tickers)
-    momentum = calculate_momentum(returns)
-    estimated_future_returns = estimate_future_returns(returns)
-    sector_data = get_sector_data(tickers)
-    
-    # Otimizar carteira
-    optimal_weights = optimize_portfolio(returns, fundamental_data, momentum, estimated_future_returns, 
-                                         sector_data, current_weights, risk_free_rate, risk_aversion, 
-                                         sector_constraints, style_constraints)
-    
-    # Calcular alocação em reais
-    allocation = optimal_weights * investment_amount
-    
-    # Ajustar para compra de ações inteiras
-    prices = market_data.iloc[-1]
-    shares = np.floor(allocation / prices)
-    actual_allocation = shares * prices
-    
-    return pd.DataFrame({
-        'Ticker': tickers,
-        'Optimal Weight': optimal_weights,
-        'Allocation (R$)': actual_allocation,
-        'Shares': shares
-    }).set_index('Ticker')
-
-
 # New function for portfolio tracking page
 def portfolio_tracking():
     st.title('Acompanhamento da Carteira')
@@ -876,33 +739,6 @@ def portfolio_tracking():
 
     st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
-
-    init_db()
-    portfolio_data, invested_value = get_portfolio_performance()
-
-    # Verificar se há dados no portfólio
-    if not portfolio_data.empty:
-        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
-
-        # Definir o portfólio a partir dos valores calculados
-        portfolio = {ticker: portfolio_data[ticker].iloc[-1] for ticker in portfolio_data.columns}
-
-        st.subheader('Rebalanceamento da Carteira')
-        investment_amount = st.number_input('Valor para Rebalanceamento (R$)', min_value=100.0, value=current_value, step=100.0)
-        
-        if st.button('Rebalancear Carteira'):
-            tickers = list(portfolio.keys())
-            current_weights = np.array([portfolio[ticker] / sum(portfolio.values()) for ticker in tickers])
-            
-            # Chamar a função de rebalanceamento
-            result = rebalance_portfolio(tickers, current_weights, investment_amount)
-            
-            st.write("Novo rebalanceamento de carteira:")
-            st.dataframe(result)
-    
-    else:
-        st.write("Não há transações registradas ainda.")
-
 
     if st.button('Calcular Distribuição Ótima do Aporte'):
         portfolio_data, invested_value = get_portfolio_performance()
