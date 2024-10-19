@@ -758,10 +758,6 @@ def portfolio_tracking():
         
             st.table(contribution_df)
             
-            # Criar gráfico de pizza para a distribuição do aporte
-            fig = go.Figure(data=[go.Pie(labels=contribution_df['Ativo'], values=optimal_contribution.values)])
-            fig.update_layout(title='Distribuição do Aporte')
-            st.plotly_chart(fig)
             
             # Explicação da estratégia
             st.subheader("Explicação da Estratégia de Aporte")
