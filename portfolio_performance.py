@@ -876,9 +876,10 @@ def portfolio_tracking():
 
     st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
+    portfolio_data
 
     if st.button('Rebalancear Carteira'):
-        tickers = list(portfolio.keys())
+        tickers = list(portfolio_data.keys())
         current_weights = np.array([portfolio[ticker] / sum(portfolio.values()) for ticker in tickers])
         
         # Rebalancear a carteira com a função otimizada
