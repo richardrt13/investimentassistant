@@ -877,15 +877,31 @@ def portfolio_tracking():
     st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
 
-    if st.button('Rebalancear Carteira'):
-        tickers = list(portfolio_data.keys())
-        current_weights = np.array([portfolio_data[ticker] / sum(portfolio_data.values()) for ticker in tickers])
+    init_db()
+    portfolio_data, invested_value = get_portfolio_performance()
+
+    # Verificar se há dados no portfólio
+    if not portfolio_data.empty:
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
+
+        # Definir o portfólio a partir dos valores calculados
+        portfolio = {ticker: portfolio_data[ticker].iloc[-1] for ticker in portfolio_data.columns}
+
+        st.subheader('Rebalanceamento da Carteira')
+        investment_amount = st.number_input('Valor para Rebalanceamento (R$)', min_value=100.0, value=current_value, step=100.0)
         
-        # Rebalancear a carteira com a função otimizada
-        result = rebalance_portfolio(tickers, current_weights, investment_amount)
-        
-        st.write("Novo rebalanceamento de carteira:")
-        st.dataframe(result)
+        if st.button('Rebalancear Carteira'):
+            tickers = list(portfolio.keys())
+            current_weights = np.array([portfolio[ticker] / sum(portfolio.values()) for ticker in tickers])
+            
+            # Chamar a função de rebalanceamento
+            result = rebalance_portfolio(tickers, current_weights, investment_amount)
+            
+            st.write("Novo rebalanceamento de carteira:")
+            st.dataframe(result)
+    
+    else:
+        st.write("Não há transações registradas ainda.")
 
 
     if st.button('Calcular Distribuição Ótima do Aporte'):
