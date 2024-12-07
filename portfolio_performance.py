@@ -539,63 +539,113 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     # Obter dados fundamentalistas e preços atuais
     fundamental_data = {}
     current_prices = {}
+    valuation_scores = {}
+    
     for ticker in tickers:
+        # Dados fundamentalistas
         fundamental_data[ticker] = get_fundamental_data(ticker)
+        
+        # Preço atual
         current_prices[ticker] = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
+        
+        # Calcular pontuação de avaliação
+        valuation_scores[ticker] = calculate_valuation_score(fundamental_data[ticker], current_prices[ticker])
     
     def objective(weights):
+        # Retorno e volatilidade do portfólio
         portfolio_return = np.sum(returns.mean() * weights) * 252
         portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
         sharpe_ratio = portfolio_return / portfolio_volatility
         
+        # Pontuação de qualidade considerando ROE e P/L
         quality_score = np.mean([
             fundamental_data[ticker]['ROE'] / fundamental_data[ticker]['P/L'] 
             if fundamental_data[ticker]['P/L'] > 0 else 0
             for ticker in tickers
         ])
         
+        # Pontuação de avaliação (ativos subavaliados têm maior peso)
+        valuation_adjustment = np.mean([
+            valuation_scores[ticker] for ticker in tickers
+        ])
+        
+        # Penalidade de diversificação
         diversity_penalty = np.sum(np.square(weights - 1/len(weights)))
         
-        return -(sharpe_ratio + quality_score - diversity_penalty)
-
+        return -(sharpe_ratio + quality_score + valuation_adjustment - diversity_penalty)
+    
+    # Restrições e limites
     constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = tuple((0, 1) for _ in range(len(tickers)))
     
+    # Otimização
     result = minimize(objective, current_weights, method='SLSQP', bounds=bounds, constraints=constraints)
     
     optimal_weights = result.x
     
-    # Calcular a contribuição inicial por ativo
-    initial_contribution = optimal_weights * contribution_amount
-    
-    # Ajustar a contribuição para garantir pelo menos uma ação de cada ativo
+    # Calcular contribuição inicial considerando valor e avaliação
     final_contribution = {}
     remaining_amount = contribution_amount
     
-    for ticker, amount in zip(tickers, initial_contribution):
+    # Ordenar ativos por pontuação de avaliação (do mais subavaliado para o mais caro)
+    sorted_tickers = sorted(tickers, key=lambda x: valuation_scores[x], reverse=True)
+    
+    for ticker in sorted_tickers:
         price = current_prices[ticker]
-        shares = max(1, int(amount / price))  # Garantir pelo menos uma ação
+        max_allocation = optimal_weights[list(tickers).index(ticker)] * contribution_amount
+        
+        # Calcular número de ações, priorizando ativos subavaliados
+        shares = max(1, int(max_allocation / price))
         allocated_amount = shares * price
         
         if allocated_amount <= remaining_amount:
             final_contribution[ticker] = allocated_amount
             remaining_amount -= allocated_amount
-        else:
-            break  # Se não houver fundos suficientes, pare de alocar
-    
-    # Distribuir o valor restante, se houver
-    while remaining_amount > 0:
-        for ticker in final_contribution.keys():
-            price = current_prices[ticker]
-            if price <= remaining_amount:
-                final_contribution[ticker] += price
-                remaining_amount -= price
-                if remaining_amount < min(current_prices.values()):
-                    break
-        else:
-            break  # Se não foi possível alocar mais, saia do loop
+        
+        # Parar se o valor restante for muito baixo
+        if remaining_amount < min(current_prices.values()):
+            break
     
     return pd.Series(final_contribution)
+
+def calculate_valuation_score(fundamental_data, current_price):
+    """
+    Calcula uma pontuação de avaliação para um ativo.
+    
+    Critérios de avaliação:
+    1. Múltiplo P/L (Price/Earnings)
+    2. Preço/Valor Patrimonial
+    3. Dividend Yield
+    4. Crescimento de Receita
+    
+    Retorna uma pontuação onde valores mais altos indicam ativos mais subavaliados.
+    """
+    try:
+        # Inverter P/L para que valores menores (mais baratos) tenham pontuação maior
+        pl_score = 1 / fundamental_data.get('P/L', 1) if fundamental_data.get('P/L', 1) > 0 else 0
+        
+        # Inverter P/VPA para valorizar ativos mais baratos
+        pvpa_score = 1 / fundamental_data.get('P/VPA', 1) if fundamental_data.get('P/VPA', 1) > 0 else 0
+        
+        # Dividend Yield direto
+        dividend_yield = fundamental_data.get('Dividend Yield', 0)
+        
+        # Crescimento de receita
+        revenue_growth = fundamental_data.get('Crescimento Receita', 0)
+        
+        # Combinar pontuações
+        valuation_score = (
+            pl_score * 0.3 + 
+            pvpa_score * 0.3 + 
+            dividend_yield * 0.2 + 
+            revenue_growth * 0.2
+        )
+        
+        return valuation_score
+    
+    except Exception as e:
+        print(f"Erro ao calcular pontuação de avaliação: {e}")
+        return 0
 
 def allocate_portfolio_integer_shares(invest_value, prices, weights):
     allocation = {}
