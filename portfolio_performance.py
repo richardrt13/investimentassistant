@@ -486,7 +486,6 @@ def get_portfolio_performance():
         })
     ).reset_index()
 
-    portfolio_summary
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
@@ -514,7 +513,10 @@ def get_portfolio_performance():
     
     # Prepare invested values series
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
-    
+
+    daily_values
+    invested_values
+
     return daily_values, invested_values
     
 def get_ibovespa_data(start_date, end_date):
