@@ -637,7 +637,7 @@ def portfolio_tracking():
     assets_df = load_assets()
     tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 
-    data = yf.download("ASML34.SA", start="2024-07-15 00:00:00", end="2024-12-07 14:06:44.079735")['Adj Close']
+    data = yf.download("ASML34.SA", start="2024-11-15", end="2024-12-07")['Adj Close']
     data
 
     # Transaction input
