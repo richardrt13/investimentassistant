@@ -532,119 +532,96 @@ def calculate_portfolio_metrics(portfolio_data, invested_value):
 
 def calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount):
     tickers = portfolio_data.columns
-    current_weights = portfolio_data.iloc[-1] / portfolio_data.iloc[-1].sum()
     
-    returns = portfolio_data.pct_change().dropna()
-    
-    # Obter dados fundamentalistas e preços atuais
-    fundamental_data = {}
-    current_prices = {}
-    valuation_scores = {}
-    
+    # Calcular dados fundamentais e pontuações
+    fundamental_analysis = {}
     for ticker in tickers:
-        # Dados fundamentalistas
-        fundamental_data[ticker] = get_fundamental_data(ticker)
+        fundamental_data = get_fundamental_data(ticker)
+        current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
         
-        # Preço atual
-        current_prices[ticker] = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
-        
-        # Calcular pontuação de avaliação
-        valuation_scores[ticker] = calculate_valuation_score(fundamental_data[ticker], current_prices[ticker])
+        # Cálculo de pontuação mais rigoroso
+        fundamental_analysis[ticker] = {
+            'valuation_score': calculate_advanced_valuation_score(fundamental_data, current_price),
+            'current_price': current_price,
+            'fundamentals': fundamental_data
+        }
     
-    def objective(weights):
-        # Retorno e volatilidade do portfólio
-        portfolio_return = np.sum(returns.mean() * weights) * 252
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
-        sharpe_ratio = portfolio_return / portfolio_volatility
-        
-        # Pontuação de qualidade considerando ROE e P/L
-        quality_score = np.mean([
-            fundamental_data[ticker]['ROE'] / fundamental_data[ticker]['P/L'] 
-            if fundamental_data[ticker]['P/L'] > 0 else 0
-            for ticker in tickers
-        ])
-        
-        # Pontuação de avaliação (ativos subavaliados têm maior peso)
-        valuation_adjustment = np.mean([
-            valuation_scores[ticker] for ticker in tickers
-        ])
-        
-        # Penalidade de diversificação
-        diversity_penalty = np.sum(np.square(weights - 1/len(weights)))
-        
-        return -(sharpe_ratio + quality_score + valuation_adjustment - diversity_penalty)
+    # Ordenar ativos por pontuação de valor
+    top_assets = sorted(
+        fundamental_analysis.items(), 
+        key=lambda x: x[1]['valuation_score'], 
+        reverse=True
+    )
     
-    # Restrições e limites
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
-    bounds = tuple((0, 1) for _ in range(len(tickers)))
+    # Selecionar os top 3-5 ativos
+    num_top_assets = min(5, len(tickers))
+    selected_assets = top_assets[:num_top_assets]
     
-    # Otimização
-    result = minimize(objective, current_weights, method='SLSQP', bounds=bounds, constraints=constraints)
-    
-    optimal_weights = result.x
-    
-    # Calcular contribuição inicial considerando valor e avaliação
+    # Distribuir contribuição entre os melhores ativos
     final_contribution = {}
     remaining_amount = contribution_amount
     
-    # Ordenar ativos por pontuação de avaliação (do mais subavaliado para o mais caro)
-    sorted_tickers = sorted(tickers, key=lambda x: valuation_scores[x], reverse=True)
-    
-    for ticker in sorted_tickers:
-        price = current_prices[ticker]
-        max_allocation = optimal_weights[list(tickers).index(ticker)] * contribution_amount
+    for ticker, asset_info in selected_assets:
+        current_price = asset_info['current_price']
+        valuation_score = asset_info['valuation_score']
         
-        # Calcular número de ações, priorizando ativos subavaliados
-        shares = max(1, int(max_allocation / price))
-        allocated_amount = shares * price
+        # Calcular parcela proporcional baseada no score de avaliação
+        asset_weight = valuation_score / sum(asset[1]['valuation_score'] for asset in selected_assets)
+        max_allocation = asset_weight * contribution_amount
+        
+        # Calcular número máximo de ações possíveis
+        max_shares = int(max_allocation / current_price)
+        allocated_amount = max_shares * current_price
         
         if allocated_amount <= remaining_amount:
-            final_contribution[ticker] = allocated_amount
+            final_contribution[ticker] = {
+                'amount': allocated_amount,
+                'shares': max_shares,
+                'price': current_price,
+                'valuation_score': valuation_score
+            }
             remaining_amount -= allocated_amount
         
         # Parar se o valor restante for muito baixo
-        if remaining_amount < min(current_prices.values()):
+        if remaining_amount < min(info['current_price'] for _, info in selected_assets):
             break
     
-    return pd.Series(final_contribution)
+    # Converter para série para manter compatibilidade
+    return pd.Series({k: v['amount'] for k, v in final_contribution.items()})
 
-def calculate_valuation_score(fundamental_data, current_price):
+def calculate_advanced_valuation_score(fundamental_data, current_price):
     """
-    Calcula uma pontuação de avaliação para um ativo.
-    
-    Critérios de avaliação:
-    1. Múltiplo P/L (Price/Earnings)
-    2. Preço/Valor Patrimonial
-    3. Dividend Yield
-    4. Crescimento de Receita
-    
-    Retorna uma pontuação onde valores mais altos indicam ativos mais subavaliados.
+    Calcula pontuação de avaliação mais sofisticada
     """
     try:
-        # Inverter P/L para que valores menores (mais baratos) tenham pontuação maior
-        pl_score = 1 / fundamental_data.get('P/L', 1) if fundamental_data.get('P/L', 1) > 0 else 0
+        # Múltiplos fatores com pesos ajustáveis
+        factors = {
+            'P/L': 1 / fundamental_data.get('P/L', 1) if fundamental_data.get('P/L', 1) > 0 else 0,
+            'P/VPA': 1 / fundamental_data.get('P/VPA', 1) if fundamental_data.get('P/VPA', 1) > 0 else 0,
+            'ROE': fundamental_data.get('ROE', 0),
+            'Dividend Yield': fundamental_data.get('Dividend Yield', 0),
+            'Crescimento Receita': fundamental_data.get('Crescimento Receita', 0)
+        }
         
-        # Inverter P/VPA para valorizar ativos mais baratos
-        pvpa_score = 1 / fundamental_data.get('P/VPA', 1) if fundamental_data.get('P/VPA', 1) > 0 else 0
+        # Pesos mais refinados
+        weights = {
+            'P/L': 0.25,
+            'P/VPA': 0.20,
+            'ROE': 0.20,
+            'Dividend Yield': 0.15,
+            'Crescimento Receita': 0.20
+        }
         
-        # Dividend Yield direto
-        dividend_yield = fundamental_data.get('Dividend Yield', 0)
-        
-        # Crescimento de receita
-        revenue_growth = fundamental_data.get('Crescimento Receita', 0)
-        
-        # Combinar pontuações
-        valuation_score = (
-            pl_score * 0.3 + 
-            pvpa_score * 0.3 + 
-            dividend_yield * 0.2 + 
-            revenue_growth * 0.2
+        # Calcular pontuação ponderada
+        valuation_score = sum(
+            factor * weights[key] 
+            for key, factor in factors.items()
         )
         
         return valuation_score
     
     except Exception as e:
-        print(f"Erro ao calcular pontuação de avaliação: {e}")
+        print(f"Erro ao calcular pontuação avançada: {e}")
         return 0
 
 def allocate_portfolio_integer_shares(invest_value, prices, weights):
@@ -820,22 +797,19 @@ def portfolio_tracking():
             
             
             # Explicação da estratégia
-            st.subheader("Explicação da Estratégia de Aporte")
+            st.subheader("Estratégia de Aporte Seletiva")
             st.write("""
-            A estratégia de aporte utiliza uma abordagem avançada e multidimensional para determinar a alocação ótima de investimentos:
+            Nossa estratégia de aporte evolui para uma abordagem altamente seletiva:
             
-            1. Avaliação de Precificação: Identifica ativos subavaliados através de uma análise detalhada de múltiplos fundamentalistas.
-            2. Desempenho Histórico: Considera o retorno e a volatilidade dos ativos para otimização de portfólio.
-            3. Qualidade Financeira: Analisa indicadores como ROE, P/L, Dividend Yield e crescimento de receita.
-            4. Alocação Dinâmica: Prioriza ativos com melhor relação valor-qualidade.
-            5. Diversificação Inteligente: Busca um equilíbrio entre oportunidades de valor e distribuição de risco.
+            1. Seleção Rigorosa: Identificamos os 3-5 melhores ativos do portfólio
+            2. Análise Multifatorial: Avaliamos profundamente cada ativo considerando:
+               - Múltiplos de mercado
+               - Qualidade financeira
+               - Potencial de crescimento
+            3. Alocação Estratégica: Concentramos recursos nas melhores oportunidades
+            4. Foco em Valor: Priorizamos ativos subavaliados com sólidos fundamentos
             
-            A estratégia vai além da análise tradicional, criando um modelo que:
-            - Detecta oportunidades de investimento subvalorizadas
-            - Minimiza riscos através de uma seleção fundamentada
-            - Adapta-se dinamicamente às condições de mercado
-            
-            O objetivo é construir um portfólio que não apenas maximize retornos, mas também proteja o capital através de uma avaliação profunda dos ativos.
+            O objetivo é criar um portfólio concentrado, com investimentos direcionados para ativos de alta qualidade e potencial de valorização.
             """)
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
