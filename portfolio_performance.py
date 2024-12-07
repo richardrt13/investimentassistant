@@ -664,121 +664,121 @@ def portfolio_tracking():
         col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
         col3.metric("Retorno Total", f"{total_return:.2f}%")
 
-    #     # Calculate returns for each asset
-    #     asset_returns = {}
-    #     for ticker in portfolio_data.columns:
-    #         initial_value = invested_value[ticker]
-    #         current_value = portfolio_data[ticker].iloc[-1]
-    #         if initial_value > 0:
-    #             asset_return = ((current_value - initial_value) / initial_value) * 100
-    #             asset_returns[ticker] = {
-    #                 'return': asset_return,
-    #                 'current_value': current_value
-    #             }
+        # Calculate returns for each asset
+        asset_returns = {}
+        for ticker in portfolio_data.columns:
+            initial_value = invested_value[ticker]
+            current_value = portfolio_data[ticker].iloc[-1]
+            if initial_value > 0:
+                asset_return = ((current_value - initial_value) / initial_value) * 100
+                asset_returns[ticker] = {
+                    'return': asset_return,
+                    'current_value': current_value
+                }
 
-    #     # Sort assets by return
-    #     sorted_assets = sorted(asset_returns.items(), key=lambda x: x[1]['return'], reverse=True)
+        # Sort assets by return
+        sorted_assets = sorted(asset_returns.items(), key=lambda x: x[1]['return'], reverse=True)
 
-    #     # Create bar chart for asset returns
-    #     fig_asset_returns = go.Figure()
-    #     tickers = []
-    #     returns = []
-    #     current_values = []
-    #     for ticker, data in sorted_assets:
-    #         tickers.append(ticker)
-    #         returns.append(data['return'])
-    #         current_values.append(data['current_value'])
+        # Create bar chart for asset returns
+        fig_asset_returns = go.Figure()
+        tickers = []
+        returns = []
+        current_values = []
+        for ticker, data in sorted_assets:
+            tickers.append(ticker)
+            returns.append(data['return'])
+            current_values.append(data['current_value'])
 
-    #     fig_asset_returns.add_trace(go.Bar(
-    #         x=tickers,
-    #         y=returns,
-    #         text=[f"{r:.2f}%<br>R$ {v:.2f}" for r, v in zip(returns, current_values)],
-    #         textposition='auto',
-    #         name='Retorno Acumulado'
-    #     ))
+        fig_asset_returns.add_trace(go.Bar(
+            x=tickers,
+            y=returns,
+            text=[f"{r:.2f}%<br>R$ {v:.2f}" for r, v in zip(returns, current_values)],
+            textposition='auto',
+            name='Retorno Acumulado'
+        ))
 
-    #     fig_asset_returns.update_layout(
-    #         title='Retorno Acumulado por Ativo',
-    #         xaxis_title='Ativo',
-    #         yaxis_title='Retorno Acumulado (%)',
-    #         yaxis_tickformat = '.2f%'
-    #     )
+        fig_asset_returns.update_layout(
+            title='Retorno Acumulado por Ativo',
+            xaxis_title='Ativo',
+            yaxis_title='Retorno Acumulado (%)',
+            yaxis_tickformat = '.2f%'
+        )
 
-    #     st.plotly_chart(fig_asset_returns)
+        st.plotly_chart(fig_asset_returns)
 
-    #      # Calculate daily portfolio value
-    #     daily_portfolio_value = portfolio_data.sum(axis=1)
+         # Calculate daily portfolio value
+        daily_portfolio_value = portfolio_data.sum(axis=1)
 
-    #     # Calculate daily returns
-    #     daily_returns = daily_portfolio_value.pct_change()
+        # Calculate daily returns
+        daily_returns = daily_portfolio_value.pct_change()
 
-    #     # Calculate cumulative returns
-    #     portfolio_cumulative_returns = (1 + daily_returns).cumprod() - 1
-    #     portfolio_cumulative_returns = portfolio_cumulative_returns * 100  # Convert to percentage
+        # Calculate cumulative returns
+        portfolio_cumulative_returns = (1 + daily_returns).cumprod() - 1
+        portfolio_cumulative_returns = portfolio_cumulative_returns * 100  # Convert to percentage
 
-    #     # Ensure the final return matches the total return
-    #     portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
+        # Ensure the final return matches the total return
+        portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
 
-    #     # Get Ibovespa data
-    #     ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
+        # Get Ibovespa data
+        ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
 
-    #     # Create figure for cumulative returns comparison
-    #     fig_returns = go.Figure()
-    #     fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
-    #                                      mode='lines', name='Carteira',
-    #                                      hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
-    #     fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
-    #                                      mode='lines', name='Ibovespa',
-    #                                      hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
-    #     fig_returns.update_layout(
-    #         title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa',
-    #         xaxis_title='Data',
-    #         yaxis_title='Retorno Acumulado (%)',
-    #         yaxis_tickformat = '.2f%',
-    #         hovermode='x unified'
-    #     )
-    #     st.plotly_chart(fig_returns)   
+        # Create figure for cumulative returns comparison
+        fig_returns = go.Figure()
+        fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
+                                         mode='lines', name='Carteira',
+                                         hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
+        fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
+                                         mode='lines', name='Ibovespa',
+                                         hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
+        fig_returns.update_layout(
+            title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa',
+            xaxis_title='Data',
+            yaxis_title='Retorno Acumulado (%)',
+            yaxis_tickformat = '.2f%',
+            hovermode='x unified'
+        )
+        st.plotly_chart(fig_returns)   
 
 
-    # else:
-    #     st.write("Não há transações registradas ainda.")
+    else:
+        st.write("Não há transações registradas ainda.")
 
-    # st.subheader('Aporte Inteligente na Carteira')
-    # contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
+    st.subheader('Aporte Inteligente na Carteira')
+    contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
 
-    # if st.button('Calcular Distribuição Ótima do Aporte'):
-    #     portfolio_data, invested_value = get_portfolio_performance()
-    #     if not portfolio_data.empty:
-    #         optimal_contribution = calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount)
+    if st.button('Calcular Distribuição Ótima do Aporte'):
+        portfolio_data, invested_value = get_portfolio_performance()
+        if not portfolio_data.empty:
+            optimal_contribution = calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount)
         
-    #         st.write("Distribuição Ótima do Aporte:")
-    #         contribution_df = pd.DataFrame({
-    #             'Ativo': optimal_contribution.index,
-    #             'Valor do Aporte': optimal_contribution.values,
-    #             'Quantidade de Ações': (optimal_contribution / [yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1] for ticker in optimal_contribution.index]).astype(int),
-    #             'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
-    #         })
-    #         contribution_df = contribution_df.sort_values('Valor do Aporte', ascending=False)
-    #         contribution_df['Valor do Aporte'] = contribution_df['Valor do Aporte'].map('R$ {:.2f}'.format)
-    #         contribution_df['Porcentagem do Aporte'] = contribution_df['Porcentagem do Aporte'].map('{:.2f}%'.format)
+            st.write("Distribuição Ótima do Aporte:")
+            contribution_df = pd.DataFrame({
+                'Ativo': optimal_contribution.index,
+                'Valor do Aporte': optimal_contribution.values,
+                'Quantidade de Ações': (optimal_contribution / [yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1] for ticker in optimal_contribution.index]).astype(int),
+                'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
+            })
+            contribution_df = contribution_df.sort_values('Valor do Aporte', ascending=False)
+            contribution_df['Valor do Aporte'] = contribution_df['Valor do Aporte'].map('R$ {:.2f}'.format)
+            contribution_df['Porcentagem do Aporte'] = contribution_df['Porcentagem do Aporte'].map('{:.2f}%'.format)
         
-    #         st.table(contribution_df)
+            st.table(contribution_df)
             
             
-    #         # Explicação da estratégia
-    #         st.subheader("Explicação da Estratégia de Aporte")
-    #         st.write("""
-    #         A estratégia de aporte utiliza uma abordagem multifatorial para determinar a alocação ótima:
+            # Explicação da estratégia
+            st.subheader("Explicação da Estratégia de Aporte")
+            st.write("""
+            A estratégia de aporte utiliza uma abordagem multifatorial para determinar a alocação ótima:
             
-    #         1. Desempenho Histórico: Considera o retorno histórico e a volatilidade dos ativos.
-    #         2. Análise Fundamentalista: Incorpora métricas como P/L, ROE e Dividend Yield.
-    #         3. Diversificação: Busca manter um portfólio bem diversificado.
-    #         4. Qualidade dos Ativos: Prioriza ativos com bons fundamentos.
+            1. Desempenho Histórico: Considera o retorno histórico e a volatilidade dos ativos.
+            2. Análise Fundamentalista: Incorpora métricas como P/L, ROE e Dividend Yield.
+            3. Diversificação: Busca manter um portfólio bem diversificado.
+            4. Qualidade dos Ativos: Prioriza ativos com bons fundamentos.
             
-    #         Esta abordagem visa equilibrar o risco e o retorno, considerando tanto o desempenho passado quanto a saúde financeira atual das empresas.
-    #         """)
-    #     else:
-    #         st.write("Não há dados suficientes para calcular a distribuição do aporte.")
+            Esta abordagem visa equilibrar o risco e o retorno, considerando tanto o desempenho passado quanto a saúde financeira atual das empresas.
+            """)
+        else:
+            st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
 
 def main():
