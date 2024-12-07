@@ -616,10 +616,10 @@ def portfolio_tracking():
     # Initialize database
     init_db()
 
-    # # Get portfolio performance
-    # portfolio_data, invested_value = get_portfolio_performance()
-    # if not portfolio_data.empty:
-    #     total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
+    # Get portfolio performance
+    portfolio_data, invested_value = get_portfolio_performance()
+    if not portfolio_data.empty:
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
 
     # Get all assets
     assets_df = load_assets()
