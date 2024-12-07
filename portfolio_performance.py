@@ -491,11 +491,10 @@ def get_portfolio_performance():
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
     
     # Fetch current prices for active stocks
-    end_date = datetime.now()
-    start_date = transactions['Date'].min()
-    start_date
-    end_date
-    
+    end_date_raw = datetime.now()
+    start_date_raw = transactions['Date'].min()
+    end_date = end_date_raw.strftime('%Y-%m-%d')
+    start_date = start_date_raw.strftime('%Y-%m-%d')
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
