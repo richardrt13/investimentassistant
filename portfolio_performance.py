@@ -466,54 +466,54 @@ def get_historical_prices(ticker, start_date, end_date):
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
 def get_portfolio_performance():
-    transactions = list(collection.find())
-    if not transactions:
-        return pd.DataFrame(), pd.DataFrame()
+    # Fetch all transactions and convert to DataFrame
+    transactions = pd.DataFrame(list(collection.find()))
     
-    df = pd.DataFrame(transactions)
-    df['Date'] = pd.to_datetime(df['Date'])
-    df = df.sort_values('Date')
+    if transactions.empty:
+        return pd.DataFrame(), pd.Series()
     
-    portfolio = {}
-    invested_value = {}
+    # Convert date and sort
+    transactions['Date'] = pd.to_datetime(transactions['Date'])
+    transactions = transactions.sort_values('Date')
     
-    for _, row in df.iterrows():
-        ticker = row['Ticker']
-        if ticker not in portfolio:
-            portfolio[ticker] = 0
-            invested_value[ticker] = 0
+    # Group transactions by ticker to calculate final positions
+    portfolio_summary = transactions.groupby('Ticker').apply(
+        lambda group: pd.Series({
+            'Total_Quantity': group[group['Action'] == 'BUY']['Quantity'].sum() - 
+                              group[group['Action'] == 'SELL']['Quantity'].sum(),
+            'Total_Invested': (group[group['Action'] == 'BUY']['Quantity'] * group[group['Action'] == 'BUY']['Price']).sum() - 
+                              (group[group['Action'] == 'SELL']['Quantity'] * group[group['Action'] == 'SELL']['Price']).sum()
+        })
+    ).reset_index()
+    
+    # Filter out stocks with zero quantity
+    active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
+    
+    # Fetch current prices for active stocks
+    end_date = datetime.now()
+    start_date = transactions['Date'].min()
+    
+    # Create a DataFrame to store daily portfolio values
+    daily_values = pd.DataFrame()
+    
+    for _, stock in active_portfolio.iterrows():
+        ticker = stock['Ticker']
+        quantity = stock['Total_Quantity']
         
-        if row['Action'] == 'BUY':
-            portfolio[ticker] += row['Quantity']
-            invested_value[ticker] += row['Quantity'] * row['Price']
-        else:  # SELL
-            sell_ratio = row['Quantity'] / portfolio[ticker]
-            portfolio[ticker] -= row['Quantity']
-            invested_value[ticker] -= invested_value[ticker] * sell_ratio
+        # Fetch historical prices
+        try:
+            ticker_prices = get_historical_prices(ticker, start_date, end_date)
+            ticker_prices = ticker_prices.set_index('date')['adjusted_close']
+            
+            # Multiply prices by quantity
+            daily_values[ticker] = ticker_prices * quantity
+        except Exception as e:
+            print(f"Could not fetch prices for {ticker}: {e}")
     
-    tickers = list(portfolio.keys())
-    end_date = datetime.now()  # Always use current date and time
-    start_date = df['Date'].min()  # Date of first transaction
+    # Prepare invested values series
+    invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
-    prices = None
-    for ticker in tickers:
-        ticker_prices = get_historical_prices(ticker, start_date, end_date)
-        
-        # Ensure the prices are 1-dimensional and align with the index
-        ticker_prices = ticker_prices.set_index('date')['adjusted_close']
-        
-        if prices is None:
-            prices = pd.DataFrame(index=ticker_prices.index)
-        
-        # Align the prices with the existing DataFrame
-        prices[ticker] = ticker_prices.reindex(prices.index)
-    
-    # Calculate daily portfolio value
-    daily_value = prices.copy()
-    for ticker in tickers:
-        daily_value[ticker] *= portfolio[ticker]
-    
-    return daily_value, pd.Series(invested_value)
+    return daily_values, invested_values
     
 def get_ibovespa_data(start_date, end_date):
     ibov = get_historical_prices('^BVSP', start_date, end_date)
