@@ -458,7 +458,7 @@ def get_historical_prices(ticker, start_date, end_date):
     data = yf.download(ticker, start_date, end_date)['Adj Close']
     
     # Se não houver dados suficientes, informar o usuário
-    if data.empty or data.index[0] > start_date:
+    if data.empty or data.index[0] > pd.to_datetime(start_date):
         st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}.")
     
     return pd.DataFrame({'date': data.index, 'adjusted_close': data.values})
