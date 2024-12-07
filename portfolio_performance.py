@@ -496,11 +496,6 @@ def get_portfolio_performance():
     start_date_raw = transactions['Date'].min()
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
-
-    teste = get_historical_prices("L1RC34.SA", "2024-10-10", "2024-10-15")
-    teste
-    data = yf.download("L1RC34.SA", "2024-10-10", "2024-10-15")['Adj Close']
-    data
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
@@ -665,7 +660,6 @@ def portfolio_tracking():
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value = get_portfolio_performance()
-    portfolio_data
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
