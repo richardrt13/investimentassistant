@@ -495,6 +495,9 @@ def get_portfolio_performance():
     start_date_raw = transactions['Date'].min()
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
+
+    teste = get_historical_prices("L1RC34.SA", start_date, end_date)
+    teste
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
@@ -515,8 +518,6 @@ def get_portfolio_performance():
     
     # Prepare invested values series
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
-
-    invested_values
 
     return daily_values, invested_values
     
