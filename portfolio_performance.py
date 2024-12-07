@@ -453,15 +453,16 @@ def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
 
 def get_historical_prices(ticker, start_date, end_date):
-    # Sempre buscar dados atualizados do Yahoo Finance
-    #end_date = datetime.now()  # Usar a data e hora atual
+    # Baixar dados do Yahoo Finance
     data = yf.download(ticker, start_date, end_date)['Adj Close']
     
-    # Se não houver dados suficientes, informar o usuário
-    # if data.empty or pd.to_datetime(data.index[0]) > pd.to_datetime(start_date):
-    #     st.warning(f"Dados incompletos para {ticker} de {start_date} a {end_date}.")
+    # Resetar o índice para transformar o índice de data em uma coluna
+    df = data.reset_index()
     
-    return pd.DataFrame({'date': data.index, 'adjusted_close': data.values})
+    # Renomear as colunas para clareza
+    df.columns = ['date', 'adjusted_close']
+    
+    return df
 
 #@st.cache_data(ttl=3600)
 # Function to get portfolio performance
