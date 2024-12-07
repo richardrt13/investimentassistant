@@ -536,15 +536,35 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     # Calcular dados fundamentais e pontuações
     fundamental_analysis = {}
     for ticker in tickers:
-        fundamental_data = get_fundamental_data(ticker)
-        current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
-        
-        # Cálculo de pontuação mais rigoroso
-        fundamental_analysis[ticker] = {
-            'valuation_score': calculate_advanced_valuation_score(fundamental_data, current_price),
-            'current_price': current_price,
-            'fundamentals': fundamental_data
-        }
+        try:
+            fundamental_data = get_fundamental_data(ticker)
+            current_price = yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1]
+            
+            # Verificações para NaN
+            if pd.isna(current_price):
+                print(f"Aviso: Preço atual de {ticker} não disponível. Pulando...")
+                continue
+            
+            # Cálculo de pontuação com tratamento de NaN
+            valuation_score = calculate_advanced_valuation_score(fundamental_data, current_price)
+            
+            if pd.isna(valuation_score):
+                print(f"Aviso: Pontuação de avaliação de {ticker} não calculável. Pulando...")
+                continue
+            
+            fundamental_analysis[ticker] = {
+                'valuation_score': valuation_score,
+                'current_price': current_price,
+                'fundamentals': fundamental_data
+            }
+        except Exception as e:
+            print(f"Erro ao processar {ticker}: {e}")
+            continue
+    
+    # Verificar se há ativos válidos
+    if not fundamental_analysis:
+        print("Nenhum ativo válido encontrado.")
+        return pd.Series()
     
     # Ordenar ativos por pontuação de valor
     top_assets = sorted(
@@ -554,7 +574,7 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     )
     
     # Selecionar os top 3-5 ativos
-    num_top_assets = min(5, len(tickers))
+    num_top_assets = min(5, len(fundamental_analysis))
     selected_assets = top_assets[:num_top_assets]
     
     # Distribuir contribuição entre os melhores ativos
@@ -565,26 +585,41 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
         current_price = asset_info['current_price']
         valuation_score = asset_info['valuation_score']
         
+        # Verificações de segurança adicionais
+        if pd.isna(current_price) or current_price <= 0:
+            print(f"Aviso: Preço inválido para {ticker}")
+            continue
+        
         # Calcular parcela proporcional baseada no score de avaliação
-        asset_weight = valuation_score / sum(asset[1]['valuation_score'] for asset in selected_assets)
-        max_allocation = asset_weight * contribution_amount
+        try:
+            asset_weight = valuation_score / sum(asset[1]['valuation_score'] for asset in selected_assets)
+            max_allocation = asset_weight * contribution_amount
+            
+            # Tratamento seguro para cálculo de ações
+            max_shares = max(1, int(max_allocation / current_price))
+            allocated_amount = max_shares * current_price
+            
+            if allocated_amount <= remaining_amount:
+                final_contribution[ticker] = {
+                    'amount': allocated_amount,
+                    'shares': max_shares,
+                    'price': current_price,
+                    'valuation_score': valuation_score
+                }
+                remaining_amount -= allocated_amount
+            
+            # Parar se o valor restante for muito baixo
+            if remaining_amount < min(info['current_price'] for _, info in selected_assets):
+                break
         
-        # Calcular número máximo de ações possíveis
-        max_shares = int(max_allocation / current_price)
-        allocated_amount = max_shares * current_price
-        
-        if allocated_amount <= remaining_amount:
-            final_contribution[ticker] = {
-                'amount': allocated_amount,
-                'shares': max_shares,
-                'price': current_price,
-                'valuation_score': valuation_score
-            }
-            remaining_amount -= allocated_amount
-        
-        # Parar se o valor restante for muito baixo
-        if remaining_amount < min(info['current_price'] for _, info in selected_assets):
-            break
+        except Exception as e:
+            print(f"Erro ao calcular alocação para {ticker}: {e}")
+            continue
+    
+    # Verificar se há contribuições
+    if not final_contribution:
+        print("Nenhuma contribuição válida calculada.")
+        return pd.Series()
     
     # Converter para série para manter compatibilidade
     return pd.Series({k: v['amount'] for k, v in final_contribution.items()})
