@@ -469,18 +469,20 @@ def get_portfolio_performance():
     transactions = list(collection.find())
     if not transactions:
         return pd.DataFrame(), pd.DataFrame()
-
+    
     df = pd.DataFrame(transactions)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values('Date')
-
+    
     portfolio = {}
     invested_value = {}
+    
     for _, row in df.iterrows():
         ticker = row['Ticker']
         if ticker not in portfolio:
             portfolio[ticker] = 0
             invested_value[ticker] = 0
+        
         if row['Action'] == 'BUY':
             portfolio[ticker] += row['Quantity']
             invested_value[ticker] += row['Quantity'] * row['Price']
@@ -488,20 +490,29 @@ def get_portfolio_performance():
             sell_ratio = row['Quantity'] / portfolio[ticker]
             portfolio[ticker] -= row['Quantity']
             invested_value[ticker] -= invested_value[ticker] * sell_ratio
-
+    
     tickers = list(portfolio.keys())
-    end_date = datetime.now()  # Sempre usar a data e hora atual
-    start_date = df['Date'].min()  # Data da primeira transação
-
-    prices = pd.DataFrame()
+    end_date = datetime.now()  # Always use current date and time
+    start_date = df['Date'].min()  # Date of first transaction
+    
+    prices = None
     for ticker in tickers:
         ticker_prices = get_historical_prices(ticker, start_date, end_date)
-        prices[ticker] = ticker_prices.set_index('date')['adjusted_close']
+        
+        # Ensure the prices are 1-dimensional and align with the index
+        ticker_prices = ticker_prices.set_index('date')['adjusted_close']
+        
+        if prices is None:
+            prices = pd.DataFrame(index=ticker_prices.index)
+        
+        # Align the prices with the existing DataFrame
+        prices[ticker] = ticker_prices.reindex(prices.index)
     
+    # Calculate daily portfolio value
     daily_value = prices.copy()
     for ticker in tickers:
         daily_value[ticker] *= portfolio[ticker]
-
+    
     return daily_value, pd.Series(invested_value)
     
 def get_ibovespa_data(start_date, end_date):
