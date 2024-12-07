@@ -505,6 +505,7 @@ def get_portfolio_performance():
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
             ticker_prices = ticker_prices.set_index('date')['adjusted_close']
+            ticker_prices
             
             # Multiply prices by quantity
             daily_values[ticker] = ticker_prices * quantity
@@ -513,9 +514,6 @@ def get_portfolio_performance():
     
     # Prepare invested values series
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
-
-    daily_values
-    invested_values
 
     return daily_values, invested_values
     
@@ -660,6 +658,7 @@ def portfolio_tracking():
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value = get_portfolio_performance()
+    portfolio_data
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
