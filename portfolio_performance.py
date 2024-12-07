@@ -627,11 +627,6 @@ def portfolio_tracking():
     # Initialize database
     init_db()
 
-    # Get portfolio performance
-    portfolio_data, invested_value = get_portfolio_performance()
-    if not portfolio_data.empty:
-        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
-
     # Get all assets
     assets_df = load_assets()
     tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
@@ -658,16 +653,16 @@ def portfolio_tracking():
         else:
             sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
 
-    # # Display portfolio performance
-    # st.subheader('Desempenho da Carteira')
-    # portfolio_data, invested_value = get_portfolio_performance()
-    # if not portfolio_data.empty:
-    #     total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
+    # Display portfolio performance
+    st.subheader('Desempenho da Carteira')
+    portfolio_data, invested_value = get_portfolio_performance()
+    if not portfolio_data.empty:
+        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
-    #     col1, col2, col3 = st.columns(3)
-    #     col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
-    #     col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
-    #     col3.metric("Retorno Total", f"{total_return:.2f}%")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
+        col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
+        col3.metric("Retorno Total", f"{total_return:.2f}%")
 
     #     # Calculate returns for each asset
     #     asset_returns = {}
