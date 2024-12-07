@@ -627,6 +627,9 @@ def portfolio_tracking():
     # Initialize database
     init_db()
 
+    transactions = list(collection.find())
+    transactions
+
     # Get all assets
     assets_df = load_assets()
     tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
