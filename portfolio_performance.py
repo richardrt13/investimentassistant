@@ -496,7 +496,7 @@ def get_portfolio_performance():
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
 
-    teste = get_historical_prices("L1RC34.SA", "2024-10-10", "2024-10-15)
+    teste = get_historical_prices("L1RC34.SA", "2024-10-10", "2024-10-15")
     teste
     
     # Create a DataFrame to store daily portfolio values
