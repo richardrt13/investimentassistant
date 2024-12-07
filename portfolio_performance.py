@@ -475,6 +475,8 @@ def get_portfolio_performance():
     # Convert date and sort
     transactions['Date'] = pd.to_datetime(transactions['Date'])
     transactions = transactions.sort_values('Date')
+
+    transactions
     
     # Group transactions by ticker to calculate final positions
     portfolio_summary = transactions.groupby('Ticker').apply(
@@ -626,9 +628,6 @@ def portfolio_tracking():
 
     # Initialize database
     init_db()
-
-    transactions = pd.DataFrame(list(collection.find()))
-    transactions
 
     # Get all assets
     assets_df = load_assets()
