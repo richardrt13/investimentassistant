@@ -626,7 +626,7 @@ def portfolio_tracking():
     tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 
     # Transaction input
-    st.subheader('Registrar Transação')
+    st.subheader('Registrar Tansação')
     col1, col2, col3 = st.columns(3)
     with col1:
         transaction_date = st.date_input('Data da Transação', value=datetime.now().date())
