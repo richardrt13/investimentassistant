@@ -807,7 +807,7 @@ def portfolio_tracking():
         
             st.write("Distribuição Ótima do Aporte:")
             contribution_df = pd.DataFrame({
-                'Ativo': optimal_contribution.index,
+                #'Ativo': optimal_contribution.index,
                 'Valor do Aporte': optimal_contribution.values,
                 'Quantidade de Ações': (optimal_contribution / [yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1] for ticker in optimal_contribution.index]).astype(int),
                 'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
