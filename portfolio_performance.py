@@ -613,20 +613,20 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
 def portfolio_tracking():
     st.title('Acompanhamento da Carteira')
 
-    # Initialize database
-    init_db()
+    # # Initialize database
+    # init_db()
 
-    # Get portfolio performance
-    portfolio_data, invested_value = get_portfolio_performance()
-    if not portfolio_data.empty:
-        total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
+    # # Get portfolio performance
+    # portfolio_data, invested_value = get_portfolio_performance()
+    # if not portfolio_data.empty:
+    #     total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
 
-    # Get all assets
-    assets_df = load_assets()
-    tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+    # # Get all assets
+    # assets_df = load_assets()
+    # tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 
     # Transaction input
-    st.subheader('Registrar Tansação')
+    st.subheader('Registrar Transação')
     col1, col2, col3 = st.columns(3)
     with col1:
         transaction_date = st.date_input('Data da Transação', value=datetime.now().date())
