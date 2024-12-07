@@ -636,9 +636,6 @@ def portfolio_tracking():
     assets_df = load_assets()
     tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
 
-    data = yf.download("ASML34.SA", start="2024-07-15", end="2024-12-07")['Adj Close']
-    data
-
     # Transaction input
     st.subheader('Registrar Transação')
     col1, col2, col3 = st.columns(3)
@@ -664,6 +661,7 @@ def portfolio_tracking():
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value = get_portfolio_performance()
+    portfolio_data
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
