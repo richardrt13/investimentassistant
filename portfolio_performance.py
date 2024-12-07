@@ -822,14 +822,20 @@ def portfolio_tracking():
             # Explicação da estratégia
             st.subheader("Explicação da Estratégia de Aporte")
             st.write("""
-            A estratégia de aporte utiliza uma abordagem multifatorial para determinar a alocação ótima:
+            A estratégia de aporte utiliza uma abordagem avançada e multidimensional para determinar a alocação ótima de investimentos:
             
-            1. Desempenho Histórico: Considera o retorno histórico e a volatilidade dos ativos.
-            2. Análise Fundamentalista: Incorpora métricas como P/L, ROE e Dividend Yield.
-            3. Diversificação: Busca manter um portfólio bem diversificado.
-            4. Qualidade dos Ativos: Prioriza ativos com bons fundamentos.
+            1. Avaliação de Precificação: Identifica ativos subavaliados através de uma análise detalhada de múltiplos fundamentalistas.
+            2. Desempenho Histórico: Considera o retorno e a volatilidade dos ativos para otimização de portfólio.
+            3. Qualidade Financeira: Analisa indicadores como ROE, P/L, Dividend Yield e crescimento de receita.
+            4. Alocação Dinâmica: Prioriza ativos com melhor relação valor-qualidade.
+            5. Diversificação Inteligente: Busca um equilíbrio entre oportunidades de valor e distribuição de risco.
             
-            Esta abordagem visa equilibrar o risco e o retorno, considerando tanto o desempenho passado quanto a saúde financeira atual das empresas.
+            A estratégia vai além da análise tradicional, criando um modelo que:
+            - Detecta oportunidades de investimento subvalorizadas
+            - Minimiza riscos através de uma seleção fundamentada
+            - Adapta-se dinamicamente às condições de mercado
+            
+            O objetivo é construir um portfólio que não apenas maximize retornos, mas também proteja o capital através de uma avaliação profunda dos ativos.
             """)
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
