@@ -475,8 +475,6 @@ def get_portfolio_performance():
     # Convert date and sort
     transactions['Date'] = pd.to_datetime(transactions['Date'])
     transactions = transactions.sort_values('Date')
-
-    transactions
     
     # Group transactions by ticker to calculate final positions
     portfolio_summary = transactions.groupby('Ticker').apply(
@@ -487,6 +485,8 @@ def get_portfolio_performance():
                               (group[group['Action'] == 'SELL']['Quantity'] * group[group['Action'] == 'SELL']['Price']).sum()
         })
     ).reset_index()
+
+    portfolio_summary
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
