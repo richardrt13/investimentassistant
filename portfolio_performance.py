@@ -454,7 +454,7 @@ def sell_stock(date, ticker, quantity, price):
 
 def get_historical_prices(ticker, start_date, end_date):
     # Sempre buscar dados atualizados do Yahoo Finance
-    end_date = datetime.now()  # Usar a data e hora atual
+    #end_date = datetime.now()  # Usar a data e hora atual
     data = yf.download(ticker, start=start_date, end=end_date)['Adj Close']
     
     # Se não houver dados suficientes, informar o usuário
@@ -497,7 +497,8 @@ def get_portfolio_performance():
     start_date = start_date_raw.strftime('%Y-%m-%d')
 
     teste = get_historical_prices("L1RC34.SA", "2024-10-10", "2024-10-15")
-    teste
+    data = yf.download("L1RC34.SA", "2024-10-10", "2024-10-15")['Adj Close']
+    data
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
