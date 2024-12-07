@@ -627,7 +627,7 @@ def portfolio_tracking():
     # Initialize database
     init_db()
 
-    transactions = list(collection.find())
+    transactions = pd.DataFrame(list(collection.find()))
     transactions
 
     # Get all assets
