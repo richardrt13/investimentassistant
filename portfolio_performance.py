@@ -114,49 +114,12 @@ def calculate_returns(prices):
     returns = returns.replace([np.inf, -np.inf], np.nan).dropna()
     return returns
 
-
+# Função para calcular o desempenho do portfólio
 def portfolio_performance(weights, returns):
-    """
-    Calcula o retorno e volatilidade do portfólio
-    """
-    try:
-        # Conversão e validação dos inputs
-        weights = np.array(weights) if not isinstance(weights, np.ndarray) else weights
-        
-        # Debug logs
-        print("Debug portfolio_performance:")
-        print(f"Type of weights: {type(weights)}")
-        print(f"Shape of weights: {weights.shape if hasattr(weights, 'shape') else 'no shape'}")
-        print(f"Type of returns: {type(returns)}")
-        print(f"Shape of returns: {returns.shape if hasattr(returns, 'shape') else 'no shape'}")
-        
-        # Verificações de validação
-        if not isinstance(returns, pd.DataFrame):
-            print("Error: returns não é um DataFrame")
-            return 0, 0
-            
-        if len(weights) != returns.shape[1]:
-            print(f"Error: Incompatibilidade de dimensões - weights: {len(weights)}, returns columns: {returns.shape[1]}")
-            return 0, 0
-            
-        # Cálculos
-        returns_mean = returns.mean()
-        returns_cov = returns.cov()
-        
-        portfolio_return = np.sum(returns_mean * weights) * 252
-        portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns_cov * 252, weights)))
-        
-        print(f"Calculated return: {portfolio_return}")
-        print(f"Calculated volatility: {portfolio_volatility}")
-        
-        return portfolio_return, portfolio_volatility
-        
-    except Exception as e:
-        print(f"Error in portfolio_performance: {str(e)}")
-        print(f"Error type: {type(e)}")
-        import traceback
-        print(f"Traceback: {traceback.format_exc()}")
-        return 0, 0
+    portfolio_return = np.sum(returns.mean() * weights) * 252
+    portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
+    return portfolio_return, portfolio_volatility
+
 
 # Função para calcular o índice de Sharpe negativo (para otimização)
 def negative_sharpe_ratio(weights, returns, risk_free_rate):
@@ -973,7 +936,6 @@ def main():
             # Calcular score ajustado
             cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
             ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
-            # Antes de chamar portfolio_performance, adicione:
             optimized_weights = optimize_weights(ativos_df)
             ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
     
