@@ -116,10 +116,21 @@ def calculate_returns(prices):
 
 # Função para calcular o desempenho do portfólio
 def portfolio_performance(weights, returns):
+    # Verificar se weights é um array
+    if not isinstance(weights, np.ndarray):
+        weights = np.array(weights)
+    
+    # Verificar se returns é um DataFrame
+    if not isinstance(returns, pd.DataFrame):
+        raise TypeError("returns deve ser um DataFrame do pandas")
+    
+    # Verificar se as dimensões são compatíveis
+    if len(weights) != returns.shape[1]:
+        raise ValueError(f"Dimensão incompatível: weights tem {len(weights)} elementos mas returns tem {returns.shape[1]} colunas")
+    
     portfolio_return = np.sum(returns.mean() * weights) * 252
     portfolio_volatility = np.sqrt(np.dot(weights.T, np.dot(returns.cov() * 252, weights)))
     return portfolio_return, portfolio_volatility
-
 
 # Função para calcular o índice de Sharpe negativo (para otimização)
 def negative_sharpe_ratio(weights, returns, risk_free_rate):
