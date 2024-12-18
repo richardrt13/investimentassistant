@@ -223,18 +223,24 @@ def calculate_rsi(prices, window=14):
     return 100 - (100 / (1 + rs))
 
 def optimize_weights(ativos_df):
+    """
+    Otimiza os pesos para maximizar a correlação entre os scores e a rentabilidade
+    """
+    # Primeiro, calcular todos os scores e armazenar em um array
+    scores = calculate_scores(ativos_df)
+    
     def objective(weights):
-        # Calcular o score usando os pesos
-        scores = calculate_score(ativos_df, weights)
+        # Calcular o score ponderado usando os pesos
+        weighted_scores = np.sum(scores * weights.reshape(-1, 1), axis=0)
         
-        # Calcular a correlação entre os scores e a rentabilidade acumulada
-        correlation = np.corrcoef(scores, ativos_df['Rentabilidade Acumulada (5 anos)'])[0, 1]
+        # Calcular a correlação entre os scores ponderados e a rentabilidade
+        correlation = np.corrcoef(weighted_scores, ativos_df['Rentabilidade Acumulada (5 anos)'])[0, 1]
         
         # Retornar o negativo da correlação (queremos maximizar)
         return -correlation
 
     # Restrições: soma dos pesos = 1 e todos os pesos >= 0
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1},)
+    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1})
     bounds = [(0, 1) for _ in range(7)]  # 7 pesos a serem otimizados
 
     # Pesos iniciais
@@ -245,16 +251,45 @@ def optimize_weights(ativos_df):
 
     return result.x
 
+def calculate_scores(ativos_df):
+    """
+    Calcula os scores individuais para cada métrica
+    """
+    scores = np.zeros((7, len(ativos_df)))
+    
+    # ROE/P/L score
+    scores[0] = ativos_df['ROE'] / ativos_df['P/L']
+    
+    # P/VP score (inverso)
+    scores[1] = 1 / ativos_df['P/VP']
+    
+    # Volume score (log)
+    scores[2] = np.log(ativos_df['Volume'])
+    
+    # Revenue growth score
+    scores[3] = ativos_df['revenue_growth']
+    
+    # Income growth score
+    scores[4] = ativos_df['income_growth']
+    
+    # Debt stability score
+    scores[5] = ativos_df['debt_stability']
+    
+    # Dividend Yield score
+    scores[6] = ativos_df['Dividend Yield']
+    
+    # Normalizar os scores
+    for i in range(scores.shape[0]):
+        scores[i] = (scores[i] - np.min(scores[i])) / (np.max(scores[i]) - np.min(scores[i]))
+    
+    return scores
+
 def calculate_score(ativos_df, weights):
-    return (
-        weights[0] * ativos_df['ROE'] / ativos_df['P/L'] +
-        weights[1] / ativos_df['P/VP'] +
-        weights[2] * np.log(ativos_df['Volume']) +
-        weights[3] * ativos_df['revenue_growth'] +
-        weights[4] * ativos_df['income_growth'] +
-        weights[5] * ativos_df['debt_stability'] +
-        weights[6] * ativos_df['Dividend Yield']
-    )
+    """
+    Calcula o score final usando os pesos otimizados
+    """
+    scores = calculate_scores(ativos_df)
+    return np.sum(scores * weights.reshape(-1, 1), axis=0)
 
 def calculate_adjusted_score(row, optimized_weights):
     base_score = (
