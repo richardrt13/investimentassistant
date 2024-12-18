@@ -948,9 +948,6 @@ def main():
             cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
             ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
             # Antes de chamar portfolio_performance, adicione:
-            print("Shape dos retornos:", returns.shape)
-            print("Tipo dos pesos:", type(adjusted_weights))
-            print("Tamanho dos pesos:", len(adjusted_weights))
             optimized_weights = optimize_weights(ativos_df)
             ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
     
