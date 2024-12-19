@@ -941,44 +941,6 @@ def portfolio_tracking():
                 st.markdown(recommendation)
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
-
-    if st.button('Calcular Distribuição Ótima do Aporte'):
-        portfolio_data, invested_value = get_portfolio_performance()
-        if not portfolio_data.empty:
-            optimal_contribution = calculate_optimal_contribution(portfolio_data, invested_value, contribution_amount)
-        
-            st.write("Distribuição Ótima do Aporte:")
-            contribution_df = pd.DataFrame({
-                #'Ativo': optimal_contribution.index,
-                'Valor do Aporte': optimal_contribution.values,
-                'Quantidade de Ações': (optimal_contribution / [yf.Ticker(ticker).history(period="1d")['Close'].iloc[-1] for ticker in optimal_contribution.index]).astype(int),
-                'Porcentagem do Aporte': optimal_contribution / contribution_amount * 100
-            })
-            contribution_df = contribution_df.sort_values('Valor do Aporte', ascending=False)
-            contribution_df['Valor do Aporte'] = contribution_df['Valor do Aporte'].map('R$ {:.2f}'.format)
-            contribution_df['Porcentagem do Aporte'] = contribution_df['Porcentagem do Aporte'].map('{:.2f}%'.format)
-        
-            st.table(contribution_df)
-            
-            
-            # Explicação da estratégia
-            st.subheader("Estratégia de Aporte Seletiva")
-            st.write("""
-            Nossa estratégia de aporte evolui para uma abordagem altamente seletiva:
-            
-            1. Seleção Rigorosa: Identificamos os 3-5 melhores ativos do portfólio
-            2. Análise Multifatorial: Avaliamos profundamente cada ativo considerando:
-               - Múltiplos de mercado
-               - Qualidade financeira
-               - Potencial de crescimento
-            3. Alocação Estratégica: Concentramos recursos nas melhores oportunidades
-            4. Foco em Valor: Priorizamos ativos subavaliados com sólidos fundamentos
-            
-            O objetivo é criar um portfólio concentrado, com investimentos direcionados para ativos de alta qualidade e potencial de valorização.
-            """)
-        else:
-            st.write("Não há dados suficientes para calcular a distribuição do aporte.")
-    st.subheader('Análise Inteligente da Carteira')
     
     portfolio_data, invested_value = get_portfolio_performance()
     
