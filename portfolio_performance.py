@@ -697,7 +697,8 @@ def calculate_optimal_contribution_with_genai(portfolio_data, invested_value, co
             portfolio_summary["assets"].append(asset_data)
 
         # Create prompt for GenAI
-        prompt = f"""Analise a seguinte carteira de investimentos e recomende a melhor forma de alocar um aporte de R$ {contribution_amount:.2f}:
+        prompt = f"""Analise a seguinte carteira de investimentos e com o objetivo de manter a carteira balenceada e otimizar os retornos futuros 
+        recomende a melhor forma de alocar um aporte de R$ {contribution_amount:.2f}:
 
         Resumo da Carteira:
         Total Investido: R$ {portfolio_summary['total_invested']:.2f}
