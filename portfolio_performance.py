@@ -661,6 +661,89 @@ def calculate_optimal_contribution(portfolio_data, invested_value, contribution_
     # Converter para série para manter compatibilidade
     return pd.Series({k: v['amount'] for k, v in final_contribution.items()})
 
+def calculate_optimal_contribution_with_genai(portfolio_data, invested_value, contribution_amount):
+    """
+    Uses GenAI to analyze portfolio and recommend optimal contribution allocation
+    """
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # Prepare portfolio summary
+        portfolio_summary = {
+            "total_invested": invested_value.sum(),
+            "current_value": portfolio_data.iloc[-1].sum(),
+            "assets": []
+        }
+
+        for ticker in portfolio_data.columns:
+            # Get current stock data
+            stock = yf.Ticker(ticker)
+            current_price = stock.history(period="1d")['Close'].iloc[-1]
+            
+            # Get fundamental data
+            fundamental_data = get_fundamental_data(ticker)
+            growth_data = get_financial_growth_data(ticker)
+            
+            asset_data = {
+                "ticker": ticker,
+                "invested": invested_value[ticker],
+                "current_value": portfolio_data[ticker].iloc[-1],
+                "return": ((portfolio_data[ticker].iloc[-1] / invested_value[ticker]) - 1) * 100,
+                "weight": portfolio_data[ticker].iloc[-1] / portfolio_data.iloc[-1].sum() * 100,
+                "price": current_price,
+                "fundamentals": fundamental_data,
+                "growth": growth_data
+            }
+            portfolio_summary["assets"].append(asset_data)
+
+        # Create prompt for GenAI
+        prompt = f"""Analise a seguinte carteira de investimentos e recomende a melhor forma de alocar um aporte de R$ {contribution_amount:.2f}:
+
+        Resumo da Carteira:
+        Total Investido: R$ {portfolio_summary['total_invested']:.2f}
+        Valor Atual: R$ {portfolio_summary['current_value']:.2f}
+        
+        Composição Atual:
+        """
+        for asset in portfolio_summary["assets"]:
+            prompt += f"""
+            {asset['ticker']}:
+            - Valor Investido: R$ {asset['invested']:.2f}
+            - Valor Atual: R$ {asset['current_value']:.2f}
+            - Retorno: {asset['return']:.2f}%
+            - Peso Atual: {asset['weight']:.2f}%
+            - Preço Atual: R$ {asset['price']:.2f}
+            - P/L: {asset['fundamentals'].get('P/L', 'N/A')}
+            - ROE: {asset['fundamentals'].get('ROE', 'N/A')}
+            - Crescimento Receita: {asset['growth'].get('revenue_growth', 'N/A') if asset['growth'] else 'N/A'}
+            """
+
+        prompt += """
+        Por favor, forneça:
+        1. Uma recomendação detalhada de como alocar o aporte entre os ativos existentes
+        2. Justificativa para cada alocação sugerida
+        3. Número específico de ações a comprar de cada ativo
+        4. Considerações sobre balanceamento da carteira
+        5. Análise de risco e retorno esperado
+        
+        Responda em português e no seguinte formato:
+        ALOCAÇÃO RECOMENDADA:
+        - Ticker: [número de ações] ações a R$ [preço atual] = R$ [valor total]
+        ...
+        
+        JUSTIFICATIVA:
+        [explicação detalhada]
+        
+        CONSIDERAÇÕES:
+        [considerações adicionais]"""
+
+        # Generate recommendation
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        return f"Erro ao gerar recomendação: {e}"
+
 def calculate_advanced_valuation_score(fundamental_data, current_price):
     """
     Calcula pontuação de avaliação mais sofisticada
@@ -849,6 +932,15 @@ def portfolio_tracking():
 
     st.subheader('Aporte Inteligente na Carteira')
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
+
+    if st.button('Calcular Distribuição Ótima do Aporte'):
+        portfolio_data, invested_value = get_portfolio_performance()
+        if not portfolio_data.empty:
+            with st.spinner('Gerando recomendação personalizada...'):
+                recommendation = calculate_optimal_contribution_with_genai(portfolio_data, invested_value, contribution_amount)
+                st.markdown(recommendation)
+        else:
+            st.write("Não há dados suficientes para calcular a distribuição do aporte.")
 
     if st.button('Calcular Distribuição Ótima do Aporte'):
         portfolio_data, invested_value = get_portfolio_performance()
