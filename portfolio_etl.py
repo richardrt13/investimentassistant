@@ -1,6 +1,7 @@
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
+import pymongo
 from pymongo import MongoClient, ASCENDING
 from typing import List, Dict
 import logging
