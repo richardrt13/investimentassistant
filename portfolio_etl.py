@@ -100,22 +100,22 @@ class PortfolioETL:
             }
         except Exception as e:
             self.logger.error(f"Erro ao buscar dados para {ticker}: {e}")
-            return None
 
     def process_and_save_data(self, price_data: Dict):
         """
-        Processa e salva os dados de preço no MongoDB.
+        Processa e salva os dados de preço no MongoDB de forma mais direta e eficiente.
         
         Args:
             price_data (Dict): Dados de preço a serem processados
         """
-        if not price_data:
+        if not price_data or 'ticker' not in price_data or 'data' not in price_data:
             return
-
+    
         ticker = price_data['ticker']
         data = price_data['data']
-
+    
         operations = []
+    
         for date, row in data.iterrows():
             try:
                 record = {
@@ -124,26 +124,31 @@ class PortfolioETL:
                     'close': float(row['Close']),
                     'adjusted_close': float(row['Close'])
                 }
-
-                operations.append({
-                    'InsertOne': {
-                        'filter': {'ticker': ticker, 'date': record['date']},
-                        'update': {'$set': record},
-                        'upsert': True
-                    }
-                })
-
+    
+                # Directly create InsertOne operation
+                operations.append(
+                    pymongo.InsertOne({
+                        'ticker': ticker,
+                        'date': record['date'],
+                        'close': record['close'],
+                        'adjusted_close': record['adjusted_close']
+                    })
+                )
+    
+                # Execute bulk insert in batches of 100
                 if len(operations) >= 100:
                     self.prices_collection.bulk_write(operations)
-                    operations = []
+                    operations.clear()
+    
             except Exception as e:
                 self.logger.error(f"Erro ao processar registro para {ticker}: {e}")
 
-        if operations:
-            try:
-                self.prices_collection.bulk_write(operations)
-            except Exception as e:
-                self.logger.error(f"Erro ao salvar últimos dados para {ticker}: {e}")
+    # Final batch insert if there are remaining operations
+    if operations:
+        try:
+            self.prices_collection.bulk_write(operations)
+        except Exception as e:
+            self.logger.error(f"Erro ao salvar últimos dados para {ticker}: {e}")
 
     def run_etl(self):
         """
