@@ -122,29 +122,32 @@ class PortfolioETL:
         """
         if not price_data:
             return
-
+    
         ticker = price_data['ticker']
         data = price_data['data']
-
+    
         records = []
         for date, row in data.iterrows():
+            # Convert Timestamp to datetime and remove timezone
+            clean_date = date.tz_localize(None)
+            
+            # Convert numpy float64 to native Python float
             record = {
                 'ticker': ticker,
-                'date': date,
-                'open': row['Open'],
-                'high': row['High'],
-                'low': row['Low'],
-                'close': row['Close'],
-                'volume': row['Volume'],
-                'dividends': row['Dividends'],
-                'stock_splits': row['Stock Splits'],
-                'adjusted_close': row['Close']  # Usando Close como adjusted_close
+                'date': clean_date,
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': float(row['Volume']),
+                'dividends': float(row['Dividends']),
+                'stock_splits': float(row['Stock Splits']),
+                'adjusted_close': float(row['Close'])
             }
             records.append(record)
-
+    
         if records:
             try:
-                # Usando bulk write para melhor performance
                 operations = [
                     {
                         'updateOne': {
@@ -160,7 +163,7 @@ class PortfolioETL:
                 self.logger.info(f"Dados processados para {ticker}: {len(records)} registros novos")
                 
             except Exception as e:
-                self.logger.error(f"Erro ao salvar dados para {ticker}: {e}")
+                self.logger.error(f"Erro ao salvar dados para {ticker}: {str(e)}")
 
     def run_etl(self):
         """
