@@ -939,7 +939,6 @@ class PortfolioAnalyzer:
         3. Riscos potenciais e oportunidades
         4. Sugestões específicas para otimização e rebalanceamento
         5. Análise da distribuição setorial e concentração de riscos
-        6. Expectativa de retornos futuros
         """
 
         return prompt
@@ -964,7 +963,7 @@ class PortfolioAnalyzer:
             prompt += f"- {ticker}: {weight:.2f}% da carteira\n"
 
         prompt += """
-        Por favor, forneça:
+        Por favor, forneça de forma resumida:
         1. Sugestões específicas de rebalanceamento
         2. Ativos que poderiam ser incluídos ou removidos
         3. Estratégias para otimizar a relação risco-retorno
