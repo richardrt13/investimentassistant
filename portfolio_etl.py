@@ -267,7 +267,6 @@ class PortfolioETL:
             for future in future_to_ticker:
                 price_data = future.result()
                 if price_data:
-                    self.validate_record()
                     self.process_price_data(price_data)
         
         execution_time = time.time() - start_time
