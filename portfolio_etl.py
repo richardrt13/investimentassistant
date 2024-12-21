@@ -1,7 +1,6 @@
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
-import pymongo
 from pymongo import MongoClient, ASCENDING
 from typing import List, Dict
 import logging
@@ -105,43 +104,25 @@ class PortfolioETL:
 
     def process_and_save_data(self, price_data: Dict):
         """
-        Processa e salva os dados de preço no MongoDB usando bulk_write.
+        Processa e salva os dados de preço no MongoDB.
+        
+        Args:
+            price_data (Dict): Dados de preço a serem processados
         """
-        if not price_data or 'ticker' not in price_data or 'data' not in price_data:
-            self.logger.warning("Dados de entrada inválidos ou vazios.")
+        if not price_data:
             return
 
         ticker = price_data['ticker']
         data = price_data['data']
 
-        if not isinstance(data, pd.DataFrame):
-            self.logger.error(f"Dados para {ticker} não são um DataFrame do pandas.")
-            return
-
         operations = []
         for date, row in data.iterrows():
             try:
-                # Conversão explícita para tipos numéricos e tratamento de NaN
-                open_price = float(row['Open']) if pd.notna(row['Open']) else None
-                high_price = float(row['High']) if pd.notna(row['High']) else None
-                low_price = float(row['Low']) if pd.notna(row['Low']) else None
-                close_price = float(row['Close']) if pd.notna(row['Close']) else None
-                volume = float(row['Volume']) if pd.notna(row['Volume']) else None
-                dividends = float(row['Dividends']) if pd.notna(row['Dividends']) else None
-                stock_splits = float(row['Stock Splits']) if pd.notna(row['Stock Splits']) else None
-                adjusted_close = float(row['Close']) if pd.notna(row['Close']) else None
-
                 record = {
                     'ticker': ticker,
                     'date': date.to_pydatetime().replace(tzinfo=None),
-                    'open': open_price,
-                    'high': high_price,
-                    'low': low_price,
-                    'close': close_price,
-                    'volume': volume,
-                    'dividends': dividends,
-                    'stock_splits': stock_splits,
-                    'adjusted_close': adjusted_close
+                    'close': float(row['Close']),
+                    'adjusted_close': float(row['Close'])
                 }
 
                 operations.append({
@@ -152,30 +133,18 @@ class PortfolioETL:
                     }
                 })
 
-                if len(operations) >= 1000: # Aumentei para 1000 para melhor performance
-                    try:
-                        result = self.prices_collection.bulk_write(operations)
-                        self.logger.info(f"Bulk write para {ticker}: {result.inserted_count} inseridos, {result.modified_count} modificados, {result.upserted_count} upserted.")
-                    except pymongo.errors.BulkWriteError as bwe:
-                        self.logger.error(f"Erro BulkWrite para {ticker}: {bwe.details}")
-                    except pymongo.errors.PyMongoError as e:
-                        self.logger.error(f"Erro PyMongo ao salvar bulk para {ticker}: {e}")
+                if len(operations) >= 100:
+                    self.prices_collection.bulk_write(operations)
                     operations = []
-
-            except (KeyError, TypeError, ValueError) as e:
-                self.logger.error(f"Erro ao processar linha para {ticker} na data {date}: {e}. Linha: {row}")
             except Exception as e:
-                self.logger.exception(f"Erro inesperado ao processar registro para {ticker} na data {date}: {e}") # Loga o traceback completo
+                self.logger.error(f"Erro ao processar registro para {ticker}: {e}")
 
         if operations:
             try:
-                result = self.prices_collection.bulk_write(operations)
-                self.logger.info(f"Bulk write final para {ticker}: {result.inserted_count} inseridos, {result.modified_count} modificados, {result.upserted_count} upserted.")
-            except pymongo.errors.BulkWriteError as bwe:
-                self.logger.error(f"Erro BulkWrite final para {ticker}: {bwe.details}")
-            except pymongo.errors.PyMongoError as e:
-                self.logger.error(f"Erro PyMongo ao salvar bulk final para {ticker}: {e}")
-                
+                self.prices_collection.bulk_write(operations)
+            except Exception as e:
+                self.logger.error(f"Erro ao salvar últimos dados para {ticker}: {e}")
+
     def run_etl(self):
         """
         Executa o processo de ETL completo.
