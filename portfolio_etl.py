@@ -5,6 +5,7 @@ from pymongo import MongoClient, ASCENDING
 from typing import List, Dict
 import logging
 import time
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 class PortfolioETL:
