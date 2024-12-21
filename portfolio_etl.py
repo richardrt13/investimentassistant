@@ -113,90 +113,6 @@ class PortfolioETL:
             self.logger.error(f"Erro ao buscar dados para {ticker}: {e}")
             return None
 
-    def process_price_data(self, price_data: Dict):
-        """
-        Processa e salva os dados de preço no MongoDB.
-        
-        Args:
-            price_data (Dict): Dados de preço a serem processados
-        """
-        if not price_data:
-            return
-    
-        ticker = price_data['ticker']
-        data = price_data['data']
-    
-        try:
-            operations = []
-            for date, row in data.iterrows():
-                # Convert Timestamp to datetime and remove timezone
-                clean_date = date.to_pydatetime().replace(tzinfo=None)
-                
-                # Create the document to be inserted/updated
-                record = {
-                    'ticker': ticker,
-                    'date': clean_date,
-                    'open': float(row['Open']),
-                    'high': float(row['High']),
-                    'low': float(row['Low']),
-                    'close': float(row['Close']),
-                    'volume': float(row['Volume']),
-                    'dividends': float(row['Dividends']),
-                    'stock_splits': float(row['Stock Splits']),
-                    'adjusted_close': float(row['Close'])
-                }
-                
-                # Create the update operation
-                operation = {
-                    'updateOne': {
-                        'filter': {
-                            'ticker': ticker,
-                            'date': clean_date
-                        },
-                        'update': {
-                            '$set': record
-                        },
-                        'upsert': True
-                    }
-                }
-                operations.append(operation)
-    
-                # Process in smaller batches to avoid any potential size limits
-                if len(operations) >= 100:
-                    try:
-                        self.prices_collection.bulk_write(operations)
-                        self.logger.info(f"Batch processed for {ticker}: {len(operations)} records")
-                        operations = []  # Clear the processed operations
-                    except Exception as batch_error:
-                        error_details = str(batch_error)
-                        self.logger.error(f"Error in bulk write for {ticker}: {error_details}")
-                        # Try to process one by one if batch fails
-                        for single_op in operations:
-                            try:
-                                self.prices_collection.bulk_write([single_op])
-                            except Exception as single_error:
-                                self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
-                        operations = []  # Clear the operations regardless of success
-    
-            # Process any remaining operations
-            if operations:
-                try:
-                    self.prices_collection.bulk_write(operations)
-                    self.logger.info(f"Final batch processed for {ticker}: {len(operations)} records")
-                except Exception as final_error:
-                    error_details = str(final_error)
-                    self.logger.error(f"Error in final bulk write for {ticker}: {error_details}")
-                    # Try to process remaining operations one by one
-                    for single_op in operations:
-                        try:
-                            self.prices_collection.bulk_write([single_op])
-                        except Exception as single_error:
-                            self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
-    
-        except Exception as e:
-            self.logger.error(f"Error processing data for {ticker}: {str(e)}")
-            raise  # Re-raise the exception for the calling code to handle
-
     def validate_record(self, record: Dict) -> bool:
         """
         Validates a single record before saving to MongoDB.
@@ -233,6 +149,101 @@ class PortfolioETL:
         except Exception as e:
             self.logger.error(f"Error validating record: {str(e)}")
             return False
+
+    def process_price_data(self, price_data: Dict):
+        """
+        Processa e salva os dados de preço no MongoDB.
+        
+        Args:
+            price_data (Dict): Dados de preço a serem processados
+        """
+        if not price_data:
+            return
+    
+        ticker = price_data['ticker']
+        data = price_data['data']
+    
+        try:
+            operations = []
+            invalid_records = 0
+            for date, row in data.iterrows():
+                # Convert Timestamp to datetime and remove timezone
+                clean_date = date.to_pydatetime().replace(tzinfo=None)
+                
+                # Create the document to be inserted/updated
+                record = {
+                    'ticker': ticker,
+                    'date': clean_date,
+                    'open': float(row['Open']),
+                    'high': float(row['High']),
+                    'low': float(row['Low']),
+                    'close': float(row['Close']),
+                    'volume': float(row['Volume']),
+                    'dividends': float(row['Dividends']),
+                    'stock_splits': float(row['Stock Splits']),
+                    'adjusted_close': float(row['Close'])
+                }
+                
+                # Validate the record before adding to operations
+                if self.validate_record(record):
+                    # Create the update operation
+                    operation = {
+                        'updateOne': {
+                            'filter': {
+                                'ticker': ticker,
+                                'date': clean_date
+                            },
+                            'update': {
+                                '$set': record
+                            },
+                            'upsert': True
+                        }
+                    }
+                    operations.append(operation)
+                else:
+                    invalid_records += 1
+                    self.logger.warning(f"Invalid record found for {ticker} on {clean_date}")
+    
+                # Process in smaller batches to avoid any potential size limits
+                if len(operations) >= 100:
+                    try:
+                        self.prices_collection.bulk_write(operations)
+                        self.logger.info(f"Batch processed for {ticker}: {len(operations)} records")
+                        operations = []  # Clear the processed operations
+                    except Exception as batch_error:
+                        error_details = str(batch_error)
+                        self.logger.error(f"Error in bulk write for {ticker}: {error_details}")
+                        # Try to process one by one if batch fails
+                        for single_op in operations:
+                            try:
+                                self.prices_collection.bulk_write([single_op])
+                            except Exception as single_error:
+                                self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
+                        operations = []  # Clear the operations regardless of success
+    
+            # Process any remaining operations
+            if operations:
+                try:
+                    self.prices_collection.bulk_write(operations)
+                    self.logger.info(f"Final batch processed for {ticker}: {len(operations)} records")
+                except Exception as final_error:
+                    error_details = str(final_error)
+                    self.logger.error(f"Error in final bulk write for {ticker}: {error_details}")
+                    # Try to process remaining operations one by one
+                    for single_op in operations:
+                        try:
+                            self.prices_collection.bulk_write([single_op])
+                        except Exception as single_error:
+                            self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
+    
+            # Log summary of invalid records if any were found
+            if invalid_records > 0:
+                self.logger.warning(f"Total invalid records for {ticker}: {invalid_records}")
+    
+        except Exception as e:
+            self.logger.error(f"Error processing data for {ticker}: {str(e)}")
+            raise  # Re-raise the exception for the calling code to handle
+
 
     def run_etl(self):
         """
