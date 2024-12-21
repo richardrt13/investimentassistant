@@ -642,40 +642,6 @@ def calculate_optimal_contribution_with_genai(portfolio_data, invested_value, co
     except Exception as e:
         return f"Erro ao gerar recomendação: {e}"
 
-def calculate_advanced_valuation_score(fundamental_data, current_price):
-    """
-    Calcula pontuação de avaliação mais sofisticada
-    """
-    try:
-        # Múltiplos fatores com pesos ajustáveis
-        factors = {
-            'P/L': 1 / fundamental_data.get('P/L', 1) if fundamental_data.get('P/L', 1) > 0 else 0,
-            'P/VPA': 1 / fundamental_data.get('P/VPA', 1) if fundamental_data.get('P/VPA', 1) > 0 else 0,
-            'ROE': fundamental_data.get('ROE', 0),
-            'Dividend Yield': fundamental_data.get('Dividend Yield', 0),
-            'Crescimento Receita': fundamental_data.get('Crescimento Receita', 0)
-        }
-        
-        # Pesos mais refinados
-        weights = {
-            'P/L': 0.25,
-            'P/VPA': 0.20,
-            'ROE': 0.20,
-            'Dividend Yield': 0.15,
-            'Crescimento Receita': 0.20
-        }
-        
-        # Calcular pontuação ponderada
-        valuation_score = sum(
-            factor * weights[key] 
-            for key, factor in factors.items()
-        )
-        
-        return valuation_score
-    
-    except Exception as e:
-        print(f"Erro ao calcular pontuação avançada: {e}")
-        return 0
 
 def allocate_portfolio_integer_shares(invest_value, prices, weights):
     allocation = {}
