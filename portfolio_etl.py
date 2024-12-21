@@ -126,44 +126,61 @@ class PortfolioETL:
         ticker = price_data['ticker']
         data = price_data['data']
     
-        records = []
-        for date, row in data.iterrows():
-            # Convert Timestamp to datetime and remove timezone
-            clean_date = date.tz_localize(None)
-            
-            # Convert numpy float64 to native Python float
-            record = {
-                'ticker': ticker,
-                'date': clean_date,
-                'open': float(row['Open']),
-                'high': float(row['High']),
-                'low': float(row['Low']),
-                'close': float(row['Close']),
-                'volume': float(row['Volume']),
-                'dividends': float(row['Dividends']),
-                'stock_splits': float(row['Stock Splits']),
-                'adjusted_close': float(row['Close'])
-            }
-            records.append(record)
+        try:
+            records = []
+            for date, row in data.iterrows():
+                # Convert Timestamp to datetime and remove timezone
+                clean_date = date.to_pydatetime().replace(tzinfo=None)
+                
+                # Convert all numeric values to native Python types
+                record = {
+                    'ticker': ticker,
+                    'date': clean_date,
+                    'open': float(row['Open']),
+                    'high': float(row['High']),
+                    'low': float(row['Low']),
+                    'close': float(row['Close']),
+                    'volume': float(row['Volume']),
+                    'dividends': float(row['Dividends']),
+                    'stock_splits': float(row['Stock Splits']),
+                    'adjusted_close': float(row['Close'])
+                }
+                records.append(record)
     
-        if records:
-            try:
-                operations = [
-                    {
+            if records:
+                # Create the operations list
+                operations = []
+                for record in records:
+                    operation = {
                         'updateOne': {
-                            'filter': {'ticker': record['ticker'], 'date': record['date']},
-                            'update': {'$set': record},
+                            'filter': {
+                                'ticker': record['ticker'],
+                                'date': record['date']
+                            },
+                            'update': {
+                                '$set': record
+                            },
                             'upsert': True
                         }
                     }
-                    for record in records
-                ]
-                
-                result = self.prices_collection.bulk_write(operations)
-                self.logger.info(f"Dados processados para {ticker}: {len(records)} registros novos")
-                
-            except Exception as e:
-                self.logger.error(f"Erro ao salvar dados para {ticker}: {str(e)}")
+                    operations.append(operation)
+    
+                # Execute bulk write in smaller batches to avoid potential size limits
+                batch_size = 500
+                for i in range(0, len(operations), batch_size):
+                    batch = operations[i:i + batch_size]
+                    try:
+                        result = self.prices_collection.bulk_write(batch)
+                        self.logger.info(f"Batch processed for {ticker}: {len(batch)} records")
+                    except Exception as batch_error:
+                        self.logger.error(f"Error processing batch for {ticker}: {str(batch_error)}")
+                        # Continue with next batch instead of failing completely
+                        continue
+    
+                self.logger.info(f"Completed processing for {ticker}: {len(records)} total records")
+    
+        except Exception as e:
+            self.logger.error(f"Error processing data for {ticker}: {str(e)}")
 
     def run_etl(self):
         """
