@@ -126,7 +126,7 @@ class PortfolioETL:
                 }
 
                 operations.append({
-                    'updateOne': {
+                    'InsertOne': {
                         'filter': {'ticker': ticker, 'date': record['date']},
                         'update': {'$set': record},
                         'upsert': True
