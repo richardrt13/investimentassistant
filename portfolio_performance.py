@@ -933,7 +933,7 @@ class PortfolioAnalyzer:
             """
 
         prompt += """
-        Por favor, forneça:
+        Por favor, forneça de forma resumida:
         1. Uma análise geral da carteira considerando diversificação e performance
         2. Pontos fortes e fracos identificados
         3. Riscos potenciais e oportunidades
