@@ -12,8 +12,11 @@ class PortfolioETL:
         """
         Inicializa o processo de ETL para dados de portfólio.
         """
-        # URI de conexão do MongoDB Atlas (free tier)
-        mongo_uri = "mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority"
+        # Obtém a URI do MongoDB das variáveis de ambiente
+        mongo_uri = os.getenv('MONGO_URI')
+        if not mongo_uri:
+            raise ValueError("MONGO_URI environment variable is not set")
+            
         self.client = MongoClient(mongo_uri)
         self.db = self.client['StockIdea']
         self.prices_collection = self.db['historical_prices']
