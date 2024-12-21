@@ -127,12 +127,12 @@ class PortfolioETL:
         data = price_data['data']
     
         try:
-            records = []
+            operations = []
             for date, row in data.iterrows():
                 # Convert Timestamp to datetime and remove timezone
                 clean_date = date.to_pydatetime().replace(tzinfo=None)
                 
-                # Convert all numeric values to native Python types
+                # Create the document to be inserted/updated
                 record = {
                     'ticker': ticker,
                     'date': clean_date,
@@ -145,42 +145,94 @@ class PortfolioETL:
                     'stock_splits': float(row['Stock Splits']),
                     'adjusted_close': float(row['Close'])
                 }
-                records.append(record)
-    
-            if records:
-                # Create the operations list
-                operations = []
-                for record in records:
-                    operation = {
-                        'updateOne': {
-                            'filter': {
-                                'ticker': record['ticker'],
-                                'date': record['date']
-                            },
-                            'update': {
-                                '$set': record
-                            },
-                            'upsert': True
-                        }
+                
+                # Create the update operation
+                operation = {
+                    'updateOne': {
+                        'filter': {
+                            'ticker': ticker,
+                            'date': clean_date
+                        },
+                        'update': {
+                            '$set': record
+                        },
+                        'upsert': True
                     }
-                    operations.append(operation)
+                }
+                operations.append(operation)
     
-                # Execute bulk write in smaller batches to avoid potential size limits
-                batch_size = 500
-                for i in range(0, len(operations), batch_size):
-                    batch = operations[i:i + batch_size]
+                # Process in smaller batches to avoid any potential size limits
+                if len(operations) >= 100:
                     try:
-                        result = self.prices_collection.bulk_write(batch)
-                        self.logger.info(f"Batch processed for {ticker}: {len(batch)} records")
+                        self.prices_collection.bulk_write(operations)
+                        self.logger.info(f"Batch processed for {ticker}: {len(operations)} records")
+                        operations = []  # Clear the processed operations
                     except Exception as batch_error:
-                        self.logger.error(f"Error processing batch for {ticker}: {str(batch_error)}")
-                        # Continue with next batch instead of failing completely
-                        continue
+                        error_details = str(batch_error)
+                        self.logger.error(f"Error in bulk write for {ticker}: {error_details}")
+                        # Try to process one by one if batch fails
+                        for single_op in operations:
+                            try:
+                                self.prices_collection.bulk_write([single_op])
+                            except Exception as single_error:
+                                self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
+                        operations = []  # Clear the operations regardless of success
     
-                self.logger.info(f"Completed processing for {ticker}: {len(records)} total records")
+            # Process any remaining operations
+            if operations:
+                try:
+                    self.prices_collection.bulk_write(operations)
+                    self.logger.info(f"Final batch processed for {ticker}: {len(operations)} records")
+                except Exception as final_error:
+                    error_details = str(final_error)
+                    self.logger.error(f"Error in final bulk write for {ticker}: {error_details}")
+                    # Try to process remaining operations one by one
+                    for single_op in operations:
+                        try:
+                            self.prices_collection.bulk_write([single_op])
+                        except Exception as single_error:
+                            self.logger.error(f"Error processing single record for {ticker}: {str(single_error)}")
     
         except Exception as e:
             self.logger.error(f"Error processing data for {ticker}: {str(e)}")
+            raise  # Re-raise the exception for the calling code to handle
+
+    def validate_record(self, record: Dict) -> bool:
+        """
+        Validates a single record before saving to MongoDB.
+        
+        Args:
+            record (Dict): The record to validate
+            
+        Returns:
+            bool: True if valid, False otherwise
+        """
+        try:
+            # Check if all required fields are present
+            required_fields = ['ticker', 'date', 'open', 'high', 'low', 'close', 'volume']
+            if not all(field in record for field in required_fields):
+                return False
+                
+            # Verify data types
+            if not isinstance(record['ticker'], str):
+                return False
+            if not isinstance(record['date'], datetime):
+                return False
+            
+            # Verify numeric fields are float and not NaN
+            numeric_fields = ['open', 'high', 'low', 'close', 'volume', 'dividends', 'stock_splits', 'adjusted_close']
+            for field in numeric_fields:
+                if field in record:
+                    if not isinstance(record[field], (int, float)):
+                        return False
+                    if pd.isna(record[field]):
+                        return False
+                    
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"Error validating record: {str(e)}")
+            return False
 
     def run_etl(self):
         """
@@ -204,6 +256,7 @@ class PortfolioETL:
             for future in future_to_ticker:
                 price_data = future.result()
                 if price_data:
+                    self.validate_record()
                     self.process_price_data(price_data)
         
         execution_time = time.time() - start_time
