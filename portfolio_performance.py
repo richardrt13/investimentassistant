@@ -939,6 +939,7 @@ class PortfolioAnalyzer:
         3. Riscos potenciais e oportunidades
         4. Sugestões específicas para otimização e rebalanceamento
         5. Análise da distribuição setorial e concentração de riscos
+        6. Expectativa de retornos futuros
         """
 
         return prompt
