@@ -567,10 +567,13 @@ def get_portfolio_performance():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
         ticker
+        start_date
+        end_date
         
         # Fetch historical prices
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
+            ticker_prices
             ticker_prices = ticker_prices.set_index('date')['adjusted_close']
             
             # Multiply prices by quantity
