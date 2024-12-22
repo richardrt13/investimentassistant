@@ -512,6 +512,8 @@ def get_historical_prices(ticker, start_date, end_date):
     
     # Convert to DataFrame
     df = pd.DataFrame(list(cursor))
+
+    df
     
     if df.empty:
         return df
