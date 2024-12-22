@@ -846,9 +846,9 @@ def portfolio_tracking():
         portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
 
         # Get Ibovespa data
-        portfolio_data.index[0]
-        portfolio_data.index[-1]
-        ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
+        ibovespa_start_date = portfolio_data.index[0].strftime('%Y-%m-%d')
+        ibovespa_end_date = portfolio_data.index[-1].strftime('%Y-%m-%d')
+        ibov_return = get_ibovespa_data(ibovespa_start_date, ibovespa_end_date)
 
         # Create figure for cumulative returns comparison
         fig_returns = go.Figure()
