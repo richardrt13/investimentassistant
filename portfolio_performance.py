@@ -582,25 +582,24 @@ def get_portfolio_performance():
 
     return daily_values, invested_values
     
-def get_historical_prices(ticker, start_date, end_date):
+def get_ibovespa_data(start_date, end_date):
     """
-    Fetch historical price data from MongoDB instead of yfinance
+    Fetch Ibovespa historical data from MongoDB instead of yfinance
     
     Parameters:
-    ticker (str): Stock ticker symbol
     start_date (datetime): Start date for historical data
     end_date (datetime): End date for historical data
     
     Returns:
-    pandas.DataFrame: DataFrame with date and adjusted close prices
+    pandas.Series: Series with Ibovespa returns
     """
-    # Convert dates to string format matching MongoDB
+    # Convert dates to string format
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
     
-    # Query MongoDB for historical prices
+    # Query MongoDB for Ibovespa data
     query = {
-        'ticker': ticker,
+        'ticker': '^BVSP',
         'date': {
             '$gte': start_date_str,
             '$lte': end_date_str
@@ -617,18 +616,18 @@ def get_historical_prices(ticker, start_date, end_date):
     df = pd.DataFrame(list(cursor))
     
     if df.empty:
-        return df
+        return pd.Series()
         
     # Convert date string to datetime
     df['date'] = pd.to_datetime(df['date'])
     
-    # Sort by date
-    df = df.sort_values('date')
-    
     # Set date as index
     df = df.set_index('date')
     
-    return df
+    # Calculate return percentage
+    ibov_return = (df['Adj Close'] / df['Adj Close'].iloc[0] - 1) * 100
+    
+    return ibov_return
 
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
