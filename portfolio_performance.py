@@ -566,6 +566,7 @@ def get_portfolio_performance():
     for _, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
+        ticker
         
         # Fetch historical prices
         try:
