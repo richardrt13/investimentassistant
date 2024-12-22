@@ -480,14 +480,50 @@ def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
 
 def get_historical_prices(ticker, start_date, end_date):
-    # Baixar dados do Yahoo Finance
-    data = yf.download(ticker, start_date, end_date)['Adj Close']
+    """
+    Fetch historical price data from MongoDB instead of yfinance
     
-    # Resetar o índice para transformar o índice de data em uma coluna
-    df = data.reset_index()
+    Parameters:
+    ticker (str): Stock ticker symbol
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
     
-    # Renomear as colunas para clareza
-    df.columns = ['date', 'adjusted_close']
+    Returns:
+    pandas.DataFrame: DataFrame with date and adjusted close prices
+    """
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
+        }
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Adj Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
+        return df
+        
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    # Set date as index
+    df = df.set_index('date')
     
     return df
 
@@ -546,10 +582,53 @@ def get_portfolio_performance():
 
     return daily_values, invested_values
     
-def get_ibovespa_data(start_date, end_date):
-    ibov = get_historical_prices('^BVSP', start_date, end_date)
-    ibov_return = (ibov.set_index('date')['adjusted_close'] / ibov.set_index('date')['adjusted_close'].iloc[0] - 1) * 100
-    return ibov_return
+def get_historical_prices(ticker, start_date, end_date):
+    """
+    Fetch historical price data from MongoDB instead of yfinance
+    
+    Parameters:
+    ticker (str): Stock ticker symbol
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
+    
+    Returns:
+    pandas.DataFrame: DataFrame with date and adjusted close prices
+    """
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
+        }
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Adj Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
+        return df
+        
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    # Set date as index
+    df = df.set_index('date')
+    
+    return df
 
 def calculate_portfolio_metrics(portfolio_data, invested_value):
     total_invested = invested_value.sum()
