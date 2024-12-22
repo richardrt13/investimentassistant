@@ -781,8 +781,7 @@ def portfolio_tracking():
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value = get_portfolio_performance()
-    portfolio_data
-    invested_value
+    
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
