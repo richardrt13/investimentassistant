@@ -622,7 +622,6 @@ def get_ibovespa_data(start_date, end_date):
     
     # Calculate return percentage
     ibov_return = (df.set_index('date')['Adj Close'] / df.set_index('date')['Adj Close'].iloc[0] - 1) * 100
-    #ibov_return = (df['Adj Close'] / df['Adj Close'].iloc[0] - 1) * 100
     
     return ibov_return
 
@@ -848,9 +847,7 @@ def portfolio_tracking():
 
         # Get Ibovespa data
         ibovespa_start_date = portfolio_data.index[0].strftime('%Y-%m-%d')
-        ibovespa_start_date
         ibovespa_end_date = portfolio_data.index[-1].strftime('%Y-%m-%d')
-        ibovespa_end_date
         ibov_return = get_ibovespa_data(ibovespa_start_date, ibovespa_end_date)
 
         # Create figure for cumulative returns comparison
