@@ -492,8 +492,8 @@ def get_historical_prices(ticker, start_date, end_date):
     pandas.DataFrame: DataFrame with date and adjusted close prices
     """
     # Convert dates to string format matching MongoDB
-    start_date_str = start_date.strftime('%Y-%m-%d')
-    end_date_str = end_date.strftime('%Y-%m-%d')
+    start_date_str = start_date
+    end_date_str = end_date
     
     # Query MongoDB for historical prices
     query = {
@@ -594,8 +594,8 @@ def get_ibovespa_data(start_date, end_date):
     pandas.Series: Series with Ibovespa returns
     """
     # Convert dates to string format
-    start_date_str = start_date.strftime('%Y-%m-%d')
-    end_date_str = end_date.strftime('%Y-%m-%d')
+    start_date_str = start_date
+    end_date_str = end_date
     
     # Query MongoDB for Ibovespa data
     query = {
