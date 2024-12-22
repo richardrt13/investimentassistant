@@ -846,6 +846,8 @@ def portfolio_tracking():
         portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
 
         # Get Ibovespa data
+        portfolio_data.index[0]
+        portfolio_data.index[-1]
         ibov_return = get_ibovespa_data(portfolio_data.index[0], portfolio_data.index[-1])
 
         # Create figure for cumulative returns comparison
