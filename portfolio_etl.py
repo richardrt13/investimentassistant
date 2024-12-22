@@ -9,15 +9,6 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 
-def setup_indexes():
-        """Configura índices necessários no MongoDB"""
-        prices_collection.create_index([
-            ('ticker', ASCENDING),
-            ('date', ASCENDING)
-        ], unique=True)
-
-setup_indexes()
-
 full = False
 
 end_date = datetime.now()
@@ -32,6 +23,15 @@ prices_collection = db['historical_prices']
 transactions = db['transactions'].find()
 transactions_list =  list({transaction['Ticker'] for transaction in transactions})
 transactions_list.append('^BVSP')
+
+def setup_indexes():
+        """Configura índices necessários no MongoDB"""
+        prices_collection.create_index([
+            ('ticker', ASCENDING),
+            ('date', ASCENDING)
+        ], unique=True)
+
+setup_indexes()
 
 #daily update
 
