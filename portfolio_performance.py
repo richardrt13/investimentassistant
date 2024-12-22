@@ -522,8 +522,6 @@ def get_historical_prices(ticker, start_date, end_date):
     # Sort by date
     df = df.sort_values('date')
     
-    # Set date as index
-    df = df.set_index('date')
     
     return df
 
@@ -566,15 +564,11 @@ def get_portfolio_performance():
     for _, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
-        ticker
-        start_date
-        end_date
         
         # Fetch historical prices
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
-            ticker_prices
-            ticker_prices = ticker_prices.set_index('date')['adjusted_close']
+            ticker_prices = ticker_prices.set_index('date')['Adj Close']
             
             # Multiply prices by quantity
             daily_values[ticker] = ticker_prices * quantity
@@ -625,8 +619,6 @@ def get_ibovespa_data(start_date, end_date):
     # Convert date string to datetime
     df['date'] = pd.to_datetime(df['date'])
     
-    # Set date as index
-    df = df.set_index('date')
     
     # Calculate return percentage
     ibov_return = (df['Adj Close'] / df['Adj Close'].iloc[0] - 1) * 100
