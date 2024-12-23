@@ -3,7 +3,7 @@ name: Daily ETL Process
 on:
   schedule:
     # Executa todo dia às 10:00 UTC
-    - cron: '0 10 * * *'  # Corrigido o formato do cron
+    - cron: '0 15,21 * * *'  # Corrigido o formato do cron
   workflow_dispatch:  # Permite execução manual
   repository_dispatch:
     types:
