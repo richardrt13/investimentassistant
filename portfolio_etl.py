@@ -37,7 +37,7 @@ setup_indexes()
 
 for ativo in transactions_list:
       print(f"Baixando dados para {ativo}...")
-      dados = yf.download(ativo, start=start_date_append.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
+      dados = yf.download(ativo, interval= "1d", period= "5d")
       
       # Verificar se há dados
       if dados.empty:
@@ -85,7 +85,7 @@ new_tickers = [ticker for ticker, count in ticker_counts.items() if count < 2]
 
 for ativo in new_tickers:
       print(f"Baixando dados para {ativo}...")
-      dados = yf.download(ativo, start=start_date_full.strftime("%Y-%m-%d"), end=end_date.strftime("%Y-%m-%d"))
+      dados = yf.download(ativo, interval="1d", period="3y" )
       
       # Verificar se há dados
       if dados.empty:
