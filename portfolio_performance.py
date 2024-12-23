@@ -569,6 +569,7 @@ def get_portfolio_performance():
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
             ticker_prices = ticker_prices.set_index('date')['Adj Close']
+            ticker_prices = ticker_prices.dropna()
             
             # Multiply prices by quantity
             daily_values[ticker] = ticker_prices * quantity
