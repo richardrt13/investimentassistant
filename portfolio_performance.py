@@ -884,6 +884,8 @@ def portfolio_tracking():
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
     
     portfolio_data, invested_value = get_portfolio_performance()
+    portfolio_data
+    invested_value 
     
     if not portfolio_data.empty:
         # Botão para gerar análise
