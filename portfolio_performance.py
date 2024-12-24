@@ -507,7 +507,7 @@ def get_historical_prices(ticker, start_date, end_date):
     # Fetch data from MongoDB
     cursor = prices_collection.find(
         query,
-        {'_id': 0, 'date': 1, 'Adj Close': 1}
+        {'_id': 0, 'date': 1, 'Close': 1}
     )
     
     # Convert to DataFrame
@@ -568,7 +568,7 @@ def get_portfolio_performance():
         # Fetch historical prices
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
-            ticker_prices = ticker_prices.set_index('date')['Adj Close']
+            ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
             # Multiply prices by quantity
@@ -608,7 +608,7 @@ def get_ibovespa_data(start_date, end_date):
     # Fetch data from MongoDB
     cursor = prices_collection.find(
         query,
-        {'_id': 0, 'date': 1, 'Adj Close': 1}
+        {'_id': 0, 'date': 1, 'Close': 1}
     )
     
     # Convert to DataFrame
@@ -622,7 +622,7 @@ def get_ibovespa_data(start_date, end_date):
     
     
     # Calculate return percentage
-    ibov_return = (df.set_index('date')['Adj Close'] / df.set_index('date')['Adj Close'].iloc[0] - 1) * 100
+    ibov_return = (df.set_index('date')['Close'] / df.set_index('date')['Close'].iloc[0] - 1) * 100
     
     return ibov_return
 
