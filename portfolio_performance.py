@@ -770,7 +770,7 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
             assets.append({
                 "ticker": base_ticker,
                 "sector": asset_data['Sector'],
-                "preco_atual": current_price
+                "preco_atual": current_price,
                 "fundamentals": {
                     "pe_ratio": asset_data['P/L'],
                     "pb_ratio": asset_data['P/VP'],
