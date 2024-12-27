@@ -747,7 +747,7 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
-def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df):
+def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df,invest_value):
     try:
         model = genai.GenerativeModel("gemini-1.5-flash")
         
