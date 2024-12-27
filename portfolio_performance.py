@@ -525,7 +525,7 @@ def get_historical_prices(ticker, start_date, end_date):
     
     return df
 
-#@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600)
 # Function to get portfolio performance
 def get_portfolio_performance():
     # Fetch all transactions and convert to DataFrame
@@ -580,7 +580,8 @@ def get_portfolio_performance():
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
 
     return daily_values, invested_values
-    
+
+@st.cache_data(ttl=3600)
 def get_ibovespa_data(start_date, end_date):
     """
     Fetch Ibovespa historical data from MongoDB instead of yfinance
