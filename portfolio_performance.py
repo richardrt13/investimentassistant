@@ -736,7 +736,7 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
                 }
             })
 
-        prompt = f"""Analise os seguintes ativos e forneça uma análise resumida da recomendação:
+        prompt = f"""Analise os seguintes ativos e selecione os melhores para investir pensando em retornos futuros:
 
         Ativos Selecionados:
         {str(assets)}
@@ -745,8 +745,8 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         {str(invest_value)}
 
         Por favor, forneça:
-        1. Uma recomendação detalhada de como alocar o valor que quero invetir entre os ativos existentes, respeitando o valor mínimo de cada ativo que é o preço atual
-        2. Justificativa para cada alocação sugerida
+        1. Uma tabela com os ativos selecionados, quantidade sugerida de compra, valor para investir e justificativa do investimento. 
+        Se certifique de que a soma total do investimento não supere o valor que eu quero investir
         Responda em português e de forma estruturada."""
 
 
