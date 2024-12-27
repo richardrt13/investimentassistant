@@ -745,7 +745,7 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         {str(invest_value)}
 
         Por favor, forneça:
-        1. Uma recomendação detalhada de como alocar o valor que quero invetir entre os ativos existentes
+        1. Uma recomendação detalhada de como alocar o valor que quero invetir entre os ativos existentes, respeitando o valor mínimo de cada ativo que é o preço atual
         2. Justificativa para cada alocação sugerida
         Responda em português e de forma estruturada."""
 
@@ -1217,11 +1217,7 @@ def main():
                     'rsi_anomaly': round(rsi_anomalies.mean(),2)
                 })
             
-            anomaly_df = pd.DataFrame(anomaly_data)
-            st.table(anomaly_df)
-    
-            st.write("As anomalias de preço indicam movimento incomuns nos preços dos atios, enquanto as anomalias de RSI indicam períodos de sobrecompra ou sobrevenda.")
-
+           
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
 
