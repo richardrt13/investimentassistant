@@ -789,11 +789,6 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
 
         prompt = f"""Analise os seguintes ativos e forneça uma análise detalhada da recomendação:
 
-        Métricas do Portfólio:
-        - Retorno Esperado: {portfolio_metrics['return']:.2f}%
-        - Volatilidade: {portfolio_metrics['volatility']:.2f}%
-        - Índice de Sharpe: {portfolio_metrics['sharpe']:.2f}
-
         Ativos Selecionados:
         {str(assets)}
 
@@ -801,8 +796,9 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         {str(invest_value)}
 
         Por favor, forneça:
-        1. Uma recomendação detalhada de alocação em cada ativo repeitando o valor que quero investir e com base nos fundamentos, expectativas de retorno futuros e relação risco retorno.
-        
+        1. Uma recomendação detalhada de como alocar o aporte entre os ativos existentes
+        2. Justificativa para cada alocação sugerida
+        3. Número específico de ações a comprar de cada ativo dentro do limite de valor que quero investir
         Responda em português e de forma estruturada."""
 
         response = model.generate_content(prompt)
