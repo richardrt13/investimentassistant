@@ -392,60 +392,6 @@ def calculate_asset_sharpe(returns_series, risk_free_rate):
     asset_volatility = returns_series.std() * np.sqrt(252)
     return (asset_return - risk_free_rate) / asset_volatility
 
-def generate_allocation_explanation(ticker, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns, risk_free_rate, portfolio_sharpe):
-    ticker = ticker.replace('.SA', '')
-    explanation = f"Explicação para a alocação de R$ {allocated_value:.2f} em {ticker}:\n"
-
-    # Calcular Sharpe individual do ativo
-    asset_sharpe = calculate_asset_sharpe(returns, risk_free_rate)
-
-    shares = int(shares)
-
-    if shares <= 0:
-        explanation = f"Explicação para a não alocação em {ticker}:\n"
-        explanation += f"Este ativo apresenta {asset_sharpe:.2f} de índice de sharpe e não foi incluído na alocação final do portfólio otimizado.\n"
-        explanation += "Isso pode ocorrer devido a várias razões:\n"
-        explanation += "- O ativo pode não contribuir significativamente para a melhoria do índice de Sharpe do portfólio.\n"
-        explanation += "- Outros ativos podem oferecer melhor relação risco-retorno ou benefícios de diversificação.\n"
-        explanation += "- As restrições de otimização podem ter levado à exclusão deste ativo.\n\n"
-    else:
-        explanation += f"Índice de Sharpe do ativo: {asset_sharpe:.2f} (Portfolio: {portfolio_sharpe:.2f})\n"
-        explanation += "Este ativo foi selecionado principalmente devido à sua contribuição para a otimização do índice de Sharpe do portfólio.\n"
-
-        if asset_sharpe > portfolio_sharpe:
-            explanation += "O ativo tem um Sharpe individual superior ao do portfólio, contribuindo positivamente para o desempenho geral.\n"
-        else:
-            explanation += "Embora o Sharpe individual seja menor que o do portfólio, este ativo ajuda na diversificação e na otimização geral.\n"
-
-    # Adicionar explicações sobre dados fundamentalistas
-    explanation += f"\nDados fundamentalistas:"
-    explanation += f"\n- P/L: {fundamental_data['P/L']:.2f} "
-    explanation += "(favorável) " if fundamental_data['P/L'] < 15 else "(desfavorável) "
-    explanation += f"\n- P/VP: {fundamental_data['P/VP']:.2f} "
-    explanation += "(favorável) " if fundamental_data['P/VP'] < 1.5 else "(desfavorável) "
-    explanation += f"\n- ROE: {fundamental_data['ROE']:.2%} "
-    explanation += "(alto) " if fundamental_data['ROE'] > 0.15 else "(baixo) "
-    #explanation += f"\n- Dividend Yield: {fundamental_data['Dividend Yield']:.2%} "
-    #explanation += "(atrativo) " if fundamental_data['Dividend Yield'] > 0.04 else "(baixo) "
-
-    # Adicionar explicações sobre dados de crescimento
-    explanation += f"\n\nDados de crescimento:"
-    explanation += f"\n- Crescimento de receita: {growth_data['revenue_growth']:.2%} "
-    explanation += "(forte) " if growth_data['revenue_growth'] > 0.1 else "(fraco) "
-    explanation += f"\n- Crescimento de lucro: {growth_data['income_growth']:.2%} "
-    explanation += "(forte) " if growth_data['income_growth'] > 0.1 else "(fraco) "
-
-    # Adicionar explicações sobre anomalias
-    explanation += f"\n\nAnálise de anomalias:"
-    explanation += f"\n- Anomalias de preço: {anomaly_data['price_anomaly']:.2%} "
-    explanation += "(poucas) " if anomaly_data['price_anomaly'] < 0.1 else "(muitas) "
-    explanation += f"\n- Anomalias de RSI: {anomaly_data['rsi_anomaly']:.2%} "
-    explanation += "(poucas) " if anomaly_data['rsi_anomaly'] < 0.1 else "(muitas) "
-
-    explanation += "\n\nA alocação final é resultado da otimização do portfólio para maximizar o índice de Sharpe, "
-    explanation += "considerando o equilíbrio entre retorno esperado, risco e correlações entre os ativos."
-
-    return explanation
 
 # MongoDB Atlas connection
 mongo_uri = st.secrets["mongo_uri"]
@@ -799,9 +745,8 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         {str(invest_value)}
 
         Por favor, forneça:
-        1. Uma recomendação detalhada de como alocar o aporte entre os ativos existentes
+        1. Uma recomendação detalhada de como alocar o valor que quero invetir entre os ativos existentes
         2. Justificativa para cada alocação sugerida
-        3. Número específico de ações a comprar de cada ativo dentro do limite de valor que quero investir
         Responda em português e de forma estruturada."""
 
         response = model.generate_content(prompt)
