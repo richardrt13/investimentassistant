@@ -86,7 +86,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
 
     for attempt in range(max_retries):
         try:
-            data = yf.download(tickers, start=start_date, end=end_date)['Adj Close']
+            data = yf.download(tickers, start=start_date, end=end_date)['Close']
             return data
         except ConnectionError as e:
             if attempt < max_retries - 1:
