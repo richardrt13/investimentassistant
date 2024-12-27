@@ -736,24 +736,18 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
                 }
             })
 
-        prompt = f"""
-        Com base nos ativos listados abaixo, forneça uma recomendação sucinta de alocação do valor disponível 
-        para investimento, priorizando o uso do maior valor possível:  
-        
-        Ativos Selecionados:  
-        {str(assets)}  
-        
-        Valor disponível para investimento:  
-        {str(invest_value)}  
-        
-        Instruções:  
-        1. Proponha uma alocação eficiente e detalhada do valor disponível entre os ativos, 
-        respeitando o valor mínimo exigido para cada ativo (preço atual).  
-        2. Justifique brevemente cada alocação sugerida, 
-        destacando os ativos recomendados e sua relevância para a estratégia de investimento.  
-        
-        Responda em português, de forma clara, objetiva e estruturada.  
-        """
+        prompt = f"""Analise os seguintes ativos e forneça uma análise resumida da recomendação:
+
+        Ativos Selecionados:
+        {str(assets)}
+
+        Valor que quero investir:
+        {str(invest_value)}
+
+        Por favor, forneça:
+        1. Uma recomendação detalhada de como alocar o valor que quero invetir entre os ativos existentes, respeitando o valor mínimo de cada ativo que é o preço atual
+        2. Justificativa para cada alocação sugerida
+        Responda em português e de forma estruturada."""
 
 
         response = model.generate_content(prompt)
