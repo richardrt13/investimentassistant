@@ -797,13 +797,11 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         Ativos Selecionados:
         {str(assets)}
 
+        Valor que quero investir:
+        {str(invest_value)}
+
         Por favor, forneça:
-        1. Uma análise geral da qualidade dos ativos selecionados
-        2. Pontos fortes e fracos de cada ativo
-        3. Considerações sobre risco e retorno
-        4. Recomendações específicas de alocação
-        5. Alertas importantes sobre anomalias ou riscos detectados
-        6. Análise da diversificação setorial
+        1. Uma recomendação detalhada de alocação em cada ativo repeitando o valor que quero investir e com base nos fundamentos, expectativas de retorno futuros e relação risco retorno.
         
         Responda em português e de forma estruturada."""
 
@@ -1297,7 +1295,8 @@ def main():
                     risk_free_rate,
                     portfolio_return,
                     portfolio_volatility,
-                    anomaly_df
+                    anomaly_df,
+                    invest_value
                 )
                 st.markdown(recommendation)
          
