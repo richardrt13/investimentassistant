@@ -1205,7 +1205,7 @@ def main():
 
 
             # Exibir informações sobre anomalias detectadas
-            st.subheader('Análise de Anomalias')
+            #st.subheader('Análise de Anomalias')
             anomaly_data = []
             for ticker in tickers:
                 price_anomalies = detect_price_anomalies(stock_data[ticker])
@@ -1216,6 +1216,8 @@ def main():
                     'price_anomaly': round(price_anomalies.mean(),2),
                     'rsi_anomaly': round(rsi_anomalies.mean(),2)
                 })
+
+            anomaly_df = pd.DataFrame(anomaly_data)
             
            
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
