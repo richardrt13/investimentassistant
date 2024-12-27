@@ -764,12 +764,12 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
             base_ticker = ticker.replace('.SA', '')
             asset_data = top_ativos[top_ativos['Ticker'] == base_ticker].iloc[0]
             anomaly_data = anomaly_df[anomaly_df['Ticker'] == base_ticker].iloc[0]
+            stock = yf.Ticker(ticker)
             current_price = stock.history(period="1d")['Close'].iloc[-1]
             
             assets.append({
                 "ticker": base_ticker,
                 "sector": asset_data['Sector'],
-                stock = yf.Ticker(ticker)
                 "preco_atual": current_price
                 "fundamentals": {
                     "pe_ratio": asset_data['P/L'],
