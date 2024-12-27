@@ -639,6 +639,7 @@ def calculate_optimal_contribution_with_genai(portfolio_data, invested_value, co
     Uses GenAI to analyze portfolio and recommend optimal contribution allocation
     """
     try:
+        genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         # Prepare portfolio summary
@@ -745,6 +746,72 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
                 remaining_value -= price * additional_shares
     
     return allocation, remaining_value
+
+def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df):
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        # Prepare market data and portfolio metrics
+        portfolio_metrics = {
+            "return": portfolio_return * 100,
+            "volatility": portfolio_volatility * 100,
+            "sharpe": (portfolio_return - risk_free_rate) / portfolio_volatility
+        }
+
+        # Create asset summaries
+        assets = []
+        for ticker in tickers:
+            base_ticker = ticker.replace('.SA', '')
+            asset_data = top_ativos[top_ativos['Ticker'] == base_ticker].iloc[0]
+            anomaly_data = anomaly_df[anomaly_df['Ticker'] == base_ticker].iloc[0]
+            
+            assets.append({
+                "ticker": base_ticker,
+                "sector": asset_data['Sector'],
+                "fundamentals": {
+                    "pe_ratio": asset_data['P/L'],
+                    "pb_ratio": asset_data['P/VP'],
+                    "roe": asset_data['ROE'],
+                    "roic": asset_data['ROIC'],
+                    "dividend_yield": asset_data['Dividend Yield']
+                },
+                "growth": {
+                    "revenue": asset_data['revenue_growth'],
+                    "income": asset_data['income_growth'],
+                    "debt_stability": asset_data['debt_stability']
+                },
+                "risk": {
+                    "price_anomalies": anomaly_data['price_anomaly'],
+                    "rsi_anomalies": anomaly_data['rsi_anomaly'],
+                    "returns_volatility": returns[ticker].std() * np.sqrt(252)
+                }
+            })
+
+        prompt = f"""Analise os seguintes ativos e forneça uma análise detalhada da recomendação:
+
+        Métricas do Portfólio:
+        - Retorno Esperado: {portfolio_metrics['return']:.2f}%
+        - Volatilidade: {portfolio_metrics['volatility']:.2f}%
+        - Índice de Sharpe: {portfolio_metrics['sharpe']:.2f}
+
+        Ativos Selecionados:
+        {str(assets)}
+
+        Por favor, forneça:
+        1. Uma análise geral da qualidade dos ativos selecionados
+        2. Pontos fortes e fracos de cada ativo
+        3. Considerações sobre risco e retorno
+        4. Recomendações específicas de alocação
+        5. Alertas importantes sobre anomalias ou riscos detectados
+        6. Análise da diversificação setorial
+        
+        Responda em português e de forma estruturada."""
+
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        return f"Erro ao gerar recomendações: {e}"
 
 # New function for portfolio tracking page
 def portfolio_tracking():
@@ -1220,57 +1287,19 @@ def main():
             allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
             
 
-            st.subheader('Alocação Ótima do Portfólio')
-            allocation_data = []
-            for ticker, shares in allocation.items():
-                price = prices[ticker]  # Remove o '.SA' do ticker
-                allocated_value = shares * price
-                cumulative_return = top_ativos.loc[top_ativos['Ticker'] == ticker, 'Rentabilidade Acumulada (5 anos)'].values[0]
-                
-                # Obter dados para explicação
-                fundamental_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['P/L', 'P/VP', 'ROE']].to_dict('records')[0]
-                growth_data = top_ativos.loc[top_ativos['Ticker'] == ticker, ['revenue_growth', 'income_growth']].to_dict('records')[0]
-                anomaly_data = anomaly_df.loc[anomaly_df['Ticker'] == ticker, ['price_anomaly', 'rsi_anomaly']].to_dict('records')[0]
-
-                ticr = f"{ticker}.SA"
-                
-                explanation = generate_allocation_explanation(ticr, allocated_value, shares, fundamental_data, growth_data, anomaly_data, returns[ticr], risk_free_rate, portfolio_sharpe)
-
-                allocation_data.append({
-                    'Ticker': ticker,
-                    'Quantidade de Ações': f"{shares}",
-                    'Valor Alocado': f"R$ {allocated_value:.2f}",
-                    'Rentabilidade Acumulada (5 anos)': f"{cumulative_return:.2%}" if cumulative_return is not None else "N/A",
-                    'Explicação': explanation
-                })
-
-            allocation_df = pd.DataFrame(allocation_data)
-            st.table(allocation_df[['Ticker', 'Quantidade de Ações', 'Valor Alocado', 'Rentabilidade Acumulada (5 anos)']])
-
-            st.write(f"Valor não investido: R$ {remaining_value:.2f}")
-            
-            # Exibir explicações
-            for _, row in allocation_df.iterrows():
-                with st.expander(f"Explicação para {row['Ticker']}"):
-                    st.write(row['Explicação'])
-    
-            portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
-            sharpe_ratio = (portfolio_return - risk_free_rate) / portfolio_volatility
-    
-            st.subheader('Métricas do Portfólio')
-            st.write(f"Retorno Anual Esperado: {portfolio_return:.2%}")
-            st.write(f"Volatilidade Anual: {portfolio_volatility:.2%}")
-            st.write(f"Índice de Sharpe: {sharpe_ratio:.2f}")
-    
-            # Gerar e exibir o gráfico de dispersão
-            status_text.text('Gerando gráfico da fronteira eficiente...')
-            fig = plot_efficient_frontier(returns, adjusted_weights)
-            st.plotly_chart(fig)
-    
-    
-            status_text.text('Análise concluída!')
-            progress_bar.progress(100)
-            pass
+            st.subheader('Análise Detalhada da Recomendação')
+            with st.spinner('Gerando análise detalhada...'):
+                recommendation = get_asset_recommendations(
+                    top_ativos,
+                    tickers,
+                    stock_data,
+                    returns,
+                    risk_free_rate,
+                    portfolio_return,
+                    portfolio_volatility,
+                    anomaly_df
+                )
+                st.markdown(recommendation)
          
     
     elif page == 'Acompanhamento da Carteira':
