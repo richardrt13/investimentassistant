@@ -74,7 +74,7 @@ def get_fundamental_data(ticker, max_retries=3):
 
 # Função para obter dados históricos de preços com tratamento de erro
 @st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=5, max_retries=3):
+def get_stock_data(tickers, years=3, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     
@@ -1186,7 +1186,7 @@ def main():
             quality_data = top_ativos['ROIC'].values
 
     
-            tickers = top_ativos['symbol'].apply(lambda x: x + '.SA').tolist()
+            tickers = top_ativos.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
             status_text.text('Obtendo dados históricos...')
             stock_data = get_stock_data(tickers)
     
