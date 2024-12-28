@@ -19,11 +19,6 @@ import google.generativeai as genai
 from typing import Optional, Dict, List
 
 
-# Função para carregar os ativos do CSV
-@st.cache_data(ttl=3600)
-def load_assets():
-    return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/ativos.csv')
-
 # Função para obter dados fundamentais de um ativo
 @st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
@@ -400,6 +395,11 @@ db = client['StockIdea']
 collection = db['transactions']
 prices_collection = db['historical_prices']
 stocks_collection = db['stocks']
+
+@st.cache_data(ttl=3600)
+def load_assets():
+    return pd.DataFrame(list(stocks_collection.find()))
+    #return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/ativos.csv')
 
 # Function to initialize the database
 def init_db():
@@ -1071,28 +1071,40 @@ def main():
     if page == 'Recomendação de Ativos':
 
         ativos_df = load_assets()
-        ativos_df = ativos_df.dropna(subset=['Type'])
+        #ativos_df = ativos_df.dropna(subset=['Type'])
         
         #ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
     
         # Substituir "-" por "Outros" na coluna "Sector"
-        ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
+        #ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
     
-        setores = sorted(set(ativos_df['Sector']))
-        setores.insert(0, 'Todos')
-    
+        # Preparação dos filtros
+        setores = sorted(set(ativos_df['sector']))
+        setores.insert(0, 'Todos')  # Padronizando para 'Todos' em português
+        
+        industry = sorted(set(ativos_df['industry']))
+        industry.insert(0, 'Todos')
+        
+        country = sorted(set(ativos_df['country']))
+        country.insert(0, 'Todos')
+        
+        # Criação dos filtros no Streamlit
         sector_filter = st.multiselect('Selecione o Setor', options=setores)
-
-        tipo = sorted(set(ativos_df['Type']))
-        tipo.insert(0, 'Todos')
-    
-        type_filter = st.multiselect('Selecione o tipo de ativo', options=tipo)
-    
-        if 'Todos' not in sector_filter or 'Todos' not in type_filter:
+        industry_filter = st.multiselect('Selecione a Indústria', options=industry)
+        country_filter = st.multiselect('Selecione o País', options=country)
+        
+        # Aplicação dos filtros
+        if len(sector_filter) > 0:
             if 'Todos' not in sector_filter:
-                ativos_df = ativos_df[ativos_df['Sector'].isin(sector_filter)]
-            if 'Todos' not in type_filter:
-                ativos_df = ativos_df[ativos_df['Type'].isin(type_filter)]
+                ativos_df = ativos_df[ativos_df['sector'].isin(sector_filter)]
+        
+        if len(industry_filter) > 0:
+            if 'Todos' not in industry_filter:
+                ativos_df = ativos_df[ativos_df['industry'].isin(industry_filter)]
+        
+        if len(country_filter) > 0:
+            if 'Todos' not in country_filter:
+                ativos_df = ativos_df[ativos_df['country'].isin(country_filter)]
     
         invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
@@ -1102,19 +1114,25 @@ def main():
     
             # Obter dados fundamentalistas
             fundamental_data = []
-            for i, ticker in enumerate(ativos_df['Ticker']):
+            for i, ticker in enumerate(ativos_df['symbol']):
                 status_text.text(f'Carregando dados para {ticker}...')
                 progress_bar.progress((i + 1) / len(ativos_df))
-                data = get_fundamental_data(ticker + '.SA')
-                growth_data = get_financial_growth_data(ticker + '.SA')
+                
+                # Adiciona o sufixo .SA apenas se o país for Brazil
+                ticker_symbol = ticker + '.SA' if ativos_df.iloc[i]['country'].lower() == 'brazil' else ticker
+                
+                data = get_fundamental_data(ticker_symbol)
+                growth_data = get_financial_growth_data(ticker_symbol)
+                
                 if growth_data:
                     data.update(growth_data)
-                data['Ticker'] = ticker
+                
+                data['symbol'] = ticker  # Mantém o ticker original sem o sufixo
                 fundamental_data.append(data)
 
     
             fundamental_df = pd.DataFrame(fundamental_data)
-            ativos_df = ativos_df.merge(fundamental_df, on='Ticker')
+            ativos_df = ativos_df.merge(fundamental_df, on='symbol')
     
             # Filtrar ativos com informações necessárias
             ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
@@ -1136,7 +1154,8 @@ def main():
                 np.log(ativos_df['Volume'])
             )
     
-            tickers_raw = ativos_df['Ticker'].apply(lambda x: x + '.SA').tolist()
+            tickers_raw = ativos_df.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
+        
             
             stock_data_raw = get_stock_data(tickers_raw)
     
@@ -1144,8 +1163,8 @@ def main():
             for ticker in tickers_raw:
                 price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
                 rsi = calculate_rsi(stock_data_raw[ticker])
-                ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
-                ativos_df.loc[ativos_df['Ticker'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+                ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
+                ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
     
             # Calcular score ajustado
             cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
@@ -1159,7 +1178,7 @@ def main():
             quality_data = top_ativos['ROIC'].values
 
     
-            tickers = top_ativos['Ticker'].apply(lambda x: x + '.SA').tolist()
+            tickers = top_ativos['symbol'].apply(lambda x: x + '.SA').tolist()
             status_text.text('Obtendo dados históricos...')
             stock_data = get_stock_data(tickers)
     
