@@ -1111,23 +1111,9 @@ def main():
         
         if country_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
-        # sector_filter = st.multiselect('Selecione o Setor', options=setores)
-        # industry_filter = st.multiselect('Selecione a Indústria', options=industry)
-        # country_filter = st.multiselect('Selecione o País', options=country)
-        
-        # # Aplicação dos filtros
-        # if len(sector_filter) > 0:
-        #     if 'Todos' not in sector_filter:
-        #         ativos_df = ativos_df[ativos_df['sector'].isin(sector_filter)]
-        
-        # if len(industry_filter) > 0:
-        #     if 'Todos' not in industry_filter:
-        #         ativos_df = ativos_df[ativos_df['industry'].isin(industry_filter)]
-        
-        # if len(country_filter) > 0:
-        #     if 'Todos' not in country_filter:
-        #         ativos_df = ativos_df[ativos_df['country'].isin(country_filter)]
-    
+
+        ativos_df = filtered_df.copy()
+       
         invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
         if st.button('Gerar Recomendação'):
