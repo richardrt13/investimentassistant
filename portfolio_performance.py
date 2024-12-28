@@ -74,7 +74,7 @@ def get_fundamental_data(ticker, max_retries=3):
 
 # Função para obter dados históricos de preços com tratamento de erro
 @st.cache_data(ttl=3600)
-def get_stock_data(tickers, years=3, max_retries=3):
+def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
     
@@ -1071,12 +1071,6 @@ def main():
     if page == 'Recomendação de Ativos':
 
         ativos_df = load_assets()
-        #ativos_df = ativos_df.dropna(subset=['Type'])
-        
-        #ativos_df= ativos_df[ativos_df['Ticker'].str.contains('34')]
-    
-        # Substituir "-" por "Outros" na coluna "Sector"
-        #ativos_df["Sector"] = ativos_df["Sector"].replace("-", "Outros")
     
         # Preparação dos filtros
         setores = sorted(set(ativos_df['sector']))
@@ -1197,7 +1191,7 @@ def main():
     
     
             st.subheader('Top 10 BDRs Recomendados')
-            st.dataframe(top_ativos[['Ticker', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+            st.dataframe(top_ativos[['symbol', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
     
             # Otimização de portfólio
             returns = calculate_returns(stock_data)
@@ -1252,7 +1246,7 @@ def main():
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
 
-            prices = top_ativos.set_index('Ticker')['Price']
+            prices = top_ativos.set_index('symbol')['Price']
             allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
             
 
