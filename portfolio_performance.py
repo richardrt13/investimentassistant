@@ -399,6 +399,7 @@ client = MongoClient(mongo_uri)
 db = client['StockIdea']
 collection = db['transactions']
 prices_collection = db['historical_prices']
+stocks_collection = db['stocks']
 
 # Function to initialize the database
 def init_db():
