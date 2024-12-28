@@ -1191,7 +1191,7 @@ def main():
     
     
             st.subheader('Top 10 BDRs Recomendados')
-            st.dataframe(top_ativos[['symbol', 'Sector', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+            st.dataframe(top_ativos[['symbol', 'sector','industry', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
     
             # Otimização de portfólio
             returns = calculate_returns(stock_data)
