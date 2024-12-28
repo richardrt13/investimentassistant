@@ -1236,7 +1236,7 @@ def main():
                 rsi = calculate_rsi(stock_data[ticker])
                 rsi_anomalies = (rsi > 70) | (rsi < 30)
                 anomaly_data.append({
-                    'Ticker': ticker[:-3],
+                    'symbol': ticker,
                     'price_anomaly': round(price_anomalies.mean(),2),
                     'rsi_anomaly': round(rsi_anomalies.mean(),2)
                 })
