@@ -1093,7 +1093,7 @@ def main():
         industries = sorted(ativos_df['industry'].unique())
 
         # Aplicar os filtros de forma interconectada
-        country_filter = st.multiselect('Selecione o Setor', options=countries)
+        country_filter = st.multiselect('Selecione o País', options=countries)
         filtered_df = ativos_df.copy()
         
         if country_filter:
