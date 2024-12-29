@@ -708,9 +708,8 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         # Create asset summaries
         assets = []
         for ticker in tickers:
-            base_ticker = ticker.replace('.SA', '')
-            asset_data = top_ativos[top_ativos['symbol'] == base_ticker].iloc[0]
-            anomaly_data = anomaly_df[anomaly_df['symbol'] == base_ticker].iloc[0]
+            asset_data = top_ativos[top_ativos['symbol'] == ticker].iloc[0]
+            anomaly_data = anomaly_df[anomaly_df['symbol'] == ticker].iloc[0]
             stock = yf.Ticker(ticker)
             current_price = stock.history(period="1d")['Close'].iloc[-1]
             
