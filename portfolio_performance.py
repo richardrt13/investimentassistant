@@ -1260,6 +1260,8 @@ def main():
                 })
 
             anomaly_df = pd.DataFrame(anomaly_data)
+            top_ativos
+            anomaly_df
             
            
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
