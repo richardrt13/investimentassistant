@@ -1096,9 +1096,8 @@ def main():
         country_filter = st.multiselect('Selecione o Setor', options=countries)
         filtered_df = ativos_df.copy()
         
-        if sector_filter:
+        if country_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
-        
 
         types = sorted(filtered_df['type'].unique())
         type_filter = st.multiselect('Selecione a Categoria', options=types)
