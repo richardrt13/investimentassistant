@@ -1124,6 +1124,8 @@ def main():
         if industry_filter and todos_opcao not in industry_filter:
             filtered_df = filtered_df[filtered_df['industry'].isin(industry_filter)]
 
+        ativos_df = filtered_df
+
        
         invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
