@@ -1073,53 +1073,60 @@ def main():
 
         ativos_df = load_assets()
     
-        # Preparação dos filtros
-        setores = sorted(set(ativos_df['sector']))
-        setores.insert(0, 'Todos')  # Padronizando para 'Todos' em português
+        # Preparação dos filtros iniciais
+        ativos_df['sector'] = ativos_df['sector'].fillna('Não especificado')
+        ativos_df['industry'] = ativos_df['industry'].fillna('Não especificado')
+        ativos_df['country'] = ativos_df['country'].fillna('Não especificado')
+        ativos_df['type'] = ativos_df['type'].fillna('Não especificado')
         
-        industry = sorted(set(ativos_df['industry']))
-        industry.insert(0, 'Todos')
-        
-        country = sorted(set(ativos_df['country']))
-        country.insert(0, 'Todos')
-
-        type = sorted(set(ativos_df['type']))
-        type.insert(0, 'Todos')
+        # Valores iniciais dos filtros
+        todos_opcao = 'Todos'
         
         # Criação dos filtros no Streamlit
-        countries = sorted(ativos_df['country'].unique())
-        types = sorted(ativos_df['type'].unique())
-        setores = sorted(ativos_df['sector'].unique())
-        industries = sorted(ativos_df['industry'].unique())
-
-        # Aplicar os filtros de forma interconectada
-        country_filter = st.multiselect('Selecione o País', options=countries)
-        filtered_df = ativos_df.copy()
+        country_filter = st.multiselect(
+            'Selecione o País', 
+            options=[todos_opcao] + sorted(ativos_df['country'].unique()), 
+            default=todos_opcao
+        )
         
-        if country_filter:
+        # Aplicar filtro de país
+        filtered_df = ativos_df.copy()
+        if country_filter and todos_opcao not in country_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
-
-        types = sorted(filtered_df['type'].unique())
-        type_filter = st.multiselect('Selecione a Categoria', options=types)
         
-        if type_filter:
+        type_filter = st.multiselect(
+            'Selecione a Categoria', 
+            options=[todos_opcao] + sorted(filtered_df['type'].unique()), 
+            default=todos_opcao
+        )
+        
+        # Aplicar filtro de categoria
+        if type_filter and todos_opcao not in type_filter:
             filtered_df = filtered_df[filtered_df['type'].isin(type_filter)]
-            
-        sector_filter = st.multiselect('Selecione o Setor', options=setores)
-        filtered_df = ativos_df.copy()
         
-        if sector_filter:
+        sector_filter = st.multiselect(
+            'Selecione o Setor', 
+            options=[todos_opcao] + sorted(filtered_df['sector'].unique()), 
+            default=todos_opcao
+        )
+        
+        # Aplicar filtro de setor
+        if sector_filter and todos_opcao not in sector_filter:
             filtered_df = filtered_df[filtered_df['sector'].isin(sector_filter)]
         
-        industries = sorted(filtered_df['industry'].unique())
-        industry_filter = st.multiselect('Selecione a Indústria', options=industries)
+        industry_filter = st.multiselect(
+            'Selecione a Indústria', 
+            options=[todos_opcao] + sorted(filtered_df['industry'].unique()), 
+            default=todos_opcao
+        )
         
-        if industry_filter:
+        # Aplicar filtro de indústria
+        if industry_filter and todos_opcao not in industry_filter:
             filtered_df = filtered_df[filtered_df['industry'].isin(industry_filter)]
         
+        # Exibir o DataFrame filtrado
+        st.dataframe(filtered_df)
 
-        ativos_df = filtered_df.copy()
-        ativos_df
        
         invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
     
