@@ -14,6 +14,7 @@ import openai
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 warnings.filterwarnings('ignore')
 from pymongo import MongoClient
+import logging
 import time
 import google.generativeai as genai
 from typing import Optional, Dict, List
@@ -696,24 +697,40 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
+import time
+import logging
+
+# Configuração básica para logs
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
+
 def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df, invest_value):
     try:
-            
+        start_time = time.time()
+        logging.info("Iniciando a execução da função.")
+
+        # Inicialização do modelo
+        model_start = time.time()
         model = genai.GenerativeModel("gemini-1.5-flash")
-        
-        # Prepare market data and portfolio metrics
+        logging.info(f"Modelo inicializado em {time.time() - model_start:.2f} segundos.")
+
+        # Preparação de dados do portfólio
+        metrics_start = time.time()
         portfolio_metrics = {
             "return": portfolio_return * 100,
             "volatility": portfolio_volatility * 100,
             "sharpe": (portfolio_return - risk_free_rate) / portfolio_volatility
         }
+        logging.info(f"Métricas do portfólio calculadas em {time.time() - metrics_start:.2f} segundos.")
 
-        # Create asset summaries
+        # Criação de resumos de ativos
+        assets_start = time.time()
         assets = []
         for ticker in tickers:
+            ticker_start = time.time()
             base_ticker = ticker.replace('.SA', '')
             asset_data = top_ativos[top_ativos['symbol'] == base_ticker].iloc[0]
             anomaly_data = anomaly_df[anomaly_df['symbol'] == ticker].iloc[0]
+            
             stock = yf.Ticker(ticker)
             current_price = stock.history(period="1d")['Close'].iloc[-1]
             
@@ -740,7 +757,12 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
                     "returns_volatility": returns[ticker].std() * np.sqrt(252)
                 }
             })
+            logging.info(f"Ticker {ticker} processado em {time.time() - ticker_start:.2f} segundos.")
 
+        logging.info(f"Resumo de ativos criado em {time.time() - assets_start:.2f} segundos.")
+
+        # Preparação do prompt
+        prompt_start = time.time()
         prompt = f"""Analise os seguintes ativos e selecione os melhores para investir pensando em retornos futuros:
 
         Ativos Selecionados:
@@ -753,12 +775,21 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         1. Uma tabela com os ativos selecionados, quantidade sugerida de compra, valor para investir e justificativa do investimento. 
         Se certifique de que a soma total do investimento não supere o valor que eu quero investir
         Responda em português e de forma estruturada."""
+        logging.info(f"Prompt preparado em {time.time() - prompt_start:.2f} segundos.")
 
+        # Geração de conteúdo
+        generation_start = time.time()
         response = model.generate_content(prompt)
+        logging.info(f"Resposta gerada em {time.time() - generation_start:.2f} segundos.")
+
+        total_time = time.time() - start_time
+        logging.info(f"Execução total da função concluída em {total_time:.2f} segundos.")
         return response.text
 
     except Exception as e:
+        logging.error(f"Erro ao gerar recomendações: {e}")
         return f"Erro ao gerar recomendações: {e}"
+
 
 # New function for portfolio tracking page
 def portfolio_tracking():
