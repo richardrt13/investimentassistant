@@ -801,8 +801,8 @@ def portfolio_tracking():
 
     # Get all assets
     assets_df = load_assets()
-    tickers = assets_df['Ticker'].apply(lambda x: x + '.SA').tolist()
-
+    tickers = assets_df.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
+    
     # Transaction input
     st.subheader('Registrar Transação')
     col1, col2, col3 = st.columns(3)
