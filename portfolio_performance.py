@@ -1091,15 +1091,14 @@ def main():
         types = sorted(ativos_df['type'].unique())
         setores = sorted(ativos_df['sector'].unique())
         industries = sorted(ativos_df['industry'].unique())
-        
-        
+
         # Aplicar os filtros de forma interconectada
-        country_filter = st.multiselect('Selecione o País', options=countries)
+        country_filter = st.multiselect('Selecione o Setor', options=countries)
         filtered_df = ativos_df.copy()
-        countries = sorted(filtered_df['country'].unique())
         
-        if country_filter:
+        if sector_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
+        
 
         types = sorted(filtered_df['type'].unique())
         type_filter = st.multiselect('Selecione a Categoria', options=types)
