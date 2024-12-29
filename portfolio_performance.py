@@ -710,6 +710,7 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
 
         # Inicialização do modelo
         model_start = time.time()
+        genai.configure(api_key=st.secrets["api_key"])
         model = genai.GenerativeModel("gemini-1.5-flash")
         logging.info(f"Modelo inicializado em {time.time() - model_start:.2f} segundos.")
 
