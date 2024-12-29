@@ -698,9 +698,6 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
 
 def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df, invest_value):
     try:
-        # Convert ObjectId to string in top_ativos DataFrame if present
-        if '_id' in top_ativos.columns:
-            top_ativos = top_ativos.drop('_id', axis=1)
             
         model = genai.GenerativeModel("gemini-1.5-flash")
         
@@ -1265,9 +1262,6 @@ def main():
                 })
 
             anomaly_df = pd.DataFrame(anomaly_data)
-            top_ativos
-            anomaly_df
-            
            
             portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
             portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
