@@ -1082,13 +1082,30 @@ def main():
         
         country = sorted(set(ativos_df['country']))
         country.insert(0, 'Todos')
+
+        type = sorted(set(ativos_df['type']))
+        type.insert(0, 'Todos')
         
         # Criação dos filtros no Streamlit
+        countries = sorted(ativos_df['country'].unique())
+        types = sorted(ativos_df['type'].unique())
         setores = sorted(ativos_df['sector'].unique())
         industries = sorted(ativos_df['industry'].unique())
-        countries = sorted(ativos_df['country'].unique())
+        
         
         # Aplicar os filtros de forma interconectada
+        countries = sorted(filtered_df['country'].unique())
+        country_filter = st.multiselect('Selecione o País', options=countries)
+        
+        if country_filter:
+            filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
+
+        types = sorted(filtered_df['type'].unique())
+        type_filter = st.multiselect('Selecione a Categoria', options=types)
+        
+        if type_filter:
+            filtered_df = filtered_df[filtered_df['type'].isin(type_filter)]
+            
         sector_filter = st.multiselect('Selecione o Setor', options=setores)
         filtered_df = ativos_df.copy()
         
@@ -1101,11 +1118,6 @@ def main():
         if industry_filter:
             filtered_df = filtered_df[filtered_df['industry'].isin(industry_filter)]
         
-        countries = sorted(filtered_df['country'].unique())
-        country_filter = st.multiselect('Selecione o País', options=countries)
-        
-        if country_filter:
-            filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
 
         ativos_df = filtered_df.copy()
        
