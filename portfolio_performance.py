@@ -1094,8 +1094,9 @@ def main():
         
         
         # Aplicar os filtros de forma interconectada
-        countries = sorted(filtered_df['country'].unique())
         country_filter = st.multiselect('Selecione o País', options=countries)
+        filtered_df = ativos_df.copy()
+        countries = sorted(filtered_df['country'].unique())
         
         if country_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
