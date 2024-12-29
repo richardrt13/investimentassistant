@@ -398,8 +398,10 @@ stocks_collection = db['stocks']
 
 @st.cache_data(ttl=3600)
 def load_assets():
-    return pd.DataFrame(list(stocks_collection.find()))
-    #return pd.read_csv('https://raw.githubusercontent.com/richardrt13/Data-Science-Portifolio/main/ativos.csv')
+    assets = pd.DataFrame(list(stocks_collection.find()))
+    if '_id' in assets.columns:
+        assets = assets.drop('_id', axis=1)
+    return assets
 
 # Function to initialize the database
 def init_db():
@@ -694,8 +696,12 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
-def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df,invest_value):
+def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_free_rate, portfolio_return, portfolio_volatility, anomaly_df, invest_value):
     try:
+        # Convert ObjectId to string in top_ativos DataFrame if present
+        if '_id' in top_ativos.columns:
+            top_ativos = top_ativos.drop('_id', axis=1)
+            
         model = genai.GenerativeModel("gemini-1.5-flash")
         
         # Prepare market data and portfolio metrics
@@ -750,7 +756,6 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         1. Uma tabela com os ativos selecionados, quantidade sugerida de compra, valor para investir e justificativa do investimento. 
         Se certifique de que a soma total do investimento não supere o valor que eu quero investir
         Responda em português e de forma estruturada."""
-
 
         response = model.generate_content(prompt)
         return response.text
