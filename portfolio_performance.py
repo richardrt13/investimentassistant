@@ -1117,7 +1117,7 @@ def main():
         todos_opcao = 'Todos'
         
         # Criação dos filtros no Streamlit
-        country_filter = st.multiselect(
+        country_filter = st.selectbox(
             'Selecione o País', 
             options=[todos_opcao] + sorted(ativos_df['country'].unique()), 
             default=todos_opcao
@@ -1128,7 +1128,7 @@ def main():
         if country_filter and todos_opcao not in country_filter:
             filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
         
-        type_filter = st.multiselect(
+        type_filter = st.selectbox(
             'Selecione a Categoria', 
             options=[todos_opcao] + sorted(filtered_df['type'].unique()), 
             default=todos_opcao
@@ -1138,7 +1138,7 @@ def main():
         if type_filter and todos_opcao not in type_filter:
             filtered_df = filtered_df[filtered_df['type'].isin(type_filter)]
         
-        sector_filter = st.multiselect(
+        sector_filter = st.selectbox(
             'Selecione o Setor', 
             options=[todos_opcao] + sorted(filtered_df['sector'].unique()), 
             default=todos_opcao
@@ -1148,7 +1148,7 @@ def main():
         if sector_filter and todos_opcao not in sector_filter:
             filtered_df = filtered_df[filtered_df['sector'].isin(sector_filter)]
         
-        industry_filter = st.multiselect(
+        industry_filter = st.selectbox(
             'Selecione a Indústria', 
             options=[todos_opcao] + sorted(filtered_df['industry'].unique()), 
             default=todos_opcao
