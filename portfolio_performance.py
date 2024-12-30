@@ -1106,53 +1106,51 @@ def main():
     if page == 'Recomendação de Ativos':
 
         ativos_df = load_assets()
-    
-        # Preparação dos filtros iniciais
+        
         ativos_df['sector'] = ativos_df['sector'].fillna('Não especificado')
         ativos_df['industry'] = ativos_df['industry'].fillna('Não especificado')
         ativos_df['country'] = ativos_df['country'].fillna('Não especificado')
         ativos_df['type'] = ativos_df['type'].fillna('Não especificado')
-        
+
         # Valores iniciais dos filtros
         todos_opcao = 'Todos'
-        
-        # Criação dos filtros no Streamlit
+
+        # Criação dos filtros mostrando todas as opções disponíveis do DataFrame original
         country_filter = st.selectbox(
             'Selecione o País', 
             options=[todos_opcao] + sorted(ativos_df['country'].unique())
         )
-        
-        # Aplicar filtro de país
-        filtered_df = ativos_df.copy()
-        if country_filter and todos_opcao not in country_filter:
-            filtered_df = filtered_df[filtered_df['country'].isin(country_filter)]
-        
+
         type_filter = st.selectbox(
             'Selecione a Categoria', 
-            options=[todos_opcao] + sorted(filtered_df['type'].unique())
+            options=[todos_opcao] + sorted(ativos_df['type'].unique())
         )
-        
-        # Aplicar filtro de categoria
-        if type_filter and todos_opcao not in type_filter:
-            filtered_df = filtered_df[filtered_df['type'].isin(type_filter)]
-        
+
         sector_filter = st.selectbox(
             'Selecione o Setor', 
-            options=[todos_opcao] + sorted(filtered_df['sector'].unique())
+            options=[todos_opcao] + sorted(ativos_df['sector'].unique())
         )
-        
-        # Aplicar filtro de setor
-        if sector_filter and todos_opcao not in sector_filter:
-            filtered_df = filtered_df[filtered_df['sector'].isin(sector_filter)]
-        
+
         industry_filter = st.selectbox(
             'Selecione a Indústria', 
-            options=[todos_opcao] + sorted(filtered_df['industry'].unique())
+            options=[todos_opcao] + sorted(ativos_df['industry'].unique())
         )
-        
-        # Aplicar filtro de indústria
-        if industry_filter and todos_opcao not in industry_filter:
-            filtered_df = filtered_df[filtered_df['industry'].isin(industry_filter)]
+
+        # Aplicar todos os filtros de uma vez
+        filtered_df = ativos_df.copy()
+
+        if country_filter != todos_opcao:
+            filtered_df = filtered_df[filtered_df['country'] == country_filter]
+    
+        if type_filter != todos_opcao:
+            filtered_df = filtered_df[filtered_df['type'] == type_filter]
+    
+        if sector_filter != todos_opcao:
+            filtered_df = filtered_df[filtered_df['sector'] == sector_filter]
+    
+        if industry_filter != todos_opcao:
+            filtered_df = filtered_df[filtered_df['industry'] == industry_filter]
+    
 
         ativos_df = filtered_df
 
