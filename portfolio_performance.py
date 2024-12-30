@@ -1119,8 +1119,7 @@ def main():
         # Criação dos filtros no Streamlit
         country_filter = st.selectbox(
             'Selecione o País', 
-            options=[todos_opcao] + sorted(ativos_df['country'].unique()), 
-            default=todos_opcao
+            options=[todos_opcao] + sorted(ativos_df['country'].unique())
         )
         
         # Aplicar filtro de país
