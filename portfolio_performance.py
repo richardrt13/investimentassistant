@@ -1129,8 +1129,7 @@ def main():
         
         type_filter = st.selectbox(
             'Selecione a Categoria', 
-            options=[todos_opcao] + sorted(filtered_df['type'].unique()), 
-            default=todos_opcao
+            options=[todos_opcao] + sorted(filtered_df['type'].unique())
         )
         
         # Aplicar filtro de categoria
@@ -1139,8 +1138,7 @@ def main():
         
         sector_filter = st.selectbox(
             'Selecione o Setor', 
-            options=[todos_opcao] + sorted(filtered_df['sector'].unique()), 
-            default=todos_opcao
+            options=[todos_opcao] + sorted(filtered_df['sector'].unique())
         )
         
         # Aplicar filtro de setor
@@ -1149,8 +1147,7 @@ def main():
         
         industry_filter = st.selectbox(
             'Selecione a Indústria', 
-            options=[todos_opcao] + sorted(filtered_df['industry'].unique()), 
-            default=todos_opcao
+            options=[todos_opcao] + sorted(filtered_df['industry'].unique())
         )
         
         # Aplicar filtro de indústria
