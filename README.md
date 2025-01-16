@@ -39,10 +39,13 @@ Plotly - Criação de gráficos interativos.
 ARIMA - Utilizada para modelagem de séries temporais e detecção de anomalias.
 
 ## 3. Estrutura do Projeto
+portfolio_etl.py: Script responsável pela extração, transformação e carregamento dos dados relacionados à carteira de investimentos. Ele é automaticamente executado todos os dias às 12 e 18h
 
-portfolio_performance.py: Arquivo principal contendo toda a lógica de backend e frontend da aplicação.
+portfolio_performance.py: Contém funções para calcular e visualizar o desempenho da carteira.
 
-ativos.csv: Arquivo com os dados dos ativos financeiros.
+stock_etl. py: Script dedicado à manipulação e atualização dos dados dos ativos financeiros que a aplicação utiliza para recomendação inicial de investimentos. Ele deve ser atualizado de 1 em 1 mês para garantir que a aplicação está considerando todos os ativos possíveis.
+
+requirements.txt: Lista de dependências necessárias para a execução da aplicação.
 
 MongoDB: Utilizado para armazenar as transações da carteira.
 
