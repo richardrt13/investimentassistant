@@ -22,8 +22,6 @@ import yaml
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 
-%pip show streamlit-authenticator
-
 # Carregar configurações de autenticação
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
