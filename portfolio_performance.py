@@ -1234,7 +1234,7 @@ class AuthenticationSystem:
             return False
             
         # Gera o hash da senha
-        hashed_password = stauth.Hasher.hash_passwords(config['credentials'])
+        hashed_password = stauth.Hasher.hash_passwords(self.config['credentials'])
         
         # Atualiza as credenciais com o novo usuário
         self.config['credentials']['usernames'][username] = {
