@@ -1410,6 +1410,7 @@ def main():
                            'Password hint':'Lembrete de senha',
                            'Repeat password':'Repita a senha', 
                            'Register':'Registrar'})
+               email_of_registered_user
                if email_of_registered_user:
                    st.success('Usuário registrado com sucesso')
            except Exception as e:
