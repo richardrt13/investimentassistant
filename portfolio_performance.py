@@ -1166,7 +1166,7 @@ def main():
     # Verificar autenticação
     #name, authentication_status, username = authenticator.login('Login', 'main')
     try:
-    authenticator.login()
+        authenticator.login()
     except Exception as e:
         st.error(e)
 
