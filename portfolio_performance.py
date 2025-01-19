@@ -1396,15 +1396,12 @@ def main():
     # Opção para registrar novo usuário
     if not st.session_state['authentication_status']:
         if st.button('Registrar novo usuário'):
-            try:
-                # Lista de e-mails preautorizados
-                preauthorized_emails = ['melsby@gmail.com']  # Adicione os e-mails preautorizados aqui
-
-                if authenticator.register_user('Registrar novo usuário', preauthorized_emails=preauthorized_emails):
-                    st.success('Usuário registrado com sucesso!')
-                    # Salvar as credenciais no arquivo config.yaml
-                    with open('config.yaml', 'w') as file:
-                        yaml.dump(config, file, default_flow_style=False)
+           try:
+                email_of_registered_user, \
+                username_of_registered_user, \
+                name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
+                if email_of_registered_user:
+                    st.success('Usuário registrado com sucesso')
             except Exception as e:
                 st.error(f'Erro ao registrar usuário: {e}')
 
