@@ -1435,8 +1435,8 @@ def main():
             
             elif page == 'Acompanhamento da Carteira':
                 portfolio_tracking()
-        elif option == "Registrar":
-            register_page()
+    elif option == "Registrar":
+        register_page()
 
 if __name__ == "__main__":
     main()
