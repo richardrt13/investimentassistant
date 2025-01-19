@@ -1164,7 +1164,11 @@ class PortfolioAnalyzer:
 def main():
 
     # Verificar autenticação
-    name, authentication_status, username = authenticator.login('Login', 'main')
+    #name, authentication_status, username = authenticator.login('Login', 'main')
+    try:
+    authenticator.login()
+    except Exception as e:
+        st.error(e)
 
     if authentication_status:
         # Usuário autenticado
