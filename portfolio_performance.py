@@ -791,10 +791,26 @@ def get_asset_recommendations(top_ativos, tickers, stock_data, returns, risk_fre
         logging.error(f"Erro ao gerar recomendações: {e}")
         return f"Erro ao gerar recomendações: {e}"
 
+def mask_monetary_value(value, show_values):
+    """
+    Masks or shows monetary values based on user preference
+    
+    Parameters:
+    value (float): The monetary value to mask/show
+    show_values (bool): Whether to show actual values
+    
+    Returns:
+    str: Formatted value string or masked string
+    """
+    if show_values:
+        return f"R$ {value:.2f}"
+    return "R$ ****,**"
 
-# New function for portfolio tracking page
 def portfolio_tracking():
     st.title('Acompanhamento da Carteira')
+
+    # Add show/hide values toggle in the sidebar
+    show_values = st.sidebar.toggle('Mostrar Valores', value=True)
 
     # Initialize database
     init_db()
@@ -834,8 +850,8 @@ def portfolio_tracking():
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
         
         col1, col2, col3 = st.columns(3)
-        col1.metric("Valor Total Investido", f"R$ {total_invested:.2f}")
-        col2.metric("Valor Atual da Carteira", f"R$ {current_value:.2f}")
+        col1.metric("Valor Total Investido", mask_monetary_value(total_invested, show_values))
+        col2.metric("Valor Atual da Carteira", mask_monetary_value(current_value, show_values))
         col3.metric("Retorno Total", f"{total_return:.2f}%")
 
         # Calculate returns for each asset
@@ -863,10 +879,16 @@ def portfolio_tracking():
             returns.append(data['return'])
             current_values.append(data['current_value'])
 
+        # Modify the hover text based on show_values setting
+        hover_text = [
+            f"{r:.2f}%<br>{mask_monetary_value(v, show_values)}" 
+            for r, v in zip(returns, current_values)
+        ]
+
         fig_asset_returns.add_trace(go.Bar(
             x=tickers,
             y=returns,
-            text=[f"{r:.2f}%<br>R$ {v:.2f}" for r, v in zip(returns, current_values)],
+            text=hover_text,
             textposition='auto',
             name='Retorno Acumulado'
         ))
@@ -880,7 +902,7 @@ def portfolio_tracking():
 
         st.plotly_chart(fig_asset_returns)
 
-         # Calculate daily portfolio value
+        # Calculate daily portfolio value
         daily_portfolio_value = portfolio_data.sum(axis=1)
 
         # Calculate daily returns
@@ -888,7 +910,7 @@ def portfolio_tracking():
 
         # Calculate cumulative returns
         portfolio_cumulative_returns = (1 + daily_returns).cumprod() - 1
-        portfolio_cumulative_returns = portfolio_cumulative_returns * 100  # Convert to percentage
+        portfolio_cumulative_returns = portfolio_cumulative_returns * 100
 
         # Ensure the final return matches the total return
         portfolio_cumulative_returns = portfolio_cumulative_returns * (total_return / portfolio_cumulative_returns.iloc[-1])
@@ -898,14 +920,32 @@ def portfolio_tracking():
         ibovespa_end_date = portfolio_data.index[-1].strftime('%Y-%m-%d')
         ibov_return = get_ibovespa_data(ibovespa_start_date, ibovespa_end_date)
 
-        # Create figure for cumulative returns comparison
+        # Create figure for cumulative returns comparison with conditional hover template
         fig_returns = go.Figure()
-        fig_returns.add_trace(go.Scatter(x=portfolio_cumulative_returns.index, y=portfolio_cumulative_returns.values, 
-                                         mode='lines', name='Carteira',
-                                         hovertemplate='Data: %{x}<br>Retorno Carteira: %{y:.2f}%'))
-        fig_returns.add_trace(go.Scatter(x=ibov_return.index, y=ibov_return.values, 
-                                         mode='lines', name='Ibovespa',
-                                         hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'))
+        
+        # Modify hover template based on show_values setting
+        if show_values:
+            portfolio_hover = 'Data: %{x}<br>Valor: R$ %{customdata:.2f}<br>Retorno: %{y:.2f}%'
+        else:
+            portfolio_hover = 'Data: %{x}<br>Valor: R$ ****,**<br>Retorno: %{y:.2f}%'
+
+        fig_returns.add_trace(go.Scatter(
+            x=portfolio_cumulative_returns.index, 
+            y=portfolio_cumulative_returns.values,
+            customdata=daily_portfolio_value.values,
+            mode='lines', 
+            name='Carteira',
+            hovertemplate=portfolio_hover
+        ))
+
+        fig_returns.add_trace(go.Scatter(
+            x=ibov_return.index, 
+            y=ibov_return.values,
+            mode='lines', 
+            name='Ibovespa',
+            hovertemplate='Data: %{x}<br>Retorno Ibovespa: %{y:.2f}%'
+        ))
+
         fig_returns.update_layout(
             title='Comparação de Retorno Percentual Acumulado: Carteira vs Ibovespa',
             xaxis_title='Data',
@@ -913,8 +953,7 @@ def portfolio_tracking():
             yaxis_tickformat = '.2f%',
             hovermode='x unified'
         )
-        st.plotly_chart(fig_returns)   
-
+        st.plotly_chart(fig_returns)
 
     else:
         st.write("Não há transações registradas ainda.")
@@ -927,6 +966,9 @@ def portfolio_tracking():
         if not portfolio_data.empty:
             with st.spinner('Gerando recomendação personalizada...'):
                 recommendation = calculate_optimal_contribution_with_genai(portfolio_data, invested_value, contribution_amount)
+                # Mask values in recommendation if needed
+                if not show_values:
+                    recommendation = re.sub(r'R\$ \d+[.,]\d+', 'R$ ****,**', recommendation)
                 st.markdown(recommendation)
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
@@ -939,6 +981,9 @@ def portfolio_tracking():
             with st.spinner('Gerando análise detalhada...'):
                 analysis = analyzer.analyze_portfolio(portfolio_data, invested_value)
                 if analysis:
+                    # Mask values in analysis if needed
+                    if not show_values:
+                        analysis = re.sub(r'R\$ \d+[.,]\d+', 'R$ ****,**', analysis)
                     st.markdown(analysis)
                     
         # Botão para sugestões de otimização
@@ -946,10 +991,13 @@ def portfolio_tracking():
             with st.spinner('Gerando sugestões de otimização...'):
                 market_data = {
                     'ibovespa_return': get_ibovespa_ytd_return(),
-                    'selic': 11.25  # Você pode atualizar isso dinamicamente
+                    'selic': 11.25
                 }
                 suggestions = analyzer.get_optimization_suggestions(portfolio_data, market_data)
                 if suggestions:
+                    # Mask values in suggestions if needed
+                    if not show_values:
+                        suggestions = re.sub(r'R\$ \d+[.,]\d+', 'R$ ****,**', suggestions)
                     st.markdown(suggestions)
     else:
         st.write("Não há dados suficientes para análise. Registre suas transações primeiro.")
