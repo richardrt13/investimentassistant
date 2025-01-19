@@ -448,7 +448,7 @@ def register_page():
     st.title("Registro")
 
     name = st.text_input("Nome Completo")
-    username = st.text_input("Usuário")
+    username = st.text_input("Nome de Usuário")
     email = st.text_input("Email")
     password = st.text_input("Senha", type="password")
     password_confirm = st.text_input("Confirme a Senha", type="password")
