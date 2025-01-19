@@ -1402,9 +1402,12 @@ def main():
                name_of_registered_user = authenticator.register_user(
                    pre_authorized=config['pre-authorized']['emails'],
                    fields={'Form name':'Cadastro', 
+                           'First name': 'Nome',
+                           'Last name': 'Sobrenome,
                            'Email':'E-mail', 
                            'Username':'Nome do usuário', 
                            'Password':'Senha', 
+                           'Password hint':'Lembrete de senha',
                            'Repeat password':'Repita a senha', 
                            'Register':'Registrar'})
                if email_of_registered_user:
