@@ -423,7 +423,7 @@ def login_page():
             cookies["authenticated"] = "false"
             cookies["user_name"] = ""
             cookies.save()  # Salva alterações nos cookies
-            st.experimental_rerun()
+            st.rerun()
         return True
     else:
         st.title("Login")
@@ -437,7 +437,7 @@ def login_page():
                 cookies["authenticated"] = "true"
                 cookies["user_name"] = user["name"]
                 cookies.save()  # Salva alterações nos cookies
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("Usuário ou senha incorretos.")
     return False
