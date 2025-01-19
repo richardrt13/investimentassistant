@@ -16,3 +16,4 @@ tenacity
 streamlit-authenticator
 google-generativeai
 pyyaml
+bcrypt
