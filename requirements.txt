@@ -17,3 +17,4 @@ streamlit-authenticator
 google-generativeai
 pyyaml
 bcrypt
+streamlit-cookies-manager
