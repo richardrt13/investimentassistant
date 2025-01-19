@@ -21,131 +21,22 @@ from typing import Optional, Dict, List
 import bcrypt
 import jwt
 from functools import wraps
+import yaml
+from yaml.loader import SafeLoader
+import streamlit_authenticator as stauth
 
-class Authentication:
-    def __init__(self, mongo_uri):
-        self.client = MongoClient(mongo_uri)
-        self.db = self.client['StockIdea']
-        self.users_collection = self.db['users']
-        self.SECRET_KEY = st.secrets["jwt_secret"]  # Adicione esta chave no seu secrets.toml
-        
-        # Criar índice único para email
-        self.users_collection.create_index("email", unique=True)
+# Carregar configurações de autenticação
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
 
-    def hash_password(self, password):
-        """Hash a senha usando bcrypt"""
-        salt = bcrypt.gensalt()
-        return bcrypt.hashpw(password.encode('utf-8'), salt)
-
-    def verify_password(self, password, hashed_password):
-        """Verificar se a senha está correta"""
-        return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
-
-    def generate_token(self, user_id):
-        """Gerar token JWT"""
-        expiration = datetime.utcnow() + timedelta(days=1)
-        return jwt.encode(
-            {'user_id': str(user_id), 'exp': expiration},
-            self.SECRET_KEY,
-            algorithm='HS256'
-        )
-
-    def verify_token(self, token):
-        """Verificar token JWT"""
-        try:
-            payload = jwt.decode(token, self.SECRET_KEY, algorithms=['HS256'])
-            return payload['user_id']
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
-            return None
-
-    def register_user(self, email, password, name):
-        """Registrar novo usuário"""
-        try:
-            hashed_password = self.hash_password(password)
-            user = {
-                'email': email,
-                'password': hashed_password,
-                'name': name,
-                'created_at': datetime.utcnow()
-            }
-            result = self.users_collection.insert_one(user)
-            return str(result.inserted_id)
-        except Exception as e:
-            if 'duplicate key error' in str(e):
-                raise ValueError("Email já registrado")
-            raise e
-
-    def login_user(self, email, password):
-        """Login de usuário"""
-        user = self.users_collection.find_one({'email': email})
-        if user and self.verify_password(password, user['password']):
-            token = self.generate_token(user['_id'])
-            return token, user
-        return None, None
-
-def login_required(func):
-    """Decorator para proteger rotas que requerem autenticação"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        if 'user_token' not in st.session_state:
-            st.warning('Por favor, faça login para acessar esta página')
-            st.stop()
-        return func(*args, **kwargs)
-    return wrapper
-
-def render_login_page():
-    """Renderizar página de login"""
-    st.title('Login')
-    
-    # Tabs para login e registro
-    tab1, tab2 = st.tabs(["Login", "Registro"])
-    
-    auth = Authentication(st.secrets["mongo_uri"])
-    
-    with tab1:
-        with st.form("login_form"):
-            email = st.text_input("Email")
-            password = st.text_input("Senha", type="password")
-            submitted = st.form_submit_button("Login")
-            
-            if submitted:
-                token, user = auth.login_user(email, password)
-                if token:
-                    st.session_state['user_token'] = token
-                    st.session_state['user_name'] = user['name']
-                    st.success(f'Bem-vindo, {user["name"]}!')
-                    st.experimental_rerun()
-                else:
-                    st.error('Email ou senha inválidos')
-    
-    with tab2:
-        with st.form("register_form"):
-            new_name = st.text_input("Nome")
-            new_email = st.text_input("Email")
-            new_password = st.text_input("Senha", type="password")
-            confirm_password = st.text_input("Confirmar Senha", type="password")
-            submitted = st.form_submit_button("Registrar")
-            
-            if submitted:
-                if new_password != confirm_password:
-                    st.error('As senhas não coincidem')
-                else:
-                    try:
-                        user_id = auth.register_user(new_email, new_password, new_name)
-                        st.success('Registro realizado com sucesso! Faça login para continuar.')
-                    except ValueError as e:
-                        st.error(str(e))
-                    except Exception as e:
-                        st.error(f'Erro ao registrar: {str(e)}')
-
-def logout():
-    """Fazer logout do usuário"""
-    for key in ['user_token', 'user_name']:
-        if key in st.session_state:
-            del st.session_state[key]
-    st.experimental_rerun()
+# Criar o autenticador
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days'],
+    config['preauthorized']
+)
     
 # Função para obter dados fundamentais de um ativo
 @st.cache_data(ttl=3600)
