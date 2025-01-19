@@ -1388,13 +1388,13 @@ def main():
         elif page == 'Acompanhamento da Carteira':
             portfolio_tracking()
 
-    elif authentication_status is False:
+    elif st.session_state['authentication_status'] is False:
         st.error('Username/password is incorrect')
-    elif authentication_status is None:
+    elif st.session_state['authentication_status'] is None:
         st.warning('Please enter your username and password')
 
     # Opção para registrar novo usuário
-    if not authentication_status:
+    if not st.session_state['authentication_status']:
         if st.button('Registrar novo usuário'):
             try:
                 # Lista de e-mails preautorizados
