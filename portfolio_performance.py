@@ -18,12 +18,11 @@ import logging
 import time
 import google.generativeai as genai
 from typing import Optional, Dict, List
-import bcrypt
-import jwt
-from functools import wraps
 import yaml
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
+
+%pip show streamlit-authenticator
 
 # Carregar configurações de autenticação
 with open('config.yaml') as file:
@@ -1165,7 +1164,6 @@ class PortfolioAnalyzer:
 
 
 def main():
-    pip show streamlit-authenticator
 
     # Verificar autenticação
     name, authentication_status, username = authenticator.login('Login', 'main')
