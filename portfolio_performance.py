@@ -1162,7 +1162,7 @@ class PortfolioAnalyzer:
         return prompt
 
 class AuthenticationSystem:
-    def __init__(self, config_path='config.yaml'):
+    def __init__(self, config_path='../config.yaml'):
         self.config_path = config_path
         self.load_config()
         self.setup_authenticator()
@@ -1173,7 +1173,9 @@ class AuthenticationSystem:
             with open(self.config_path) as file:
                 self.config = yaml.load(file, Loader=SafeLoader)
         except FileNotFoundError:
-            st.error("Arquivo de configuração não encontrado!")
+            st.error(f"Arquivo de configuração não encontrado em {self.config_path}!")
+            # Cria o diretório pai se não existir
+            os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
             self.config = self.create_default_config()
             self.save_config()
             
@@ -1190,7 +1192,8 @@ class AuthenticationSystem:
         """Cria uma configuração padrão caso o arquivo não exista"""
         return {
             'credentials': {
-                'usernames': {}
+                'usernames': {},
+                'passwords': []  # Lista para armazenar senhas em texto plano para hash posterior
             },
             'cookie': {
                 'name': 'auth_cookie',
@@ -1224,6 +1227,31 @@ class AuthenticationSystem:
             return False, "A senha deve conter pelo menos um número"
         return True, "Senha válida"
     
+    def register_user(self, name, email, username, password):
+        """Registra um novo usuário no sistema"""
+        if username in self.config['credentials']['usernames']:
+            st.error("Nome de usuário já existe!")
+            return False
+            
+        # Atualiza as credenciais com o novo usuário
+        self.config['credentials']['usernames'][username] = {
+            'name': name,
+            'email': email,
+            'password': password  # Senha em texto plano temporariamente
+        }
+        
+        # Aplica o hash em todas as senhas
+        credentials = {
+            'usernames': self.config['credentials']['usernames']
+        }
+        hashed_credentials = stauth.Hasher(passwords=[credentials['usernames'][username]['password']]).generate()
+        
+        # Atualiza a senha com o hash
+        self.config['credentials']['usernames'][username]['password'] = hashed_credentials[0]
+        
+        self.save_config()
+        return True
+    
     def login_page(self):
         """Página de login com interface melhorada"""
         st.title("Sistema de Login")
@@ -1235,8 +1263,8 @@ class AuthenticationSystem:
             try:
                 self.authenticator.login(
                     location='main',
-                    max_concurrent_users=None,  # Sem limite de usuários concorrentes
-                    max_login_attempts=3,       # Limite de 3 tentativas de login
+                    max_concurrent_users=None,
+                    max_login_attempts=3,
                     fields={
                         'Form name': 'Login',
                         'Username': 'Usuário',
@@ -1244,8 +1272,8 @@ class AuthenticationSystem:
                         'Login': 'Entrar'
                     },
                     captcha=False,
-                    single_session=False,      # Permite múltiplas sessões do mesmo usuário
-                    clear_on_submit=True,      # Limpa os campos após submissão
+                    single_session=False,
+                    clear_on_submit=True,
                     key='login_form'
                 )
             except Exception as e:
@@ -1301,38 +1329,12 @@ class AuthenticationSystem:
                 except Exception as e:
                     st.error(f"Erro ao registrar usuário: {str(e)}")
     
-    def register_user(self, name, email, username, password):
-        """Registra um novo usuário no sistema"""
-        if username in self.config['credentials']['usernames']:
-            st.error("Nome de usuário já existe!")
-            return False
-            
-        hashed_password = stauth.Hasher([password]).generate()[0]
-        
-        self.config['credentials']['usernames'][username] = {
-            'name': name,
-            'email': email,
-            'password': hashed_password
-        }
-        
-        self.save_config()
-        return True
-    
     def logout(self):
         """Realiza o logout do usuário"""
         try:
             self.authenticator.logout('Logout', 'sidebar')
         except Exception as e:
             st.error(f"Erro no logout: {str(e)}")
-        
-    def reset_password(self, username):
-        """Permite que o usuário redefina sua senha"""
-        try:
-            if self.authenticator.reset_password(username, 'Reset Password'):
-                st.success('Senha alterada com sucesso!')
-                self.save_config()
-        except Exception as e:
-            st.error(f'Erro ao redefinir senha: {str(e)}')
 
 def main():
 
