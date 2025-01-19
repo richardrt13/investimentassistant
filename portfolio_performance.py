@@ -1399,7 +1399,14 @@ def main():
            try:
                email_of_registered_user, \
                username_of_registered_user, \
-               name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
+               name_of_registered_user = authenticator.register_user(
+                   pre_authorized=config['pre-authorized']['emails'],
+                   fields={'Form name':'Cadastro', 
+                           'Email':'E-mail', 
+                           'Username':'Nome do usuário', 
+                           'Password':'Senha', 
+                           'Repeat password':'Repita a senha', 
+                           'Register':'Registrar'})
                if email_of_registered_user:
                    st.success('Usuário registrado com sucesso')
            except Exception as e:
