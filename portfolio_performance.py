@@ -424,7 +424,7 @@ def login_page():
             cookies["user_name"] = ""
             cookies.save()  # Salva alterações nos cookies
             st.rerun()
-        return True
+        return True, {"name": cookies["user_name"]}  # Retorna o status e o objeto do usuário
     else:
         st.title("Login")
 
@@ -440,7 +440,8 @@ def login_page():
                 st.rerun()
             else:
                 st.error("Usuário ou senha incorretos.")
-    return False
+                return False, None  # Retorna False e None se o login falhar
+    return False, None  # Retorna False e None por padrão
     
 # Página de registro
 def register_page():
@@ -1219,10 +1220,10 @@ class PortfolioAnalyzer:
 
 
 def main():
+    tab1, tab2 = st.tabs(["Login", "Registrar"])
 
-    option = st.sidebar.selectbox("Selecione", ["Login", "Registrar"])
-
-    if option == "Login":
+    # Aba de Login
+    with tab1:
         is_logged_in, user = login_page()
         if is_logged_in:
             st.sidebar.success(f"Bem-vindo(a), {user['name']}!")
@@ -1440,7 +1441,7 @@ def main():
             
             elif page == 'Acompanhamento da Carteira':
                 portfolio_tracking()
-    elif option == "Registrar":
+    with tab2:
         register_page()
 
 if __name__ == "__main__":
