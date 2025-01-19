@@ -1397,13 +1397,13 @@ def main():
     if not st.session_state['authentication_status']:
         if st.button('Registrar novo usuário'):
            try:
-                email_of_registered_user, \
-                username_of_registered_user, \
-                name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
-                if email_of_registered_user:
-                    st.success('Usuário registrado com sucesso')
-            except Exception as e:
-                st.error(f'Erro ao registrar usuário: {e}')
+               email_of_registered_user, \
+               username_of_registered_user, \
+               name_of_registered_user = authenticator.register_user(pre_authorized=config['pre-authorized']['emails'])
+               if email_of_registered_user:
+                   st.success('Usuário registrado com sucesso')
+           except Exception as e:
+               st.error(f'Erro ao registrar usuário: {e}')
 
 if __name__ == "__main__":
     main()
