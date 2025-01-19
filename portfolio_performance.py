@@ -24,6 +24,7 @@ from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import bcrypt
 from streamlit_cookies_manager import EncryptedCookieManager
+import uuid
 
     
 # Função para obter dados fundamentais de um ativo
@@ -449,13 +450,22 @@ def register_page():
         elif users_collection.find_one({"username": username}):
             st.error("Usuário já existe.")
         else:
+            # Gera um user_id único
+            user_id = str(uuid.uuid4())
+            
+            # Hash da senha
             hashed_password = hash_password(password)
+            
+            # Cria o documento do usuário
             user = {
+                "user_id": user_id,  # Adiciona o user_id
                 "name": name,
                 "username": username,
                 "email": email,
                 "password": hashed_password,
             }
+            
+            # Insere o usuário no banco de dados
             users_collection.insert_one(user)
             st.success("Usuário registrado com sucesso! Faça login para continuar.")
 
