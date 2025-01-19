@@ -23,6 +23,7 @@ import re
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import bcrypt
+from streamlit_cookies_manager import EncryptedCookieManager
 
     
 # Função para obter dados fundamentais de um ativo
@@ -412,21 +413,35 @@ def check_password(password, hashed):
     return bcrypt.checkpw(password.encode('utf-8'), hashed)
 
 # Página de login
+cookies = EncryptedCookieManager(prefix="app_", password="heroaiinvestment")  
+if not cookies.ready():
+    st.stop()
 def login_page():
-    st.title("Login")
+    if "authenticated" in cookies and cookies["authenticated"] == "true":
+        st.success(f"Bem-vindo(a), {cookies['user_name']}!")
+        if st.button("Logout"):
+            cookies["authenticated"] = "false"
+            cookies["user_name"] = ""
+            cookies.save()  # Salva alterações nos cookies
+            st.experimental_rerun()
+        return True
+    else:
+        st.title("Login")
 
-    username = st.text_input("Usuário")
-    password = st.text_input("Senha", type="password")
+        username = st.text_input("Usuário")
+        password = st.text_input("Senha", type="password")
 
-    if st.button("Entrar"):
-        user = users_collection.find_one({"username": username})
-        if user and check_password(password, user['password']):
-            st.success(f"Bem-vindo(a), {user['name']}!")
-            return True, user
-        else:
-            st.error("Usuário ou senha incorretos.")
-    return False, None
-
+        if st.button("Entrar"):
+            user = users_collection.find_one({"username": username})
+            if user and check_password(password, user["password"]):
+                cookies["authenticated"] = "true"
+                cookies["user_name"] = user["name"]
+                cookies.save()  # Salva alterações nos cookies
+                st.experimental_rerun()
+            else:
+                st.error("Usuário ou senha incorretos.")
+    return False
+    
 # Página de registro
 def register_page():
     st.title("Registro")
