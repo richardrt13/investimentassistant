@@ -1166,220 +1166,234 @@ class PortfolioAnalyzer:
 
 
 def main():
-    st.sidebar.title('Navegação')
-    page = st.sidebar.radio('Selecione uma página', ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
 
-    if page == 'Recomendação de Ativos':
+    # Verificar autenticação
+    name, authentication_status, username = authenticator.login('Login', 'main')
 
-        ativos_df = load_assets()
+    if authentication_status:
+        # Usuário autenticado
+        st.sidebar.title(f'Bem-vindo, {name}!')
+        authenticator.logout('Logout', 'sidebar')
         
-        ativos_df['sector'] = ativos_df['sector'].fillna('Não especificado')
-        ativos_df['industry'] = ativos_df['industry'].fillna('Não especificado')
-        ativos_df['country'] = ativos_df['country'].fillna('Não especificado')
-        ativos_df['type'] = ativos_df['type'].fillna('Não especificado')
-
-        # Valores iniciais dos filtros
-        todos_opcao = 'Todos'
-
-        # Criação dos filtros mostrando todas as opções disponíveis do DataFrame original
-        country_filter = st.selectbox(
-            'Selecione o País', 
-            options=[todos_opcao] + sorted(ativos_df['country'].unique())
-        )
-
-        type_filter = st.selectbox(
-            'Selecione a Categoria', 
-            options=[todos_opcao] + sorted(ativos_df['type'].unique())
-        )
-
-        sector_filter = st.selectbox(
-            'Selecione o Setor', 
-            options=[todos_opcao] + sorted(ativos_df['sector'].unique())
-        )
-
-        industry_filter = st.selectbox(
-            'Selecione a Indústria', 
-            options=[todos_opcao] + sorted(ativos_df['industry'].unique())
-        )
-
-        # Aplicar todos os filtros de uma vez
-        filtered_df = ativos_df.copy()
-
-        if country_filter != todos_opcao:
-            filtered_df = filtered_df[filtered_df['country'] == country_filter]
+        st.sidebar.title('Navegação')
+        page = st.sidebar.radio('Selecione uma página', ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
     
-        if type_filter != todos_opcao:
-            filtered_df = filtered_df[filtered_df['type'] == type_filter]
+        if page == 'Recomendação de Ativos':
     
-        if sector_filter != todos_opcao:
-            filtered_df = filtered_df[filtered_df['sector'] == sector_filter]
-    
-        if industry_filter != todos_opcao:
-            filtered_df = filtered_df[filtered_df['industry'] == industry_filter]
-    
-
-        ativos_df = filtered_df
-
-       
-        invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
-    
-        if st.button('Gerar Recomendação'):
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-    
-            # Obter dados fundamentalistas
-            fundamental_data = []
-            for i, ticker in enumerate(ativos_df['symbol']):
-                status_text.text(f'Carregando dados para {ticker}...')
-                progress_bar.progress((i + 1) / len(ativos_df))
-                
-                # Adiciona o sufixo .SA apenas se o país for Brazil
-                ticker_symbol = ticker + '.SA' if ativos_df.iloc[i]['country'].lower() == 'brazil' else ticker
-                
-                data = get_fundamental_data(ticker_symbol)
-                growth_data = get_financial_growth_data(ticker_symbol)
-                
-                if growth_data:
-                    data.update(growth_data)
-                
-                data['symbol'] = ticker  # Mantém o ticker original sem o sufixo
-                fundamental_data.append(data)
-
-    
-            fundamental_df = pd.DataFrame(fundamental_data)
-            ativos_df = ativos_df.merge(fundamental_df, on='symbol')
-    
-            # Filtrar ativos com informações necessárias
-            ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
-      
+            ativos_df = load_assets()
             
-         
-            #Filtrar ativos com boa liquidez
-            #ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
+            ativos_df['sector'] = ativos_df['sector'].fillna('Não especificado')
+            ativos_df['industry'] = ativos_df['industry'].fillna('Não especificado')
+            ativos_df['country'] = ativos_df['country'].fillna('Não especificado')
+            ativos_df['type'] = ativos_df['type'].fillna('Não especificado')
     
-            # Verificar se há ativos suficientes para continuar
-            if len(ativos_df) < 10:
-                st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
-                return
+            # Valores iniciais dos filtros
+            todos_opcao = 'Todos'
     
-            # Análise fundamentalista e de liquidez
-            ativos_df['Score'] = (
-                ativos_df['ROE'] / ativos_df['P/L'] +
-                1 / ativos_df['P/VP'] +
-                np.log(ativos_df['Volume'])
+            # Criação dos filtros mostrando todas as opções disponíveis do DataFrame original
+            country_filter = st.selectbox(
+                'Selecione o País', 
+                options=[todos_opcao] + sorted(ativos_df['country'].unique())
             )
     
-            tickers_raw = ativos_df.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
+            type_filter = st.selectbox(
+                'Selecione a Categoria', 
+                options=[todos_opcao] + sorted(ativos_df['type'].unique())
+            )
+    
+            sector_filter = st.selectbox(
+                'Selecione o Setor', 
+                options=[todos_opcao] + sorted(ativos_df['sector'].unique())
+            )
+    
+            industry_filter = st.selectbox(
+                'Selecione a Indústria', 
+                options=[todos_opcao] + sorted(ativos_df['industry'].unique())
+            )
+    
+            # Aplicar todos os filtros de uma vez
+            filtered_df = ativos_df.copy()
+    
+            if country_filter != todos_opcao:
+                filtered_df = filtered_df[filtered_df['country'] == country_filter]
         
-            
-            stock_data_raw = get_stock_data(tickers_raw)
+            if type_filter != todos_opcao:
+                filtered_df = filtered_df[filtered_df['type'] == type_filter]
+        
+            if sector_filter != todos_opcao:
+                filtered_df = filtered_df[filtered_df['sector'] == sector_filter]
+        
+            if industry_filter != todos_opcao:
+                filtered_df = filtered_df[filtered_df['industry'] == industry_filter]
+        
     
-            # Detecção de anomalias e cálculo de RSI
-            for ticker in tickers_raw:
-                price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
-                rsi = calculate_rsi(stock_data_raw[ticker])
-                ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
-                ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+            ativos_df = filtered_df
     
-            # Calcular score ajustado
-            cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
-            ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
-            optimized_weights = optimize_weights(ativos_df)
-            ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
-    
-            # Selecionar os top 10 ativos com base no score
-            top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
-            growth_data = top_ativos[['revenue_growth', 'income_growth']].mean(axis=1).values
-            quality_data = top_ativos['ROIC'].values
-
-    
-            tickers = top_ativos.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
-            status_text.text('Obtendo dados históricos...')
-            stock_data = get_stock_data(tickers)
-    
-            # Verificar se os dados históricos foram obtidos com sucesso
-            if stock_data.empty:
-                st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
-                return
-    
-    
-            st.subheader('Top 10 BDRs Recomendados')
-            st.dataframe(top_ativos[['symbol', 'sector','industry', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
-    
-            # Otimização de portfólio
-            returns = calculate_returns(stock_data)
-    
-            # Verificar se há retornos válidos para continuar
-            if returns.empty:
-                st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
-                return
-    
-            # Calcular rentabilidade acumulada
-            cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
-            top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
-    
-            # Otimização de portfólio
-            returns = calculate_returns(stock_data)
-    
-            # Verificar se há retornos válidos para continuar
-            if returns.empty:
-                st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
-                return
-    
-            global risk_free_rate
-            risk_free_rate = 0.1
-    
-            status_text.text('Otimizando portfólio...')
-            try:
-                optimal_weights = optimize_portfolio(returns, risk_free_rate)
-                # Ajustar pesos com base nas anomalias
-                anomaly_scores = calculate_anomaly_scores(returns)
-                adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
-            except Exception as e:
-                st.error(f"Erro ao otimizar o portfólio: {e}")
-                return
-
-
-            # Exibir informações sobre anomalias detectadas
-            #st.subheader('Análise de Anomalias')
-            anomaly_data = []
-            for ticker in tickers:
-                price_anomalies = detect_price_anomalies(stock_data[ticker])
-                rsi = calculate_rsi(stock_data[ticker])
-                rsi_anomalies = (rsi > 70) | (rsi < 30)
-                anomaly_data.append({
-                    'symbol': ticker,
-                    'price_anomaly': round(price_anomalies.mean(),2),
-                    'rsi_anomaly': round(rsi_anomalies.mean(),2)
-                })
-
-            anomaly_df = pd.DataFrame(anomaly_data)
            
-            portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
-            portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
-
-            prices = top_ativos.set_index('symbol')['Price']
-            allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
-            
-
-            st.subheader('Análise Detalhada da Recomendação')
-            with st.spinner('Gerando análise detalhada...'):
-                recommendation = get_asset_recommendations(
-                    top_ativos,
-                    tickers,
-                    stock_data,
-                    returns,
-                    risk_free_rate,
-                    portfolio_return,
-                    portfolio_volatility,
-                    anomaly_df,
-                    invest_value
-                )
-                st.markdown(recommendation)
-         
+            invest_value = st.number_input('Valor a ser investido (R$)', min_value=100.0, value=10000.0, step=100.0)
+        
+            if st.button('Gerar Recomendação'):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+        
+                # Obter dados fundamentalistas
+                fundamental_data = []
+                for i, ticker in enumerate(ativos_df['symbol']):
+                    status_text.text(f'Carregando dados para {ticker}...')
+                    progress_bar.progress((i + 1) / len(ativos_df))
+                    
+                    # Adiciona o sufixo .SA apenas se o país for Brazil
+                    ticker_symbol = ticker + '.SA' if ativos_df.iloc[i]['country'].lower() == 'brazil' else ticker
+                    
+                    data = get_fundamental_data(ticker_symbol)
+                    growth_data = get_financial_growth_data(ticker_symbol)
+                    
+                    if growth_data:
+                        data.update(growth_data)
+                    
+                    data['symbol'] = ticker  # Mantém o ticker original sem o sufixo
+                    fundamental_data.append(data)
     
-    elif page == 'Acompanhamento da Carteira':
-        portfolio_tracking()
+        
+                fundamental_df = pd.DataFrame(fundamental_data)
+                ativos_df = ativos_df.merge(fundamental_df, on='symbol')
+        
+                # Filtrar ativos com informações necessárias
+                ativos_df = ativos_df.dropna(subset=['P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'revenue_growth', 'income_growth', 'debt_stability'])
+          
+                
+             
+                #Filtrar ativos com boa liquidez
+                #ativos_df = ativos_df[ativos_df.Volume > ativos_df.Volume.quantile(.25)]
+        
+                # Verificar se há ativos suficientes para continuar
+                if len(ativos_df) < 10:
+                    st.error("Não há ativos suficientes com dados completos para realizar a análise. Por favor, tente novamente mais tarde.")
+                    return
+        
+                # Análise fundamentalista e de liquidez
+                ativos_df['Score'] = (
+                    ativos_df['ROE'] / ativos_df['P/L'] +
+                    1 / ativos_df['P/VP'] +
+                    np.log(ativos_df['Volume'])
+                )
+        
+                tickers_raw = ativos_df.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
+            
+                
+                stock_data_raw = get_stock_data(tickers_raw)
+        
+                # Detecção de anomalias e cálculo de RSI
+                for ticker in tickers_raw:
+                    price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
+                    rsi = calculate_rsi(stock_data_raw[ticker])
+                    ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
+                    ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
+        
+                # Calcular score ajustado
+                cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
+                ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
+                optimized_weights = optimize_weights(ativos_df)
+                ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
+        
+                # Selecionar os top 10 ativos com base no score
+                top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
+                growth_data = top_ativos[['revenue_growth', 'income_growth']].mean(axis=1).values
+                quality_data = top_ativos['ROIC'].values
+    
+        
+                tickers = top_ativos.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
+                status_text.text('Obtendo dados históricos...')
+                stock_data = get_stock_data(tickers)
+        
+                # Verificar se os dados históricos foram obtidos com sucesso
+                if stock_data.empty:
+                    st.error("Não foi possível obter dados históricos. Por favor, tente novamente mais tarde.")
+                    return
+        
+        
+                st.subheader('Top 10 BDRs Recomendados')
+                st.dataframe(top_ativos[['symbol', 'sector','industry', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
+        
+                # Otimização de portfólio
+                returns = calculate_returns(stock_data)
+        
+                # Verificar se há retornos válidos para continuar
+                if returns.empty:
+                    st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+                    return
+        
+                # Calcular rentabilidade acumulada
+                cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+                top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
+        
+                # Otimização de portfólio
+                returns = calculate_returns(stock_data)
+        
+                # Verificar se há retornos válidos para continuar
+                if returns.empty:
+                    st.error("Não foi possível calcular os retornos dos ativos. Por favor, tente novamente mais tarde.")
+                    return
+        
+                global risk_free_rate
+                risk_free_rate = 0.1
+        
+                status_text.text('Otimizando portfólio...')
+                try:
+                    optimal_weights = optimize_portfolio(returns, risk_free_rate)
+                    # Ajustar pesos com base nas anomalias
+                    anomaly_scores = calculate_anomaly_scores(returns)
+                    adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
+                except Exception as e:
+                    st.error(f"Erro ao otimizar o portfólio: {e}")
+                    return
+    
+    
+                # Exibir informações sobre anomalias detectadas
+                #st.subheader('Análise de Anomalias')
+                anomaly_data = []
+                for ticker in tickers:
+                    price_anomalies = detect_price_anomalies(stock_data[ticker])
+                    rsi = calculate_rsi(stock_data[ticker])
+                    rsi_anomalies = (rsi > 70) | (rsi < 30)
+                    anomaly_data.append({
+                        'symbol': ticker,
+                        'price_anomaly': round(price_anomalies.mean(),2),
+                        'rsi_anomaly': round(rsi_anomalies.mean(),2)
+                    })
+    
+                anomaly_df = pd.DataFrame(anomaly_data)
+               
+                portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
+                portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
+    
+                prices = top_ativos.set_index('symbol')['Price']
+                allocation, remaining_value = allocate_portfolio_integer_shares(invest_value, prices, adjusted_weights)
+                
+    
+                st.subheader('Análise Detalhada da Recomendação')
+                with st.spinner('Gerando análise detalhada...'):
+                    recommendation = get_asset_recommendations(
+                        top_ativos,
+                        tickers,
+                        stock_data,
+                        returns,
+                        risk_free_rate,
+                        portfolio_return,
+                        portfolio_volatility,
+                        anomaly_df,
+                        invest_value
+                    )
+                    st.markdown(recommendation)
+             
+        
+        elif page == 'Acompanhamento da Carteira':
+            portfolio_tracking()
+
+    elif authentication_status is False:
+        st.error('Username/password is incorrect')
+    elif authentication_status is None:
+        st.warning('Please enter your username and password')
 
 if __name__ == "__main__":
     main()
