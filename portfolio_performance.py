@@ -1403,7 +1403,7 @@ def main():
                    pre_authorized=config['pre-authorized']['emails'],
                    fields={'Form name':'Cadastro', 
                            'First name': 'Nome',
-                           'Last name': 'Sobrenome,
+                           'Last name': 'Sobrenome',
                            'Email':'E-mail', 
                            'Username':'Nome do usuário', 
                            'Password':'Senha', 
