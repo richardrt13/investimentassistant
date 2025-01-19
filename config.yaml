@@ -12,6 +12,3 @@ cookie:
   name: some_cookie_name
   key: some_signature_key  # Chave para assinar o cookie
   expiry_days: 30
-preauthorized:
-  emails:
-    - melsby@gmail.com
