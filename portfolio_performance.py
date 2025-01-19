@@ -1166,13 +1166,9 @@ def main():
     # Verificar autenticação
     #name, authentication_status, username = authenticator.login('Login', 'main')
     
-    try:
-        authenticator.login()
-    except Exception as e:
-        st.error(e)
-        authentication_status= st.session_state['authentication_status']
+    authenticator.login()
 
-    if authentication_status:
+    if st.session_state['authentication_status']:
         # Usuário autenticado
         st.sidebar.title(f'Bem-vindo, {name}!')
         authenticator.logout('Logout', 'sidebar')
