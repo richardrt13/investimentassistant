@@ -1222,7 +1222,7 @@ class AuthenticationSystem:
             return False, "A senha deve conter pelo menos uma letra minúscula"
         if not re.search(r'\d', password):
             return False, "A senha deve conter pelo menos um número"
-        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]-', password):
             return False, "A senha deve conter pelo menos um caractere especial"
         return True, "Senha válida"
     
