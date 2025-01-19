@@ -1162,7 +1162,7 @@ class PortfolioAnalyzer:
         return prompt
 
 class AuthenticationSystem:
-    def __init__(self, config_path='../config.yaml'):
+    def __init__(self, config_path='config.yaml'):
         self.config_path = config_path
         self.load_config()
         self.setup_authenticator()
