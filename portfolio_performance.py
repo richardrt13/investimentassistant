@@ -1161,13 +1161,6 @@ class PortfolioAnalyzer:
 
         return prompt
 
-import streamlit as st
-import yaml
-from yaml.loader import SafeLoader
-import streamlit_authenticator as stauth
-from datetime import datetime, timedelta
-import re
-
 class AuthenticationSystem:
     def __init__(self, config_path='config.yaml'):
         self.config_path = config_path
@@ -1241,12 +1234,30 @@ class AuthenticationSystem:
         tab1, tab2 = st.tabs(["Login", "Registrar"])
         
         with tab1:
-            name, authentication_status, username = self.authenticator.login("Login", "main")
+            try:
+                self.authenticator.login(
+                    location='main',
+                    max_concurrent_users=None,  # Sem limite de usuários concorrentes
+                    max_login_attempts=3,       # Limite de 3 tentativas de login
+                    fields={
+                        'Form name': 'Login',
+                        'Username': 'Usuário',
+                        'Password': 'Senha',
+                        'Login': 'Entrar'
+                    },
+                    captcha=False,
+                    single_session=False,      # Permite múltiplas sessões do mesmo usuário
+                    clear_on_submit=True,      # Limpa os campos após submissão
+                    key='login_form'
+                )
+            except Exception as e:
+                st.error(f"Erro no login: {str(e)}")
+                return False, None, None
             
-            if authentication_status:
-                st.success(f'Bem-vindo, {name}!')
-                return True, name, username
-            elif authentication_status == False:
+            if st.session_state['authentication_status']:
+                st.success(f'Bem-vindo, {st.session_state["name"]}!')
+                return True, st.session_state["name"], st.session_state["username"]
+            elif st.session_state['authentication_status'] is False:
                 st.error('Usuário ou senha incorretos')
             
         with tab2:
@@ -1311,7 +1322,10 @@ class AuthenticationSystem:
     
     def logout(self):
         """Realiza o logout do usuário"""
-        self.authenticator.logout('Logout', 'sidebar')
+        try:
+            self.authenticator.logout('Logout', 'sidebar')
+        except Exception as e:
+            st.error(f"Erro no logout: {str(e)}")
         
     def reset_password(self, username):
         """Permite que o usuário redefina sua senha"""
