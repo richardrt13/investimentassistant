@@ -19,20 +19,21 @@ import time
 import google.generativeai as genai
 from typing import Optional, Dict, List
 import yaml
+import re
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 
-# Carregar configurações de autenticação
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+# # Carregar configurações de autenticação
+# with open('config.yaml') as file:
+#     config = yaml.load(file, Loader=SafeLoader)
 
-# Criar o autenticador (sem o parâmetro preauthorized)
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days']
-)
+# # Criar o autenticador (sem o parâmetro preauthorized)
+# authenticator = stauth.Authenticate(
+#     config['credentials'],
+#     config['cookie']['name'],
+#     config['cookie']['key'],
+#     config['cookie']['expiry_days']
+# )
     
 # Função para obter dados fundamentais de um ativo
 @st.cache_data(ttl=3600)
@@ -1160,21 +1161,182 @@ class PortfolioAnalyzer:
 
         return prompt
 
+import streamlit as st
+import yaml
+from yaml.loader import SafeLoader
+import streamlit_authenticator as stauth
+from datetime import datetime, timedelta
+import re
+
+class AuthenticationSystem:
+    def __init__(self, config_path='config.yaml'):
+        self.config_path = config_path
+        self.load_config()
+        self.setup_authenticator()
+        
+    def load_config(self):
+        """Carrega as configurações do arquivo YAML"""
+        try:
+            with open(self.config_path) as file:
+                self.config = yaml.load(file, Loader=SafeLoader)
+        except FileNotFoundError:
+            st.error("Arquivo de configuração não encontrado!")
+            self.config = self.create_default_config()
+            self.save_config()
+            
+    def setup_authenticator(self):
+        """Configura o autenticador com as credenciais carregadas"""
+        self.authenticator = stauth.Authenticate(
+            credentials=self.config['credentials'],
+            cookie_name=self.config['cookie']['name'],
+            key=self.config['cookie']['key'],
+            cookie_expiry_days=self.config['cookie']['expiry_days']
+        )
+    
+    def create_default_config(self):
+        """Cria uma configuração padrão caso o arquivo não exista"""
+        return {
+            'credentials': {
+                'usernames': {}
+            },
+            'cookie': {
+                'name': 'auth_cookie',
+                'key': 'some_signature_key',
+                'expiry_days': 30
+            },
+            'pre-authorized': {
+                'emails': []
+            }
+        }
+        
+    def save_config(self):
+        """Salva as configurações atualizadas no arquivo YAML"""
+        with open(self.config_path, 'w') as file:
+            yaml.dump(self.config, file, default_flow_style=False)
+    
+    def validate_email(self, email):
+        """Valida o formato do email"""
+        pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+        return bool(re.match(pattern, email))
+    
+    def validate_password(self, password):
+        """Valida a força da senha"""
+        if len(password) < 8:
+            return False, "A senha deve ter pelo menos 8 caracteres"
+        if not re.search(r'[A-Z]', password):
+            return False, "A senha deve conter pelo menos uma letra maiúscula"
+        if not re.search(r'[a-z]', password):
+            return False, "A senha deve conter pelo menos uma letra minúscula"
+        if not re.search(r'\d', password):
+            return False, "A senha deve conter pelo menos um número"
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            return False, "A senha deve conter pelo menos um caractere especial"
+        return True, "Senha válida"
+    
+    def login_page(self):
+        """Página de login com interface melhorada"""
+        st.title("Sistema de Login")
+        
+        # Tabs para Login e Registro
+        tab1, tab2 = st.tabs(["Login", "Registrar"])
+        
+        with tab1:
+            name, authentication_status, username = self.authenticator.login("Login", "main")
+            
+            if authentication_status:
+                st.success(f'Bem-vindo, {name}!')
+                return True, name, username
+            elif authentication_status == False:
+                st.error('Usuário ou senha incorretos')
+            
+        with tab2:
+            self.registration_form()
+            
+        return False, None, None
+    
+    def registration_form(self):
+        """Formulário de registro com validações aprimoradas"""
+        with st.form("registration_form"):
+            st.subheader("Registro de Novo Usuário")
+            
+            nome = st.text_input("Nome Completo")
+            email = st.text_input("Email")
+            username = st.text_input("Nome de Usuário")
+            password = st.text_input("Senha", type="password")
+            password_repeat = st.text_input("Confirme a Senha", type="password")
+            
+            submitted = st.form_submit_button("Registrar")
+            
+            if submitted:
+                if not all([nome, email, username, password, password_repeat]):
+                    st.error("Por favor, preencha todos os campos!")
+                    return
+                
+                if not self.validate_email(email):
+                    st.error("Email inválido!")
+                    return
+                
+                is_valid_password, password_message = self.validate_password(password)
+                if not is_valid_password:
+                    st.error(password_message)
+                    return
+                
+                if password != password_repeat:
+                    st.error("As senhas não coincidem!")
+                    return
+                
+                try:
+                    user_registered = self.register_user(nome, email, username, password)
+                    if user_registered:
+                        st.success("Usuário registrado com sucesso! Faça login para continuar.")
+                except Exception as e:
+                    st.error(f"Erro ao registrar usuário: {str(e)}")
+    
+    def register_user(self, name, email, username, password):
+        """Registra um novo usuário no sistema"""
+        if username in self.config['credentials']['usernames']:
+            st.error("Nome de usuário já existe!")
+            return False
+            
+        hashed_password = stauth.Hasher([password]).generate()[0]
+        
+        self.config['credentials']['usernames'][username] = {
+            'name': name,
+            'email': email,
+            'password': hashed_password
+        }
+        
+        self.save_config()
+        return True
+    
+    def logout(self):
+        """Realiza o logout do usuário"""
+        self.authenticator.logout('Logout', 'sidebar')
+        
+    def reset_password(self, username):
+        """Permite que o usuário redefina sua senha"""
+        try:
+            if self.authenticator.reset_password(username, 'Reset Password'):
+                st.success('Senha alterada com sucesso!')
+                self.save_config()
+        except Exception as e:
+            st.error(f'Erro ao redefinir senha: {str(e)}')
 
 def main():
 
-    # Verificar autenticação
-    #name, authentication_status, username = authenticator.login('Login', 'main')
+    auth_system = AuthenticationSystem()
     
-    authenticator.login()
-
-    if st.session_state['authentication_status']:
-        # Usuário autenticado
-        st.sidebar.title(f'Bem-vindo, {name}!')
-        authenticator.logout('Logout', 'sidebar')
+    is_authenticated, name, username = auth_system.login_page()
+    
+    if is_authenticated:
+        # Adicionar botão de logout na sidebar
+        auth_system.logout()
         
+        # Aqui vai o resto da sua aplicação
+        st.sidebar.title(f'Bem-vindo, {name}!')
         st.sidebar.title('Navegação')
-        page = st.sidebar.radio('Selecione uma página', ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
+        page = st.sidebar.radio('Selecione uma página', 
+                              ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
     
         if page == 'Recomendação de Ativos':
     
@@ -1387,34 +1549,6 @@ def main():
         
         elif page == 'Acompanhamento da Carteira':
             portfolio_tracking()
-
-    elif st.session_state['authentication_status'] is False:
-        st.error('Username/password is incorrect')
-    elif st.session_state['authentication_status'] is None:
-        st.warning('Please enter your username and password')
-
-    # Opção para registrar novo usuário
-    if not st.session_state['authentication_status']:
-        if st.button('Registrar novo usuário'):
-           try:
-               email_of_registered_user, \
-               username_of_registered_user, \
-               name_of_registered_user = authenticator.register_user(
-                   pre_authorized=config['pre-authorized']['emails'],
-                   fields={'Form name':'Cadastro', 
-                           'First name': 'Nome',
-                           'Last name': 'Sobrenome',
-                           'Email':'E-mail', 
-                           'Username':'Nome do usuário', 
-                           'Password':'Senha', 
-                           'Password hint':'Lembrete de senha',
-                           'Repeat password':'Repita a senha', 
-                           'Register':'Registrar'})
-               email_of_registered_user
-               if email_of_registered_user:
-                   st.success('Usuário registrado com sucesso')
-           except Exception as e:
-               st.error(f'Erro ao registrar usuário: {e}')
 
 if __name__ == "__main__":
     main()
