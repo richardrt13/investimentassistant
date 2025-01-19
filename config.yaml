@@ -1,13 +1,12 @@
 credentials:
   usernames:
-    johndoe:
-      email: johndoe@gmail.com
-      name: John Doe
-      password: "123"  # A senha será hasheada automaticamente
-    janedoe:
-      email: janedoe@gmail.com
-      name: Jane Doe
-      password: "456"  # A senha será hasheada automaticamente
+    jsmith:
+      email: jsmith@gmail.com
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: John
+      last_name: Smith
+      logged_in: False
+      password: abc
 cookie:
   name: some_cookie_name
   key: some_signature_key  # Chave para assinar o cookie
