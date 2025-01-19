@@ -22,18 +22,8 @@ import yaml
 import re
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
+import bcrypt
 
-# # Carregar configurações de autenticação
-# with open('config.yaml') as file:
-#     config = yaml.load(file, Loader=SafeLoader)
-
-# # Criar o autenticador (sem o parâmetro preauthorized)
-# authenticator = stauth.Authenticate(
-#     config['credentials'],
-#     config['cookie']['name'],
-#     config['cookie']['key'],
-#     config['cookie']['expiry_days']
-# )
     
 # Função para obter dados fundamentais de um ativo
 @st.cache_data(ttl=3600)
