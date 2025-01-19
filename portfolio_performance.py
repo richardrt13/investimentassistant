@@ -1233,18 +1233,18 @@ class AuthenticationSystem:
             st.error("Nome de usuário já existe!")
             return False
         
-        # Cria uma lista com apenas a senha que precisa ser hasheada
-        passwords = [password]
-        
-        # Gera o hash da senha
-        hashed_passwords = stauth.Hasher(passwords).hash_passwords()
-        
-        # Atualiza as credenciais com o novo usuário
+        # Primeiro adiciona o usuário com a senha em texto plano
         self.config['credentials']['usernames'][username] = {
             'name': name,
             'email': email,
-            'password': hashed_passwords[0]  # Usa o primeiro (e único) hash gerado
+            'password': password  # senha temporária em texto plano
         }
+        
+        # Gera o hash usando as credenciais completas
+        hashed_credentials = stauth.Hasher.hash_passwords(self.config['credentials'])  # passa o dict credentials
+        
+        # Atualiza as credenciais com as senhas hasheadas
+        self.config['credentials'] = hashed_credentials
         
         self.save_config()
         return True
