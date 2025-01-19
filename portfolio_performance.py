@@ -29,13 +29,12 @@ import streamlit_authenticator as stauth
 with open('config.yaml') as file:
     config = yaml.load(file, Loader=SafeLoader)
 
-# Criar o autenticador
+# Criar o autenticador (sem o parâmetro preauthorized)
 authenticator = stauth.Authenticate(
     config['credentials'],
     config['cookie']['name'],
     config['cookie']['key'],
-    config['cookie']['expiry_days'],
-    config['preauthorized']
+    config['cookie']['expiry_days']
 )
     
 # Função para obter dados fundamentais de um ativo
@@ -1394,11 +1393,15 @@ def main():
         st.error('Username/password is incorrect')
     elif authentication_status is None:
         st.warning('Please enter your username and password')
+
     # Opção para registrar novo usuário
     if not authentication_status:
         if st.button('Registrar novo usuário'):
             try:
-                if authenticator.register_user('Registrar novo usuário', preauthorization=False):
+                # Lista de e-mails preautorizados
+                preauthorized_emails = ['melsby@gmail.com']  # Adicione os e-mails preautorizados aqui
+
+                if authenticator.register_user('Registrar novo usuário', preauthorized_emails=preauthorized_emails):
                     st.success('Usuário registrado com sucesso!')
                     # Salvar as credenciais no arquivo config.yaml
                     with open('config.yaml', 'w') as file:
