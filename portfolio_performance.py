@@ -1165,9 +1165,10 @@ class PortfolioAnalyzer:
 
 
 def main():
+    pip show streamlit-authenticator
 
     # Verificar autenticação
-    name, authentication_status, username = authenticator.login('Login')
+    name, authentication_status, username = authenticator.login('Login', 'main')
 
     if authentication_status:
         # Usuário autenticado
