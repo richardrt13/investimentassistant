@@ -1165,10 +1165,12 @@ def main():
 
     # Verificar autenticação
     #name, authentication_status, username = authenticator.login('Login', 'main')
+    
     try:
         authenticator.login()
     except Exception as e:
         st.error(e)
+        authentication_status= st.session_state['authentication_status']
 
     if authentication_status:
         # Usuário autenticado
