@@ -1394,6 +1394,17 @@ def main():
         st.error('Username/password is incorrect')
     elif authentication_status is None:
         st.warning('Please enter your username and password')
+    # Opção para registrar novo usuário
+    if not authentication_status:
+        if st.button('Registrar novo usuário'):
+            try:
+                if authenticator.register_user('Registrar novo usuário', preauthorization=False):
+                    st.success('Usuário registrado com sucesso!')
+                    # Salvar as credenciais no arquivo config.yaml
+                    with open('config.yaml', 'w') as file:
+                        yaml.dump(config, file, default_flow_style=False)
+            except Exception as e:
+                st.error(f'Erro ao registrar usuário: {e}')
 
 if __name__ == "__main__":
     main()
