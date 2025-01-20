@@ -2,6 +2,7 @@ import streamlit as st
 import time
 import numpy as np
 import yfinance as yf
+from datetime import datetime, timedelta
 
 @st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
@@ -54,3 +55,20 @@ def get_fundamental_data(ticker, max_retries=3):
                     'Dividend Yield': np.nan,
                     'Debt to Equity': np.nan
                 }
+                
+@st.cache_data(ttl=3600)
+def get_stock_data(tickers, years=5, max_retries=3):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
+    
+
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(tickers, start=start_date, end=end_date)['Close']
+            return data
+        except ConnectionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
+                return pd.DataFrame()
