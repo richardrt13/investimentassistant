@@ -675,7 +675,7 @@ def main():
         st.sidebar.success(f"Bem-vindo(a), {cookies['user_name']}!")
         
         # Get user_id from cookies or session state
-        user_id = cookies.get("user_id", "")
+        user_id = f'"{cookies.get("user_id", "")}"'
         
         if st.sidebar.button("Logout"):
             cookies["authenticated"] = "false"
