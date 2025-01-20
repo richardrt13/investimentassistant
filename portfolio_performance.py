@@ -462,12 +462,11 @@ def mask_monetary_value(value, show_values):
         return f"R$ {value:.2f}"
     return "R$ ****,**"
 
-def portfolio_tracking():
+def portfolio_tracking(user_id):
     st.title('Acompanhamento da Carteira')
 
-    # Add show/hide values toggle in the sidebar
     show_values = st.sidebar.toggle('Mostrar Valores', value=True)
-
+    
     # Initialize database
     init_db()
     analyzer = PortfolioAnalyzer()
@@ -500,7 +499,7 @@ def portfolio_tracking():
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_data, invested_value = et_portfolio_performance(user_id)
+    portfolio_data, invested_value = get_portfolio_performance(user_id)
     
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
