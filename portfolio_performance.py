@@ -139,10 +139,10 @@ def buy_stock(date, ticker, quantity, price, user_id):
 def sell_stock(date, ticker, quantity, price, user_id):
     log_transaction(date, ticker, 'SELL', quantity, price, user_id)
 
-@st.cache_data(ttl=3600)
+
 def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
-    transactions = pd.DataFrame(list(collection.find({'user_id': "f872ed33-5761-4fe5-85e6-e959a74a5d07"})))
+    transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
