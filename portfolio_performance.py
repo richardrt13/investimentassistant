@@ -1098,7 +1098,7 @@ def main():
         
                 # Detecção de anomalias e cálculo de RSI
                 for ticker in tickers_raw:
-                    price_anomalies = detect_price_anomalies(stock_data_raw[ticker])
+                    price_anomalies = financial_analyzer.detect_price_anomalies(stock_data_raw[ticker])
                     rsi = calculate_rsi(stock_data_raw[ticker])
                     ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
                     ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
