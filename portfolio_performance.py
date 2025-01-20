@@ -25,28 +25,8 @@ import streamlit_authenticator as stauth
 import bcrypt
 from streamlit_cookies_manager import EncryptedCookieManager
 import uuid
-from data_handling import get_fundamental_data, get_stock_data
+from data_handling import get_fundamental_data, get_stock_data, get_historical_prices
 
-    
-
-
-# Função para obter dados históricos de preços com tratamento de erro
-# @st.cache_data(ttl=3600)
-# def get_stock_data(tickers, years=5, max_retries=3):
-#     end_date = datetime.now()
-#     start_date = end_date - timedelta(days=years*365)
-    
-
-#     for attempt in range(max_retries):
-#         try:
-#             data = yf.download(tickers, start=start_date, end=end_date)['Close']
-#             return data
-#         except ConnectionError as e:
-#             if attempt < max_retries - 1:
-#                 time.sleep(2 ** attempt)  # Exponential backoff
-#             else:
-#                 st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
-#                 return pd.DataFrame()
 
 # Função para calcular o retorno acumulado
 @st.cache_data(ttl=3600)
@@ -451,51 +431,51 @@ def buy_stock(date, ticker, quantity, price):
 def sell_stock(date, ticker, quantity, price):
     log_transaction(date, ticker, 'SELL', quantity, price)
 
-def get_historical_prices(ticker, start_date, end_date):
-    """
-    Fetch historical price data from MongoDB instead of yfinance
+# def get_historical_prices(ticker, start_date, end_date):
+#     """
+#     Fetch historical price data from MongoDB instead of yfinance
     
-    Parameters:
-    ticker (str): Stock ticker symbol
-    start_date (datetime): Start date for historical data
-    end_date (datetime): End date for historical data
+#     Parameters:
+#     ticker (str): Stock ticker symbol
+#     start_date (datetime): Start date for historical data
+#     end_date (datetime): End date for historical data
     
-    Returns:
-    pandas.DataFrame: DataFrame with date and adjusted close prices
-    """
-    # Convert dates to string format matching MongoDB
-    start_date_str = start_date
-    end_date_str = end_date
+#     Returns:
+#     pandas.DataFrame: DataFrame with date and adjusted close prices
+#     """
+#     # Convert dates to string format matching MongoDB
+#     start_date_str = start_date
+#     end_date_str = end_date
     
-    # Query MongoDB for historical prices
-    query = {
-        'ticker': ticker,
-        'date': {
-            '$gte': start_date_str,
-            '$lte': end_date_str
-        }
-    }
+#     # Query MongoDB for historical prices
+#     query = {
+#         'ticker': ticker,
+#         'date': {
+#             '$gte': start_date_str,
+#             '$lte': end_date_str
+#         }
+#     }
     
-    # Fetch data from MongoDB
-    cursor = prices_collection.find(
-        query,
-        {'_id': 0, 'date': 1, 'Close': 1}
-    )
+#     # Fetch data from MongoDB
+#     cursor = prices_collection.find(
+#         query,
+#         {'_id': 0, 'date': 1, 'Close': 1}
+#     )
     
-    # Convert to DataFrame
-    df = pd.DataFrame(list(cursor))
+#     # Convert to DataFrame
+#     df = pd.DataFrame(list(cursor))
     
-    if df.empty:
-        return df
+#     if df.empty:
+#         return df
         
-    # Convert date string to datetime
-    df['date'] = pd.to_datetime(df['date'])
+#     # Convert date string to datetime
+#     df['date'] = pd.to_datetime(df['date'])
     
-    # Sort by date
-    df = df.sort_values('date')
+#     # Sort by date
+#     df = df.sort_values('date')
     
     
-    return df
+#     return df
 
 @st.cache_data(ttl=3600)
 # Function to get portfolio performance
