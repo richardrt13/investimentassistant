@@ -131,6 +131,7 @@ def get_historical_prices(ticker, start_date, end_date):
         if need_yfinance:
             # Get data from yfinance
             yf_data = yf.download(ticker, start=start_date, end=end_date)
+            yf_data
             
             if not yf_data.empty:
                 # Format yfinance data
