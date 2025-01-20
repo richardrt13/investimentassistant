@@ -193,7 +193,7 @@ def get_portfolio_performance(user_id):
     
     return daily_values, invested_values
 
-@st.cache_data(ttl=3600)
+
 def get_ibovespa_data(start_date, end_date):
     """
     Fetch Ibovespa historical data from MongoDB instead of yfinance
