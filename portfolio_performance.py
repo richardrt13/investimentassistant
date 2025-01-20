@@ -676,7 +676,6 @@ def main():
         
         # Get user_id from cookies or session state
         user_id = cookies.get("user_id", "")
-        user_id
         
         if st.sidebar.button("Logout"):
             cookies["authenticated"] = "false"
