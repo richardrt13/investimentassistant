@@ -23,6 +23,8 @@ import re
 from yaml.loader import SafeLoader
 import streamlit_authenticator as stauth
 import bcrypt
+import time
+import logging
 from streamlit_cookies_manager import EncryptedCookieManager
 import uuid
 from data_handling import get_fundamental_data, get_stock_data, get_historical_prices, get_financial_growth_data
@@ -63,6 +65,7 @@ def login_page():
         if user and check_password(password, user["password"]):
             cookies["authenticated"] = "true"
             cookies["user_name"] = user["name"]
+            cookies["user_id"] = user["user_id"]  
             cookies.save()  # Salva alterações nos cookies
             st.rerun()  # Recarrega a página para atualizar o estado
         else:
@@ -117,32 +120,29 @@ def init_db():
         collection.create_index([('Date', 1), ('Ticker', 1), ('Action', 1), ('Quantity', 1), ('Price', 1)])
 
 # Function to log transactions
-def log_transaction(date, ticker, action, quantity, price):
+def log_transaction(date, ticker, action, quantity, price, user_id):
     transaction = {
         'Date': date,
         'Ticker': ticker,
         'Action': action,
         'Quantity': quantity,
-        'Price': price
+        'Price': price,
+        'user_id': user_id  # Adiciona user_id na transação
     }
     collection.insert_one(transaction)
     st.success('Transação registrada com sucesso!')
 
-# Function to buy stocks
-def buy_stock(date, ticker, quantity, price):
-    log_transaction(date, ticker, 'BUY', quantity, price)
+# Modificar as funções de compra e venda
+def buy_stock(date, ticker, quantity, price, user_id):
+    log_transaction(date, ticker, 'BUY', quantity, price, user_id)
 
-# Function to sell stocks
-def sell_stock(date, ticker, quantity, price):
-    log_transaction(date, ticker, 'SELL', quantity, price)
-
-
+def sell_stock(date, ticker, quantity, price, user_id):
+    log_transaction(date, ticker, 'SELL', quantity, price, user_id)
 
 @st.cache_data(ttl=3600)
-# Function to get portfolio performance
-def get_portfolio_performance():
-    # Fetch all transactions and convert to DataFrame
-    transactions = pd.DataFrame(list(collection.find()))
+def get_portfolio_performance(user_id):
+    # Fetch transactions for specific user
+    transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
@@ -160,7 +160,6 @@ def get_portfolio_performance():
                               (group[group['Action'] == 'SELL']['Quantity'] * group[group['Action'] == 'SELL']['Price']).sum()
         })
     ).reset_index()
-
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
@@ -178,20 +177,17 @@ def get_portfolio_performance():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
         
-        # Fetch historical prices
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
             ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
-            # Multiply prices by quantity
             daily_values[ticker] = ticker_prices * quantity
         except Exception as e:
             print(f"Could not fetch prices for {ticker}: {e}")
     
-    # Prepare invested values series
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
-
+    
     return daily_values, invested_values
 
 @st.cache_data(ttl=3600)
@@ -360,9 +356,6 @@ def allocate_portfolio_integer_shares(invest_value, prices, weights):
     
     return allocation, remaining_value
 
-import time
-import logging
-
 # Configuração básica para logs
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(message)s")
 
@@ -501,13 +494,13 @@ def portfolio_tracking():
     if st.button('Registrar Transação'):
         transaction_date_str = transaction_date.strftime('%Y-%m-%d %H:%M:%S')
         if transaction_action == 'Compra':
-            buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
+            buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
         else:
-            sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price)
+            sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_data, invested_value = get_portfolio_performance()
+    portfolio_data, invested_value = et_portfolio_performance(user_id)
     
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
@@ -680,19 +673,20 @@ def get_ibovespa_ytd_return():
 
 def main():
     if "authenticated" in cookies and cookies["authenticated"] == "true":
-        # Usuário autenticado: exibe a barra lateral com o botão de logout
         st.sidebar.success(f"Bem-vindo(a), {cookies['user_name']}!")
         
-        # Adiciona o botão de logout na barra lateral
+        # Get user_id from cookies or session state
+        user_id = cookies.get("user_id", "")
+        
         if st.sidebar.button("Logout"):
             cookies["authenticated"] = "false"
             cookies["user_name"] = ""
-            cookies.save()  # Salva alterações nos cookies
-            st.rerun()  # Recarrega a página para atualizar o estado
+            cookies["user_id"] = ""
+            cookies.save()
+            st.rerun()
 
-        # Exibe as páginas principais
         page = st.sidebar.radio('Selecione uma página', 
-                                ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
+                              ['Recomendação de Ativos', 'Acompanhamento da Carteira'])
     
         if page == 'Recomendação de Ativos':
     
@@ -901,10 +895,10 @@ def main():
                         invest_value
                     )
                     st.markdown(recommendation)
-             
+            pass
         
         elif page == 'Acompanhamento da Carteira':
-            portfolio_tracking()
+            portfolio_tracking(user_id)
     else:
         # Usuário não autenticado: exibe as abas de login e registro
         tab1, tab2 = st.tabs(["Login", "Registrar"])
