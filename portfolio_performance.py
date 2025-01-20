@@ -144,16 +144,12 @@ def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
     transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
     
-    st.write("Transactions recuperadas do MongoDB:", transactions)  # Debug
-    
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
     
     # Convert date and sort
     transactions['Date'] = pd.to_datetime(transactions['Date'])
     transactions = transactions.sort_values('Date')
-    
-    st.write("Transactions após conversão de data:", transactions)  # Debug
     
     # Group transactions by ticker to calculate final positions
     portfolio_summary = transactions.groupby('Ticker').apply(
@@ -165,17 +161,9 @@ def get_portfolio_performance(user_id):
         })
     ).reset_index()
     
-    st.write("Portfolio summary após groupby:", portfolio_summary)  # Debug
-    
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
     
-    st.write("Active portfolio após filtro:", active_portfolio)  # Debug
-    
-    if active_portfolio.empty:
-        st.warning("Não há posições ativas no portfólio")  # Debug
-        return pd.DataFrame(), pd.Series()
-        
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
     start_date_raw = transactions['Date'].min()
@@ -191,26 +179,16 @@ def get_portfolio_performance(user_id):
         
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
-            st.write(f"Preços históricos para {ticker}:", ticker_prices)  # Debug
-            
-            if ticker_prices.empty:
-                st.warning(f"Não foram encontrados preços históricos para {ticker}")
-                continue
-                
             ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
             daily_values[ticker] = ticker_prices * quantity
         except Exception as e:
-            st.error(f"Erro ao buscar preços para {ticker}: {e}")
-            continue
-    
-    st.write("Daily values final:", daily_values)  # Debug
+            print(f"Could not fetch prices for {ticker}: {e}")
     
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
-
 
 
 def get_ibovespa_data(start_date, end_date):
