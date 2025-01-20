@@ -145,8 +145,9 @@ def sell_stock(date, ticker, quantity, price, user_id):
 
 def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
-    #transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
-    transactions = pd.DataFrame(list(collection.find())) 
+    user_id1="f872ed33-5761-4fe5-85e6-e959a74a5d07"
+    transactions = pd.DataFrame(list(collection.find({'user_id': user_id1})))
+    #transactions = pd.DataFrame(list(collection.find())) 
     transactions
     
     if transactions.empty:
