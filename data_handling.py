@@ -82,49 +82,85 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 
 def get_historical_prices(ticker, start_date, end_date):
     """
-    Fetch historical price data from MongoDB instead of yfinance
+    Fetch historical price data from MongoDB first, falling back to yfinance if needed
     
     Parameters:
     ticker (str): Stock ticker symbol
-    start_date (datetime): Start date for historical data
-    end_date (datetime): End date for historical data
+    start_date (str): Start date for historical data in YYYY-MM-DD format
+    end_date (str): End date for historical data in YYYY-MM-DD format
     
     Returns:
     pandas.DataFrame: DataFrame with date and adjusted close prices
     """
-    # Convert dates to string format matching MongoDB
-    start_date_str = start_date
-    end_date_str = end_date
-    
-    # Query MongoDB for historical prices
-    query = {
-        'ticker': ticker,
-        'date': {
-            '$gte': start_date_str,
-            '$lte': end_date_str
-        }
-    }
-    
-    # Fetch data from MongoDB
-    cursor = prices_collection.find(
-        query,
-        {'_id': 0, 'date': 1, 'Close': 1}
-    )
-    
-    # Convert to DataFrame
-    df = pd.DataFrame(list(cursor))
-    
-    if df.empty:
-        return df
+    try:
+        # Convert dates to datetime for comparison
+        start_dt = pd.to_datetime(start_date)
+        end_dt = pd.to_datetime(end_date)
+        current_dt = pd.to_datetime(datetime.now().date())
         
-    # Convert date string to datetime
-    df['date'] = pd.to_datetime(df['date'])
-    
-    # Sort by date
-    df = df.sort_values('date')
-    
-    
-    return df
+        # Query MongoDB for historical prices
+        query = {
+            'ticker': ticker,
+            'date': {
+                '$gte': start_date,
+                '$lte': end_date
+            }
+        }
+        
+        # Fetch data from MongoDB
+        cursor = prices_collection.find(
+            query,
+            {'_id': 0, 'date': 1, 'Close': 1}
+        )
+        
+        df = pd.DataFrame(list(cursor))
+        
+        # Check if MongoDB data exists and is up to date
+        if not df.empty:
+            df['date'] = pd.to_datetime(df['date'])
+            df = df.sort_values('date')
+            
+            latest_date = df['date'].max()
+            latest_dt = pd.to_datetime(latest_date)
+            
+            # If data is current (updated today) and complete, return MongoDB data
+            if latest_dt.date() == current_dt.date() and len(df) == len(pd.date_range(start_dt, end_dt, freq='B')):
+                return df
+
+        # If MongoDB data is missing or outdated, fetch from yfinance
+        yf_data = yf.download(ticker, start=start_date, end=end_date)
+        
+        if yf_data.empty:
+            return pd.DataFrame()
+            
+        # Format yfinance data to match MongoDB structure
+        df_yf = pd.DataFrame({
+            'date': yf_data.index,
+            'Close': yf_data['Close']
+        })
+        
+        # Store new data in MongoDB for future use
+        new_records = []
+        for _, row in df_yf.iterrows():
+            record = {
+                'ticker': ticker,
+                'date': row['date'].strftime('%Y-%m-%d'),
+                'Close': float(row['Close'])
+            }
+            new_records.append(record)
+            
+        if new_records:
+            try:
+                prices_collection.insert_many(new_records, ordered=False)
+            except Exception as e:
+                # Ignore duplicate key errors
+                pass
+                
+        return df_yf
+        
+    except Exception as e:
+        print(f"Error fetching data for {ticker}: {e}")
+        return pd.DataFrame()
     
 def get_financial_growth_data(ticker, years=5):
     stock = yf.Ticker(ticker)
