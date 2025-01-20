@@ -42,7 +42,7 @@ prices_collection = db['historical_prices']
 stocks_collection = db['stocks']
 users_collection = db['users']
 
-transactions = pd.DataFrame(list(collection))
+transactions = pd.DataFrame(list(collection.find())) 
 transactions
 
 # Função para hashear senhas
