@@ -25,75 +25,70 @@ import streamlit_authenticator as stauth
 import bcrypt
 from streamlit_cookies_manager import EncryptedCookieManager
 import uuid
-from data_handling import get_fundamental_data, get_stock_data, get_historical_prices
+from data_handling import get_fundamental_data, get_stock_data, get_historical_prices, get_financial_growth_data
 from ai_features import PortfolioAnalyzer
 from portfolio_calculation import FinancialAnalysis
 
 financial_analyzer = FinancialAnalysis()
 
-def get_financial_growth_data(ticker, years=5):
-    stock = yf.Ticker(ticker)
+# def get_financial_growth_data(ticker, years=5):
+#     stock = yf.Ticker(ticker)
     
-    # Obter dados financeiros anuais
-    try:
-        financials = stock.financials
-        balance_sheet = stock.balance_sheet
-    except Exception as e:
-        print(f"Error fetching data for {ticker}: {e}")
-        return None
+#     # Obter dados financeiros anuais
+#     try:
+#         financials = stock.financials
+#         balance_sheet = stock.balance_sheet
+#     except Exception as e:
+#         print(f"Error fetching data for {ticker}: {e}")
+#         return None
     
-    if financials.empty or balance_sheet.empty:
-        print(f"No financial data available for {ticker}.")
-        return None
+#     if financials.empty or balance_sheet.empty:
+#         print(f"No financial data available for {ticker}.")
+#         return None
     
-    try:
-        # Verificar se há dados financeiros suficientes
-        if 'Total Revenue' not in financials.index or 'Net Income' not in financials.index:
-            print(f"Necessary financial metrics not available for {ticker}.")
-            return None
+#     try:
+#         # Verificar se há dados financeiros suficientes
+#         if 'Total Revenue' not in financials.index or 'Net Income' not in financials.index:
+#             print(f"Necessary financial metrics not available for {ticker}.")
+#             return None
         
-        # Calcular crescimento da receita
-        revenues = financials.loc['Total Revenue'].dropna().sort_index()
-        if len(revenues) > 1:
-            available_years = min(len(revenues) - 1, years)
-            revenue_growth = round((revenues.iloc[-1] / revenues.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
-        else:
-            revenue_growth = None
+#         # Calcular crescimento da receita
+#         revenues = financials.loc['Total Revenue'].dropna().sort_index()
+#         if len(revenues) > 1:
+#             available_years = min(len(revenues) - 1, years)
+#             revenue_growth = round((revenues.iloc[-1] / revenues.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
+#         else:
+#             revenue_growth = None
         
-        # Calcular crescimento do lucro
-        net_income = financials.loc['Net Income'].dropna().sort_index()
-        if len(net_income) > 1 and net_income.iloc[0] > 0:
-            available_years = min(len(net_income) - 1, years)
-            income_growth = round((net_income.iloc[-1] / net_income.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
-        else:
-            income_growth = None
+#         # Calcular crescimento do lucro
+#         net_income = financials.loc['Net Income'].dropna().sort_index()
+#         if len(net_income) > 1 and net_income.iloc[0] > 0:
+#             available_years = min(len(net_income) - 1, years)
+#             income_growth = round((net_income.iloc[-1] / net_income.iloc[-(available_years+1)]) ** (1/available_years) - 1,2)
+#         else:
+#             income_growth = None
         
-        # Verificar se há dados de balanço suficientes
-        if 'Total Debt' not in balance_sheet.index:
-            print(f"Necessary balance sheet metrics not available for {ticker}.")
-            return None
+#         # Verificar se há dados de balanço suficientes
+#         if 'Total Debt' not in balance_sheet.index:
+#             print(f"Necessary balance sheet metrics not available for {ticker}.")
+#             return None
         
-        # Calcular estabilidade da dívida
-        total_debt = balance_sheet.loc['Total Debt'].dropna().sort_index()
-        if len(total_debt) > 1:
-            available_years = min(len(total_debt) - 1, years)
-            debt_stability = round(-((total_debt.iloc[-1] / total_debt.iloc[-(available_years+1)]) ** (1/available_years) - 1),2)
-        else:
-            debt_stability = None
-    except Exception as e:
-        print(f"Error calculating growth data for {ticker}: {e}")
-        return None
+#         # Calcular estabilidade da dívida
+#         total_debt = balance_sheet.loc['Total Debt'].dropna().sort_index()
+#         if len(total_debt) > 1:
+#             available_years = min(len(total_debt) - 1, years)
+#             debt_stability = round(-((total_debt.iloc[-1] / total_debt.iloc[-(available_years+1)]) ** (1/available_years) - 1),2)
+#         else:
+#             debt_stability = None
+#     except Exception as e:
+#         print(f"Error calculating growth data for {ticker}: {e}")
+#         return None
     
-    return {
-        'revenue_growth': revenue_growth,
-        'income_growth': income_growth,
-        'debt_stability': debt_stability
-    }
-
-def calculate_asset_sharpe(returns_series, risk_free_rate):
-    asset_return = returns_series.mean() * 252
-    asset_volatility = returns_series.std() * np.sqrt(252)
-    return (asset_return - risk_free_rate) / asset_volatility
+#     return {
+#         'revenue_growth': revenue_growth,
+#         'income_growth': income_growth,
+#         'debt_stability': debt_stability
+#     }
 
 
 # MongoDB Atlas connection
