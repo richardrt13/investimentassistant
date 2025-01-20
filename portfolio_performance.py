@@ -131,7 +131,7 @@ def log_transaction(date, ticker, action, quantity, price, user_id):
         'user_id': user_id  # Adiciona user_id na transação
     }
     collection.insert_one(transaction)
-    st.success('Transação registrada com sucesso!')
+    st.success('Transação registrada com sucesso! Já estamos procurando informações dos seus ativos e em breve vamos atualizar os dados abaixo.')
 
 # Modificar as funções de compra e venda
 def buy_stock(date, ticker, quantity, price, user_id):
