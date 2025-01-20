@@ -42,6 +42,9 @@ prices_collection = db['historical_prices']
 stocks_collection = db['stocks']
 users_collection = db['users']
 
+transactions = pd.DataFrame(list(collection))
+transactions
+
 # Função para hashear senhas
 def hash_password(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -142,9 +145,7 @@ def sell_stock(date, ticker, quantity, price, user_id):
 
 def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
-    #transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
-    transactions = pd.DataFrame(list(collection.find()))
-    
+    transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
