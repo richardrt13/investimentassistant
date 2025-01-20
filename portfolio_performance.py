@@ -29,6 +29,7 @@ from data_handling import get_fundamental_data, get_stock_data, get_historical_p
 from ai_features import PortfolioAnalyzer
 from portfolio_calculation import FinancialAnalysis
 
+financial_analyzer = FinancialAnalysis()
 # Função para calcular o retorno acumulado
 # @st.cache_data(ttl=3600)
 # def get_cumulative_return(ticker):
@@ -1165,7 +1166,7 @@ def main():
                 #st.subheader('Análise de Anomalias')
                 anomaly_data = []
                 for ticker in tickers:
-                    price_anomalies = detect_price_anomalies(stock_data[ticker])
+                    price_anomalies = financial_analyzer.detect_price_anomalies(stock_data[ticker])
                     rsi = calculate_rsi(stock_data[ticker])
                     rsi_anomalies = (rsi > 70) | (rsi < 30)
                     anomaly_data.append({
