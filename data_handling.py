@@ -82,7 +82,7 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 
 def get_historical_prices(ticker, start_date, end_date):
     """
-    Fetch historical price data from MongoDB first, falling back to yfinance if needed
+    Fetch historical price data optimizing between MongoDB cache and yfinance API.
     
     Parameters:
     ticker (str): Stock ticker symbol
@@ -93,12 +93,11 @@ def get_historical_prices(ticker, start_date, end_date):
     pandas.DataFrame: DataFrame with date and adjusted close prices
     """
     try:
-        # Convert dates to datetime for comparison
         start_dt = pd.to_datetime(start_date)
         end_dt = pd.to_datetime(end_date)
         current_dt = pd.to_datetime(datetime.now().date())
         
-        # Query MongoDB for historical prices
+        # First try to get data from MongoDB
         query = {
             'ticker': ticker,
             'date': {
@@ -107,7 +106,6 @@ def get_historical_prices(ticker, start_date, end_date):
             }
         }
         
-        # Fetch data from MongoDB
         cursor = prices_collection.find(
             query,
             {'_id': 0, 'date': 1, 'Close': 1}
@@ -115,48 +113,64 @@ def get_historical_prices(ticker, start_date, end_date):
         
         df = pd.DataFrame(list(cursor))
         
-        # Check if MongoDB data exists and is up to date
+        # Check if we need to fetch from yfinance
+        need_yfinance = True
         if not df.empty:
             df['date'] = pd.to_datetime(df['date'])
             df = df.sort_values('date')
             
-            latest_date = df['date'].max()
-            latest_dt = pd.to_datetime(latest_date)
+            # Check if data is complete
+            date_range = pd.date_range(start_dt, end_dt, freq='B')
+            existing_dates = set(df['date'].dt.date)
+            missing_dates = [d for d in date_range if d.date() not in existing_dates]
             
-            # If data is current (updated today) and complete, return MongoDB data
-            if latest_dt.date() == current_dt.date() and len(df) == len(pd.date_range(start_dt, end_dt, freq='B')):
-                return df
-
-        # If MongoDB data is missing or outdated, fetch from yfinance
-        yf_data = yf.download(ticker, start=start_date, end=end_date)
+            # Only use yfinance if we're missing dates or don't have today's data
+            if not missing_dates and (current_dt.date() - df['date'].max().date()).days <= 1:
+                need_yfinance = False
         
-        if yf_data.empty:
-            return pd.DataFrame()
+        if need_yfinance:
+            # Get data from yfinance
+            yf_data = yf.download(ticker, start=start_date, end=end_date)
             
-        # Format yfinance data to match MongoDB structure
-        df_yf = pd.DataFrame({
-            'date': yf_data.index,
-            'Close': yf_data['Close']
-        })
-        
-        # Store new data in MongoDB for future use
-        new_records = []
-        for _, row in df_yf.iterrows():
-            record = {
-                'ticker': ticker,
-                'date': row['date'].strftime('%Y-%m-%d'),
-                'Close': float(row['Close'])
-            }
-            new_records.append(record)
-            
-        if new_records:
-            try:
-                prices_collection.insert_many(new_records, ordered=False)
-            except Exception as e:
-                # Ignore duplicate key errors
-                pass
+            if not yf_data.empty:
+                # Format yfinance data
+                df_yf = pd.DataFrame({
+                    'date': yf_data.index,
+                    'Close': yf_data['Close']
+                })
                 
-        return df_yf
+                # Store new data in MongoDB
+                new_records = []
+                for _, row in df_yf.iterrows():
+                    record = {
+                        'ticker': ticker,
+                        'date': row['date'].strftime('%Y-%m-%d'),
+                        'Close': float(row['Close'])
+                    }
+                    new_records.append(record)
+                
+                if new_records:
+                    try:
+                        # Use bulk write to efficiently update/insert records
+                        bulk_operations = [
+                            UpdateOne(
+                                {
+                                    'ticker': record['ticker'],
+                                    'date': record['date']
+                                },
+                                {'$set': record},
+                                upsert=True
+                            )
+                            for record in new_records
+                        ]
+                        prices_collection.bulk_write(bulk_operations, ordered=False)
+                        
+                    except Exception as e:
+                        print(f"Error updating MongoDB: {e}")
+                
+                return df_yf
+                
+        return df
         
     except Exception as e:
         print(f"Error fetching data for {ticker}: {e}")
