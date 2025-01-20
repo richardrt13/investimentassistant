@@ -1,6 +1,6 @@
 import pandas as pd
 import streamlit as st
-from genai import genai
+import google.generativeai as genai
 from typing import Optional, Dict
 
 class PortfolioAnalyzer:
