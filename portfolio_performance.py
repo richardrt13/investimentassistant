@@ -499,7 +499,7 @@ def portfolio_tracking(user_id):
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
-    portfolio_data, invested_value = get_portfolio_performance(user_id)
+    portfolio_data, invested_value = user_id(user_id)
     
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
@@ -617,7 +617,7 @@ def portfolio_tracking(user_id):
     contribution_amount = st.number_input('Valor do Aporte (R$)', min_value=0.01, value=1000.00, step=0.01)
 
     if st.button('Calcular Distribuição Ótima do Aporte'):
-        portfolio_data, invested_value = get_portfolio_performance()
+        portfolio_data, invested_value = get_portfolio_performance(user_id)
         if not portfolio_data.empty:
             with st.spinner('Gerando recomendação personalizada...'):
                 recommendation = calculate_optimal_contribution_with_genai(portfolio_data, invested_value, contribution_amount)
@@ -628,7 +628,7 @@ def portfolio_tracking(user_id):
         else:
             st.write("Não há dados suficientes para calcular a distribuição do aporte.")
     
-    portfolio_data, invested_value = get_portfolio_performance()
+    portfolio_data, invested_value = get_portfolio_performance(user_id)
     
     if not portfolio_data.empty:
         # Botão para gerar análise
