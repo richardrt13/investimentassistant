@@ -1105,7 +1105,7 @@ def main():
         
                 status_text.text('Otimizando portfólio...')
                 try:
-                    optimal_weights = financial_analyzer.optimize_portfolio(returns, risk_free_rate)
+                    optimal_weights = financial_analyzer.optimize_portfolio(returns)
                     # Ajustar pesos com base nas anomalias
                     anomaly_scores = financial_analyzer.calculate_anomaly_scores(returns)
                     adjusted_weights = financial_analyzer.adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
