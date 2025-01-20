@@ -3,6 +3,7 @@ import time
 import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
+from pymongo import MongoClient
 
 @st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
@@ -72,3 +73,49 @@ def get_stock_data(tickers, years=5, max_retries=3):
             else:
                 st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
                 return pd.DataFrame()
+                
+def get_historical_prices(ticker, start_date, end_date):
+    """
+    Fetch historical price data from MongoDB instead of yfinance
+    
+    Parameters:
+    ticker (str): Stock ticker symbol
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
+    
+    Returns:
+    pandas.DataFrame: DataFrame with date and adjusted close prices
+    """
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date
+    end_date_str = end_date
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
+        }
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
+        return df
+        
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    
+    return df
