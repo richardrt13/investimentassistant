@@ -80,102 +80,134 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
                 return pd.DataFrame()
                 
+import streamlit as st
+import time
+import numpy as np
+import yfinance as yf
+from datetime import datetime, timedelta
+from pymongo import MongoClient
+import pandas as pd
+
+mongo_uri = st.secrets["mongo_uri"]
+client = MongoClient(mongo_uri)
+db = client['StockIdea']
+prices_collection = db['historical_prices']
+
+@st.cache_data(ttl=3600)
+def get_fundamental_data(ticker, max_retries=3):
+    for attempt in range(max_retries):
+        try:
+            stock = yf.Ticker(ticker)
+            info = stock.info
+
+            # Obter dados do balanço patrimonial e demonstração financeira
+            balance_sheet = stock.balance_sheet
+            financials = stock.financials
+
+            # Calcular o ROIC
+            if not balance_sheet.empty and not financials.empty:
+                net_income = financials.loc['Net Income'].iloc[0]  # Último ano fiscal
+                total_assets = balance_sheet.loc['Total Assets'].iloc[0]  # Último ano fiscal
+                total_liabilities = balance_sheet.loc['Total Liabilities Net Minority Interest'].iloc[0]  # Último ano fiscal
+                cash = balance_sheet.loc['Cash And Cash Equivalents'].iloc[0]  # Último ano fiscal
+
+                invested_capital = total_assets - total_liabilities - cash
+                if invested_capital != 0:
+                    roic = (net_income / invested_capital) * 100  # em percentagem
+                else:
+                    roic = np.nan
+            else:
+                roic = np.nan
+
+            return {
+                'P/L': info.get('trailingPE', np.nan),
+                'P/VP': info.get('priceToBook', np.nan),
+                'ROE': info.get('returnOnEquity', np.nan),
+                'Volume': info.get('averageVolume', np.nan),
+                'Price': info.get('currentPrice', np.nan),
+                'ROIC': roic,
+                'Dividend Yield': info.get('trailingAnnualDividendYield', np.nan),
+                'Debt to Equity': info.get('debtToEquity', np.nan)
+            }
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                st.warning(f"Não foi possível obter dados para {ticker}. Erro: {e}")
+                return {
+                    'P/L': np.nan,
+                    'P/VP': np.nan,
+                    'ROE': np.nan,
+                    'Volume': np.nan,
+                    'Price': np.nan,
+                    'ROIC': np.nan,
+                    'Dividend Yield': np.nan,
+                    'Debt to Equity': np.nan
+                }
+                
+@st.cache_data(ttl=3600)
+def get_stock_data(tickers, years=5, max_retries=3):
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=years*365)
+    
+
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(tickers, start=start_date, end=end_date)['Close']
+            return data
+        except ConnectionError as e:
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
+                return pd.DataFrame()
+                
 def get_historical_prices(ticker, start_date, end_date):
     """
-    Fetch historical price data optimizing between MongoDB cache and yfinance API.
+    Fetch historical price data from MongoDB instead of yfinance
     
     Parameters:
     ticker (str): Stock ticker symbol
-    start_date (str): Start date for historical data in YYYY-MM-DD format
-    end_date (str): End date for historical data in YYYY-MM-DD format
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
     
     Returns:
     pandas.DataFrame: DataFrame with date and adjusted close prices
     """
-    try:
-        start_dt = pd.to_datetime(start_date)
-        end_dt = pd.to_datetime(end_date)
-        current_dt = pd.to_datetime(datetime.now().date())
-        
-        # First try to get data from MongoDB
-        query = {
-            'ticker': ticker,
-            'date': {
-                '$gte': start_date,
-                '$lte': end_date
-            }
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date
+    end_date_str = end_date
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
         }
-        
-        cursor = prices_collection.find(
-            query,
-            {'_id': 0, 'date': 1, 'Close': 1}
-        )
-        
-        df = pd.DataFrame(list(cursor))
-        
-        # Check if we need to fetch from yfinance
-        need_yfinance = True
-        if not df.empty:
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date')
-            
-            # Check if data is complete
-            date_range = pd.date_range(start_dt, end_dt, freq='B')
-            existing_dates = set(df['date'].dt.date)
-            missing_dates = [d for d in date_range if d.date() not in existing_dates]
-            
-            # Only use yfinance if we're missing dates or don't have today's data
-            if not missing_dates and (current_dt.date() - df['date'].max().date()).days <= 1:
-                need_yfinance = False
-        
-        if need_yfinance:
-            # Get data from yfinance
-            yf_data = yf.download(ticker, start=start_date, end=end_date)
-            yf_data
-            
-            if not yf_data.empty:
-                # Format yfinance data
-                df_yf = pd.DataFrame({
-                    'date': yf_data.index,
-                    'Close': yf_data['Close']
-                })
-                
-                # Store new data in MongoDB
-                new_records = []
-                for _, row in df_yf.iterrows():
-                    record = {
-                        'ticker': ticker,
-                        'date': row['date'].strftime('%Y-%m-%d'),
-                        'Close': float(row['Close'])
-                    }
-                    new_records.append(record)
-                
-                if new_records:
-                    try:
-                        # Use bulk write to efficiently update/insert records
-                        bulk_operations = [
-                            UpdateOne(
-                                {
-                                    'ticker': record['ticker'],
-                                    'date': record['date']
-                                },
-                                {'$set': record},
-                                upsert=True
-                            )
-                            for record in new_records
-                        ]
-                        prices_collection.bulk_write(bulk_operations, ordered=False)
-                        
-                    except Exception as e:
-                        print(f"Error updating MongoDB: {e}")
-                
-                return df_yf
-                
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
         return df
         
-    except Exception as e:
-        print(f"Error fetching data for {ticker}: {e}")
-        return pd.DataFrame()
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    
+    return df
+    
     
 def get_financial_growth_data(ticker, years=5):
     stock = yf.Ticker(ticker)
