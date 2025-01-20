@@ -91,55 +91,7 @@ financial_analyzer = FinancialAnalysis()
 #     return pd.DataFrame(results)
 
 # Função para plotar a fronteira eficiente
-def plot_efficient_frontier(returns, optimal_portfolio):
-    portfolios = generate_random_portfolios(returns)
 
-    fig = go.Figure()
-
-    # Plotar portfólios aleatórios
-    fig.add_trace(go.Scatter(
-        x=portfolios['Volatility'],
-        y=portfolios['Return'],
-        mode='markers',
-        marker=dict(
-            size=5,
-            color=portfolios['Sharpe'],
-            colorscale='Viridis',
-            colorbar=dict(title='Índice de Sharpe'),
-            showscale=True
-        ),
-        text=portfolios['Sharpe'].apply(lambda x: f'Sharpe: {x:.3f}'),
-        hoverinfo='text+x+y',
-        name='Portfólios'
-    ))
-
-    # Plotar portfólio ótimo
-    opt_return, opt_volatility = portfolio_performance(optimal_portfolio, returns)
-    opt_sharpe = (opt_return - risk_free_rate) / opt_volatility
-
-    fig.add_trace(go.Scatter(
-        x=[opt_volatility],
-        y=[opt_return],
-        mode='markers',
-        marker=dict(
-            size=15,
-            color='red',
-            symbol='star'
-        ),
-        text=[f'Portfólio Ótimo<br>Sharpe: {opt_sharpe:.3f}'],
-        hoverinfo='text+x+y',
-        name='Portfólio Ótimo'
-    ))
-
-    fig.update_layout(
-        title='Fronteira Eficiente',
-        xaxis_title='Volatilidade Anual',
-        yaxis_title='Retorno Anual Esperado',
-        showlegend=True,
-        hovermode='closest'
-    )
-
-    return fig
 
 
 # def detect_price_anomalies(prices, window=20, threshold=2):
@@ -1099,15 +1051,15 @@ def main():
                 # Detecção de anomalias e cálculo de RSI
                 for ticker in tickers_raw:
                     price_anomalies = financial_analyzer.detect_price_anomalies(stock_data_raw[ticker])
-                    rsi = calculate_rsi(stock_data_raw[ticker])
+                    rsi = financial_analyzer.calculate_rsi(stock_data_raw[ticker])
                     ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'price_anomaly'] = price_anomalies.mean()
                     ativos_df.loc[ativos_df['symbol'] == ticker[:-3], 'rsi_anomaly'] = (rsi > 70).mean() + (rsi < 30).mean()
         
                 # Calcular score ajustado
-                cumulative_returns_raw = [get_cumulative_return(ticker) for ticker in tickers_raw]
+                cumulative_returns_raw = [financial_analyzer.get_cumulative_return(ticker) for ticker in tickers_raw]
                 ativos_df['Rentabilidade Acumulada (5 anos)'] = cumulative_returns_raw
-                optimized_weights = optimize_weights(ativos_df)
-                ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: calculate_adjusted_score(row, optimized_weights), axis=1)
+                optimized_weights = financial_analyzer.optimize_weights(ativos_df)
+                ativos_df['Adjusted_Score'] = ativos_df.apply(lambda row: financial_analyzer.calculate_adjusted_score(row, optimized_weights), axis=1)
         
                 # Selecionar os top 10 ativos com base no score
                 top_ativos = ativos_df.nlargest(10, 'Adjusted_Score')
@@ -1129,7 +1081,7 @@ def main():
                 st.dataframe(top_ativos[['symbol', 'sector','industry', 'P/L', 'P/VP', 'ROE', 'ROIC', 'Dividend Yield','Volume', 'Price', 'Score', 'Adjusted_Score','revenue_growth','income_growth','debt_stability','Rentabilidade Acumulada (5 anos)']])
         
                 # Otimização de portfólio
-                returns = calculate_returns(stock_data)
+                returns = financial_analyzer.calculate_returns(stock_data)
         
                 # Verificar se há retornos válidos para continuar
                 if returns.empty:
@@ -1137,11 +1089,11 @@ def main():
                     return
         
                 # Calcular rentabilidade acumulada
-                cumulative_returns = [get_cumulative_return(ticker) for ticker in tickers]
+                cumulative_returns = [financial_analyzer.get_cumulative_return(ticker) for ticker in tickers]
                 top_ativos['Rentabilidade Acumulada (5 anos)'] = cumulative_returns
         
                 # Otimização de portfólio
-                returns = calculate_returns(stock_data)
+                returns = financial_analyzer.calculate_returns(stock_data)
         
                 # Verificar se há retornos válidos para continuar
                 if returns.empty:
@@ -1153,10 +1105,10 @@ def main():
         
                 status_text.text('Otimizando portfólio...')
                 try:
-                    optimal_weights = optimize_portfolio(returns, risk_free_rate)
+                    optimal_weights = financial_analyzer.optimize_portfolio(returns, risk_free_rate)
                     # Ajustar pesos com base nas anomalias
-                    anomaly_scores = calculate_anomaly_scores(returns)
-                    adjusted_weights = adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
+                    anomaly_scores = financial_analyzer.calculate_anomaly_scores(returns)
+                    adjusted_weights = financial_analyzer.adjust_weights_for_anomalies(optimal_weights, anomaly_scores)
                 except Exception as e:
                     st.error(f"Erro ao otimizar o portfólio: {e}")
                     return
@@ -1167,7 +1119,7 @@ def main():
                 anomaly_data = []
                 for ticker in tickers:
                     price_anomalies = financial_analyzer.detect_price_anomalies(stock_data[ticker])
-                    rsi = calculate_rsi(stock_data[ticker])
+                    rsi = financial_analyzer.calculate_rsi(stock_data[ticker])
                     rsi_anomalies = (rsi > 70) | (rsi < 30)
                     anomaly_data.append({
                         'symbol': ticker,
@@ -1177,7 +1129,7 @@ def main():
     
                 anomaly_df = pd.DataFrame(anomaly_data)
                
-                portfolio_return, portfolio_volatility = portfolio_performance(adjusted_weights, returns)
+                portfolio_return, portfolio_volatility = financial_analyzer.portfolio_performance(adjusted_weights, returns)
                 portfolio_sharpe = (portfolio_return - risk_free_rate) / portfolio_volatility
     
                 prices = top_ativos.set_index('symbol')['Price']
