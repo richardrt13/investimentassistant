@@ -10,7 +10,6 @@ class FinancialAnalysis:
     def __init__(self, risk_free_rate=0.02):
         self.risk_free_rate = risk_free_rate
 
-    @st.cache_data(ttl=3600)
     def get_cumulative_return(self, ticker):
         """Get cumulative return for a given ticker over the past 5 years."""
         stock = yf.Ticker(ticker)
