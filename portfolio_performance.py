@@ -42,8 +42,6 @@ prices_collection = db['historical_prices']
 stocks_collection = db['stocks']
 users_collection = db['users']
 
-#transactions = pd.DataFrame(list(collection.find())) 
-#transactions
 
 # Função para hashear senhas
 def hash_password(password):
@@ -145,8 +143,7 @@ def sell_stock(date, ticker, quantity, price, user_id):
 
 def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
-    user_id1="f872ed33-5761-4fe5-85e6-e959a74a5d07"
-    transactions = pd.DataFrame(list(collection.find({'user_id': user_id1})))
+    transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
     #transactions = pd.DataFrame(list(collection.find())) 
     transactions
     
@@ -681,8 +678,8 @@ def main():
         st.sidebar.success(f"Bem-vindo(a), {cookies['user_name']}!")
         
         # Get user_id from cookies or session state
-        user_id = cookies.get("user_id", "")
-
+        #user_id = cookies.get("user_id", "")
+        user_id = "f872ed33-5761-4fe5-85e6-e959a74a5d07"
         
         
         if st.sidebar.button("Logout"):
