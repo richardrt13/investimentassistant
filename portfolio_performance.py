@@ -676,6 +676,7 @@ def main():
         
         # Get user_id from cookies or session state
         user_id = f'"{cookies.get("user_id", "")}"'
+        collection
         transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
         transactions
         
