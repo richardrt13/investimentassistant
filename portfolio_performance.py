@@ -675,10 +675,14 @@ def main():
         st.sidebar.success(f"Bem-vindo(a), {cookies['user_name']}!")
         
         # Get user_id from cookies or session state
-        user_id = f'"{cookies.get("user_id", "")}"'
+        mongo_uri = "mongodb+srv://richardrt13:QtZ9CnSP6dv93hlh@stockidea.isx8swk.mongodb.net/?retryWrites=true&w=majority&appName=StockIdea"  # Substitua pela sua connection string
+        client = MongoClient(mongo_uri)
+        db = client['StockIdea']
         collection = db['transactions']
-        transactions = pd.DataFrame(list(collection))
-        transactions
+        user_id = f'"{cookies.get("user_id", "")}"'
+        transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
+
+        
         
         if st.sidebar.button("Logout"):
             cookies["authenticated"] = "false"
