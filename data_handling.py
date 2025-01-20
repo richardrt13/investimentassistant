@@ -4,14 +4,12 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
 from pymongo import MongoClient
+import pandas as pd
 
 mongo_uri = st.secrets["mongo_uri"]
 client = MongoClient(mongo_uri)
 db = client['StockIdea']
-collection = db['transactions']
 prices_collection = db['historical_prices']
-stocks_collection = db['stocks']
-users_collection = db['users']
 
 @st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
