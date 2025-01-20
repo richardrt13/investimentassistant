@@ -678,8 +678,7 @@ def main():
         st.sidebar.success(f"Bem-vindo(a), {cookies['user_name']}!")
         
         # Get user_id from cookies or session state
-        #user_id = cookies.get("user_id", "")
-        user_id = "f872ed33-5761-4fe5-85e6-e959a74a5d07"
+        user_id = cookies.get("user_id", "")
         
         
         if st.sidebar.button("Logout"):
