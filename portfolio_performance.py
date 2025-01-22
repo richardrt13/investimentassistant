@@ -135,7 +135,36 @@ def log_transaction(date, ticker, action, quantity, price, user_id):
 
 # Modificar as funções de compra e venda
 def buy_stock(date, ticker, quantity, price, user_id):
-    log_transaction(date, ticker, 'BUY', quantity, price, user_id)
+    """
+    Enhanced version of buy_stock that handles historical data population
+    """
+    # Log the transaction first
+    transaction = {
+        'Date': date,
+        'Ticker': ticker,
+        'Action': 'BUY',
+        'Quantity': quantity,
+        'Price': price,
+        'user_id': user_id
+    }
+    collection.insert_one(transaction)
+    
+    # Clear the cache for portfolio performance
+    if hasattr(get_portfolio_performance, 'clear_cache'):
+        get_portfolio_performance.clear_cache()
+    
+    # Check historical data
+    start_date = (datetime.strptime(date, '%Y-%m-%d %H:%M:%S') - timedelta(days=5*365)).strftime('%Y-%m-%d')
+    end_date = datetime.now().strftime('%Y-%m-%d')
+    
+    _, is_populating = get_historical_prices(ticker, start_date, end_date, prices_collection)
+    
+    if is_populating:
+        st.warning(f"Transação registrada! Estamos processando os dados históricos para {ticker}. A visualização será atualizada em breve.")
+        time.sleep(2)  # Give some time for data population
+        st.rerun()
+    else:
+        st.success('Transação registrada com sucesso!')
 
 def sell_stock(date, ticker, quantity, price, user_id):
     log_transaction(date, ticker, 'SELL', quantity, price, user_id)
