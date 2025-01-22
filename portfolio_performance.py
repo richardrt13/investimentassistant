@@ -172,7 +172,6 @@ def get_portfolio_performance(user_id):
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
-    daily_values
     
     for _, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
@@ -186,6 +185,7 @@ def get_portfolio_performance(user_id):
             daily_values[ticker] = ticker_prices * quantity
         except Exception as e:
             print(f"Could not fetch prices for {ticker}: {e}")
+    daily_values
     
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
@@ -501,7 +501,6 @@ def portfolio_tracking(user_id):
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
     portfolio_data, invested_value = get_portfolio_performance(user_id)
-    portfolio_data
     
     if not portfolio_data.empty:
         total_invested, current_value, total_return = calculate_portfolio_metrics(portfolio_data, invested_value)
