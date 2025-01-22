@@ -11,108 +11,7 @@ client = MongoClient(mongo_uri)
 db = client['StockIdea']
 prices_collection = db['historical_prices']
 
-
-def check_and_populate_historical_data(ticker, prices_collection):
-    """
-    Check if historical data exists for a ticker and populate if missing
-    
-    Parameters:
-    ticker (str): Stock ticker symbol
-    prices_collection: MongoDB collection for prices
-    
-    Returns:
-    bool: True if data exists or was successfully populated, False otherwise
-    """
-    # Check if we have any data for this ticker
-    existing_data = prices_collection.find_one({'ticker': ticker})
-    
-    if not existing_data:
-        try:
-            # Get data from yfinance
-            end_date = datetime.now()
-            start_date = end_date - timedelta(days=5*365)  # 5 years of data
-            
-            stock_data = yf.download(ticker, start=start_date, end=end_date)
-            
-            if stock_data.empty:
-                return False
-                
-            # Prepare data for MongoDB
-            records = []
-            for date, row in stock_data.iterrows():
-                record = {
-                    'ticker': ticker,
-                    'date': date.strftime('%Y-%m-%d'),
-                    'Open': float(row['Open']),
-                    'High': float(row['High']),
-                    'Low': float(row['Low']),
-                    'Close': float(row['Close']),
-                    'Volume': float(row['Volume']),
-                    'Adj Close': float(row['Adj Close'])
-                }
-                records.append(record)
-            
-            # Insert data into MongoDB
-            if records:
-                prices_collection.insert_many(records)
-                return True
-            
-            return False
-            
-        except Exception as e:
-            print(f"Error populating data for {ticker}: {e}")
-            return False
-            
-    return True
-
-def get_historical_prices(ticker, start_date, end_date, prices_collection):
-    """
-    Enhanced version of get_historical_prices that checks and populates data if needed
-    
-    Parameters:
-    ticker (str): Stock ticker symbol
-    start_date (str): Start date in YYYY-MM-DD format
-    end_date (str): End date in YYYY-MM-DD format
-    prices_collection: MongoDB collection for prices
-    
-    Returns:
-    tuple: (DataFrame with price data, bool indicating if data is being populated)
-    """
-    # First try to get existing data
-    query = {
-        'ticker': ticker,
-        'date': {
-            '$gte': start_date,
-            '$lte': end_date
-        }
-    }
-    
-    cursor = prices_collection.find(query, {'_id': 0, 'date': 1, 'Close': 1})
-    df = pd.DataFrame(list(cursor))
-    
-    if df.empty:
-        # No data found, initiate population
-        is_populating = True
-        success = check_and_populate_historical_data(ticker, prices_collection)
-        
-        if success:
-            # Try to get data again after population
-            cursor = prices_collection.find(query, {'_id': 0, 'date': 1, 'Close': 1})
-            df = pd.DataFrame(list(cursor))
-            
-        if not df.empty:
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date')
-            is_populating = False
-            
-    else:
-        is_populating = False
-        df['date'] = pd.to_datetime(df['date'])
-        df = df.sort_values('date')
-    
-    return df, is_populating
-
-
+@st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -164,7 +63,7 @@ def get_fundamental_data(ticker, max_retries=3):
                     'Debt to Equity': np.nan
                 }
                 
-
+@st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -181,6 +80,51 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 st.error(f"Erro ao obter dados históricos. Possível limite de requisição atingido. Erro: {e}")
                 return pd.DataFrame()
                 
+def get_historical_prices(ticker, start_date, end_date):
+    """
+    Fetch historical price data from MongoDB instead of yfinance
+    
+    Parameters:
+    ticker (str): Stock ticker symbol
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
+    
+    Returns:
+    pandas.DataFrame: DataFrame with date and adjusted close prices
+    """
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date
+    end_date_str = end_date
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
+        }
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
+        return df
+        
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    
+    return df
     
     
 def get_financial_growth_data(ticker, years=5):
