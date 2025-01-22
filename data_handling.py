@@ -11,7 +11,7 @@ client = MongoClient(mongo_uri)
 db = client['StockIdea']
 prices_collection = db['historical_prices']
 
-
+@st.cache_data(ttl=3600)
 def get_fundamental_data(ticker, max_retries=3):
     for attempt in range(max_retries):
         try:
@@ -63,7 +63,7 @@ def get_fundamental_data(ticker, max_retries=3):
                     'Debt to Equity': np.nan
                 }
                 
-
+@st.cache_data(ttl=3600)
 def get_stock_data(tickers, years=5, max_retries=3):
     end_date = datetime.now()
     start_date = end_date - timedelta(days=years*365)
@@ -82,99 +82,49 @@ def get_stock_data(tickers, years=5, max_retries=3):
                 
 def get_historical_prices(ticker, start_date, end_date):
     """
-    Fetch historical price data optimizing between MongoDB cache and yfinance API.
+    Fetch historical price data from MongoDB instead of yfinance
     
     Parameters:
     ticker (str): Stock ticker symbol
-    start_date (str): Start date for historical data in YYYY-MM-DD format
-    end_date (str): End date for historical data in YYYY-MM-DD format
+    start_date (datetime): Start date for historical data
+    end_date (datetime): End date for historical data
     
     Returns:
     pandas.DataFrame: DataFrame with date and adjusted close prices
     """
-    try:
-        start_dt = pd.to_datetime(start_date)
-        end_dt = pd.to_datetime(end_date)
-        current_dt = pd.to_datetime(datetime.now().date())
-        
-        # First try to get data from MongoDB
-        query = {
-            'ticker': ticker,
-            'date': {
-                '$gte': start_date,
-                '$lte': end_date
-            }
+    # Convert dates to string format matching MongoDB
+    start_date_str = start_date
+    end_date_str = end_date
+    
+    # Query MongoDB for historical prices
+    query = {
+        'ticker': ticker,
+        'date': {
+            '$gte': start_date_str,
+            '$lte': end_date_str
         }
-        
-        cursor = prices_collection.find(
-            query,
-            {'_id': 0, 'date': 1, 'Close': 1}
-        )
-        
-        df = pd.DataFrame(list(cursor))
-        
-        # Check if we need to fetch from yfinance
-        need_yfinance = True
-        if not df.empty:
-            df['date'] = pd.to_datetime(df['date'])
-            df = df.sort_values('date')
-            
-            # Check if data is complete
-            date_range = pd.date_range(start_dt, end_dt, freq='B')
-            existing_dates = set(df['date'].dt.date)
-            missing_dates = [d for d in date_range if d.date() not in existing_dates]
-            
-            # Only use yfinance if we're missing dates or don't have today's data
-            if not missing_dates and (current_dt.date() - df['date'].max().date()).days <= 1:
-                need_yfinance = False
-        
-        if need_yfinance:
-            # Get data from yfinance
-            yf_data = yf.download(ticker, start=start_date, end=end_date)
-            
-            if not yf_data.empty:
-                # Format yfinance data
-                df_yf = pd.DataFrame({
-                    'date': yf_data.index,
-                    'Close': yf_data['Close']
-                })
-                
-                # Store new data in MongoDB
-                new_records = []
-                for _, row in df_yf.iterrows():
-                    record = {
-                        'ticker': ticker,
-                        'date': row['date'].strftime('%Y-%m-%d'),
-                        'Close': float(row['Close'])
-                    }
-                    new_records.append(record)
-                
-                if new_records:
-                    try:
-                        # Use bulk write to efficiently update/insert records
-                        bulk_operations = [
-                            UpdateOne(
-                                {
-                                    'ticker': record['ticker'],
-                                    'date': record['date']
-                                },
-                                {'$set': record},
-                                upsert=True
-                            )
-                            for record in new_records
-                        ]
-                        prices_collection.bulk_write(bulk_operations, ordered=False)
-                        
-                    except Exception as e:
-                        print(f"Error updating MongoDB: {e}")
-                
-                return df_yf
-                
+    }
+    
+    # Fetch data from MongoDB
+    cursor = prices_collection.find(
+        query,
+        {'_id': 0, 'date': 1, 'Close': 1}
+    )
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(list(cursor))
+    
+    if df.empty:
         return df
         
-    except Exception as e:
-        print(f"Error fetching data for {ticker}: {e}")
-        return pd.DataFrame()
+    # Convert date string to datetime
+    df['date'] = pd.to_datetime(df['date'])
+    
+    # Sort by date
+    df = df.sort_values('date')
+    
+    
+    return df
     
     
 def get_financial_growth_data(ticker, years=5):
