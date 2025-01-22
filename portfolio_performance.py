@@ -142,7 +142,6 @@ def sell_stock(date, ticker, quantity, price, user_id):
 def get_portfolio_performance(user_id):
     # Fetch transactions for specific user
     transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
-    transactions
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
@@ -163,7 +162,6 @@ def get_portfolio_performance(user_id):
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
-    active_portfolio
     
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
@@ -171,10 +169,20 @@ def get_portfolio_performance(user_id):
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
     
-    # Create a DataFrame to store daily portfolio values
-    daily_values = pd.DataFrame()
+    # Initialize daily_values with a date index
+    first_ticker = active_portfolio['Ticker'].iloc[0] if not active_portfolio.empty else None
+    if first_ticker:
+        try:
+            initial_prices = get_historical_prices(first_ticker, start_date, end_date)
+            daily_values = pd.DataFrame(index=initial_prices['date'])
+        except Exception as e:
+            print(f"Could not fetch initial prices for {first_ticker}: {e}")
+            return pd.DataFrame(), pd.Series()
+    else:
+        return pd.DataFrame(), pd.Series()
     
-    for _, stock in active_portfolio.iterrows():
+    # Iterate through active portfolio and add daily values for each stock
+    for _, stock in active_portfolio.iterrows():  # Removed the asterisk
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
         
@@ -186,8 +194,8 @@ def get_portfolio_performance(user_id):
             daily_values[ticker] = ticker_prices * quantity
         except Exception as e:
             print(f"Could not fetch prices for {ticker}: {e}")
-    daily_values
-    
+            
+    daily_values = daily_values.dropna()  # Remove any rows with missing values
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
