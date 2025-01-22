@@ -140,9 +140,14 @@ def sell_stock(date, ticker, quantity, price, user_id):
     log_transaction(date, ticker, 'SELL', quantity, price, user_id)
 
 def get_portfolio_performance(user_id):
-    # Fetch transactions for specific user
-    transactions = pd.DataFrame(list(collection.find({'user_id': user_id})))
-    transactions
+    # Fetch transactions and convert ObjectId to string
+    transactions_raw = list(collection.find({'user_id': user_id}))
+    
+    # Convert ObjectId to string in the raw data
+    for transaction in transactions_raw:
+        transaction['_id'] = str(transaction['_id'])
+    
+    transactions = pd.DataFrame(transactions_raw)
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
@@ -163,7 +168,6 @@ def get_portfolio_performance(user_id):
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
-    active_portfolio
     
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
@@ -182,16 +186,14 @@ def get_portfolio_performance(user_id):
             return pd.DataFrame(), pd.Series()
     else:
         return pd.DataFrame(), pd.Series()
-    active_portfolio
     
     # Iterate through active portfolio and add daily values for each stock
-    for _, stock in active_portfolio.iterrows():  # Removed the asterisk
+    for _, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
         
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
-            ticker_prices
             ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
@@ -200,7 +202,6 @@ def get_portfolio_performance(user_id):
             print(f"Could not fetch prices for {ticker}: {e}")
             
     daily_values = daily_values.dropna()  # Remove any rows with missing values
-    daily_values.head()
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
