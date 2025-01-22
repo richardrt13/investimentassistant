@@ -148,7 +148,9 @@ def get_portfolio_performance(user_id):
         transaction['_id'] = str(transaction['_id'])
     
     transactions = pd.DataFrame(transactions_raw)
-    transactions
+    print(f"\n1. Transactions shape: {transactions.shape}")
+    print("Sample transactions:")
+    print(transactions.head())
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
@@ -167,8 +169,13 @@ def get_portfolio_performance(user_id):
         })
     ).reset_index()
     
+    print(f"\n2. Portfolio summary:")
+    print(portfolio_summary)
+    
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
+    print(f"\n3. Active portfolio:")
+    print(active_portfolio)
     
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
@@ -176,16 +183,26 @@ def get_portfolio_performance(user_id):
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
     
+    print(f"\n4. Date range: {start_date} to {end_date}")
+    
     # Initialize daily_values with a date index
     first_ticker = active_portfolio['Ticker'].iloc[0] if not active_portfolio.empty else None
+    print(f"\n5. First ticker: {first_ticker}")
+    
     if first_ticker:
         try:
             initial_prices = get_historical_prices(first_ticker, start_date, end_date)
+            print(f"\n6. Initial prices shape for {first_ticker}: {initial_prices.shape}")
+            print("Sample initial prices:")
+            print(initial_prices.head())
+            
             daily_values = pd.DataFrame(index=initial_prices['date'])
+            print(f"\n7. Empty daily_values shape: {daily_values.shape}")
         except Exception as e:
-            print(f"Could not fetch initial prices for {first_ticker}: {e}")
+            print(f"\nError fetching initial prices for {first_ticker}: {e}")
             return pd.DataFrame(), pd.Series()
     else:
+        print("\nNo active tickers found")
         return pd.DataFrame(), pd.Series()
     
     # Iterate through active portfolio and add daily values for each stock
@@ -194,19 +211,26 @@ def get_portfolio_performance(user_id):
         quantity = stock['Total_Quantity']
         
         try:
+            print(f"\n8. Processing ticker: {ticker} with quantity: {quantity}")
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
+            print(f"Got prices for {ticker}, shape: {ticker_prices.shape}")
+            
             ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
             daily_values[ticker] = ticker_prices * quantity
+            print(f"Added {ticker} to daily_values. Current daily_values shape: {daily_values.shape}")
         except Exception as e:
-            print(f"Could not fetch prices for {ticker}: {e}")
+            print(f"Error processing {ticker}: {e}")
             
-    daily_values = daily_values.dropna()  # Remove any rows with missing values
+    daily_values = daily_values.dropna()
+    print(f"\n9. Final daily_values shape: {daily_values.shape}")
+    print("Sample daily_values:")
+    print(daily_values.head())
+    
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
-
 
 def get_ibovespa_data(start_date, end_date):
     """
