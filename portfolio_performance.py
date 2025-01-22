@@ -108,7 +108,6 @@ def register_page():
             users_collection.insert_one(user)
             st.success("Usuário registrado com sucesso! Faça login para continuar.")
 
-@st.cache_data(ttl=3600)
 def load_assets():
     assets = pd.DataFrame(list(stocks_collection.find()))
     if '_id' in assets.columns:
