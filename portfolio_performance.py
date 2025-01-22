@@ -30,10 +30,8 @@ import uuid
 from data_handling import get_fundamental_data, get_stock_data, get_historical_prices, get_financial_growth_data
 from ai_features import PortfolioAnalyzer
 from portfolio_calculation import FinancialAnalysis
-from portfolio_cache import PortfolioCache
 
 financial_analyzer = FinancialAnalysis()
-portfolio_cache = PortfolioCache()
 
 # MongoDB Atlas connection
 mongo_uri = st.secrets["mongo_uri"]
@@ -476,19 +474,6 @@ def portfolio_tracking(user_id):
     # Get all assets
     assets_df = load_assets()
     tickers = assets_df.apply(lambda row: row['symbol'] + '.SA' if row['country'].lower() == 'brazil' else row['symbol'], axis=1).tolist()
-
-    # Get last transaction time for cache key
-    last_transaction_time = get_last_transaction_time(user_id, collection)
-    
-    # Get cached data
-    cached_data = portfolio_cache.get_cached_performance_data(user_id, last_transaction_time)
-    
-    if cached_data:
-        portfolio_data = cached_data['portfolio_data']
-        invested_value = cached_data['invested_value']
-        daily_value = cached_data['daily_value']
-        cumulative_returns = cached_data['cumulative_returns']
-        asset_metrics = cached_data['asset_metrics']
     
     # Transaction input
     st.subheader('Registrar Transação')
@@ -506,16 +491,11 @@ def portfolio_tracking(user_id):
         transaction_price = st.number_input('Preço', min_value=0.01, value=1.00, step=0.01)
 
     if st.button('Registrar Transação'):
-        with st.spinner('Registrando transação...'):
-            transaction_date_str = transaction_date.strftime('%Y-%m-%d %H:%M:%S')
-            if transaction_action == 'Compra':
-                buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
-            else:
-                sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
-            
-            # Invalidate cache after new transaction
-            portfolio_cache.invalidate_cache(user_id)
-            st.rerun()
+        transaction_date_str = transaction_date.strftime('%Y-%m-%d %H:%M:%S')
+        if transaction_action == 'Compra':
+            buy_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
+        else:
+            sell_stock(transaction_date_str, transaction_ticker, transaction_quantity, transaction_price, user_id)
 
     # Display portfolio performance
     st.subheader('Desempenho da Carteira')
