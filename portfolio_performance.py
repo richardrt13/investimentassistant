@@ -200,7 +200,7 @@ def get_portfolio_performance(user_id):
             print(f"Could not fetch prices for {ticker}: {e}")
             
     daily_values = daily_values.dropna()  # Remove any rows with missing values
-    daily_values
+    daily_values.head()
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
