@@ -140,6 +140,9 @@ def sell_stock(date, ticker, quantity, price, user_id):
     log_transaction(date, ticker, 'SELL', quantity, price, user_id)
 
 def get_portfolio_performance(user_id):
+    # Criar uma área para logs
+    log_container = st.expander("Logs de Execução", expanded=False)
+    
     # Fetch transactions and convert ObjectId to string
     transactions_raw = list(collection.find({'user_id': user_id}))
     
@@ -148,9 +151,10 @@ def get_portfolio_performance(user_id):
         transaction['_id'] = str(transaction['_id'])
     
     transactions = pd.DataFrame(transactions_raw)
-    print(f"\n1. Transactions shape: {transactions.shape}")
-    print("Sample transactions:")
-    print(transactions.head())
+    with log_container:
+        st.write("1. Transactions shape:", transactions.shape)
+        st.write("Sample transactions:")
+        st.write(transactions.head())
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
@@ -169,13 +173,15 @@ def get_portfolio_performance(user_id):
         })
     ).reset_index()
     
-    print(f"\n2. Portfolio summary:")
-    print(portfolio_summary)
+    with log_container:
+        st.write("2. Portfolio summary:")
+        st.write(portfolio_summary)
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
-    print(f"\n3. Active portfolio:")
-    print(active_portfolio)
+    with log_container:
+        st.write("3. Active portfolio:")
+        st.write(active_portfolio)
     
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
@@ -183,50 +189,68 @@ def get_portfolio_performance(user_id):
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
     
-    print(f"\n4. Date range: {start_date} to {end_date}")
+    with log_container:
+        st.write(f"4. Date range: {start_date} to {end_date}")
     
     # Initialize daily_values with a date index
     first_ticker = active_portfolio['Ticker'].iloc[0] if not active_portfolio.empty else None
-    print(f"\n5. First ticker: {first_ticker}")
+    with log_container:
+        st.write(f"5. First ticker: {first_ticker}")
     
     if first_ticker:
         try:
-            initial_prices = get_historical_prices(first_ticker, start_date, end_date)
-            print(f"\n6. Initial prices shape for {first_ticker}: {initial_prices.shape}")
-            print("Sample initial prices:")
-            print(initial_prices.head())
-            
-            daily_values = pd.DataFrame(index=initial_prices['date'])
-            print(f"\n7. Empty daily_values shape: {daily_values.shape}")
+            with st.spinner(f'Carregando preços iniciais para {first_ticker}...'):
+                initial_prices = get_historical_prices(first_ticker, start_date, end_date)
+                with log_container:
+                    st.write(f"6. Initial prices shape for {first_ticker}:", initial_prices.shape)
+                    st.write("Sample initial prices:")
+                    st.write(initial_prices.head())
+                
+                daily_values = pd.DataFrame(index=initial_prices['date'])
+                with log_container:
+                    st.write("7. Empty daily_values shape:", daily_values.shape)
         except Exception as e:
-            print(f"\nError fetching initial prices for {first_ticker}: {e}")
+            with log_container:
+                st.error(f"Error fetching initial prices for {first_ticker}: {e}")
             return pd.DataFrame(), pd.Series()
     else:
-        print("\nNo active tickers found")
+        with log_container:
+            st.warning("No active tickers found")
         return pd.DataFrame(), pd.Series()
     
     # Iterate through active portfolio and add daily values for each stock
-    for _, stock in active_portfolio.iterrows():
+    progress_bar = st.progress(0)
+    for idx, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
         quantity = stock['Total_Quantity']
         
         try:
-            print(f"\n8. Processing ticker: {ticker} with quantity: {quantity}")
-            ticker_prices = get_historical_prices(ticker, start_date, end_date)
-            print(f"Got prices for {ticker}, shape: {ticker_prices.shape}")
+            with log_container:
+                st.write(f"8. Processing ticker: {ticker} with quantity: {quantity}")
             
-            ticker_prices = ticker_prices.set_index('date')['Close']
-            ticker_prices = ticker_prices.dropna()
-            
-            daily_values[ticker] = ticker_prices * quantity
-            print(f"Added {ticker} to daily_values. Current daily_values shape: {daily_values.shape}")
+            with st.spinner(f'Carregando preços para {ticker}...'):
+                ticker_prices = get_historical_prices(ticker, start_date, end_date)
+                with log_container:
+                    st.write(f"Got prices for {ticker}, shape: {ticker_prices.shape}")
+                
+                ticker_prices = ticker_prices.set_index('date')['Close']
+                ticker_prices = ticker_prices.dropna()
+                
+                daily_values[ticker] = ticker_prices * quantity
+                with log_container:
+                    st.write(f"Added {ticker} to daily_values. Current daily_values shape: {daily_values.shape}")
         except Exception as e:
-            print(f"Error processing {ticker}: {e}")
+            with log_container:
+                st.error(f"Error processing {ticker}: {e}")
+        
+        # Update progress bar
+        progress_bar.progress((idx + 1) / len(active_portfolio))
             
     daily_values = daily_values.dropna()
-    print(f"\n9. Final daily_values shape: {daily_values.shape}")
-    print("Sample daily_values:")
-    print(daily_values.head())
+    with log_container:
+        st.write("9. Final daily_values shape:", daily_values.shape)
+        st.write("Sample daily_values:")
+        st.write(daily_values.head())
     
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
