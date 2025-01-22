@@ -172,6 +172,7 @@ def get_portfolio_performance(user_id):
     
     # Create a DataFrame to store daily portfolio values
     daily_values = pd.DataFrame()
+    daily_values
     
     for _, stock in active_portfolio.iterrows():
         ticker = stock['Ticker']
