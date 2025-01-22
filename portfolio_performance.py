@@ -148,6 +148,7 @@ def get_portfolio_performance(user_id):
         transaction['_id'] = str(transaction['_id'])
     
     transactions = pd.DataFrame(transactions_raw)
+    transactions
     
     if transactions.empty:
         return pd.DataFrame(), pd.Series()
