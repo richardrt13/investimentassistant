@@ -189,6 +189,7 @@ def get_portfolio_performance(user_id):
         
         try:
             ticker_prices = get_historical_prices(ticker, start_date, end_date)
+            ticker_prices
             ticker_prices = ticker_prices.set_index('date')['Close']
             ticker_prices = ticker_prices.dropna()
             
