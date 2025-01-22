@@ -163,6 +163,7 @@ def get_portfolio_performance(user_id):
     
     # Filter out stocks with zero quantity
     active_portfolio = portfolio_summary[portfolio_summary['Total_Quantity'] > 0]
+    active_portfolio
     
     # Fetch current prices for active stocks
     end_date_raw = datetime.now()
