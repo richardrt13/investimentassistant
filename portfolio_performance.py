@@ -27,6 +27,7 @@ import time
 import logging
 from streamlit_cookies_manager import EncryptedCookieManager
 import uuid
+import pytz
 from data_handling import get_fundamental_data, get_stock_data, get_historical_prices, get_financial_growth_data
 from ai_features import PortfolioAnalyzer
 from portfolio_calculation import FinancialAnalysis
@@ -184,7 +185,8 @@ def get_portfolio_performance(user_id):
         st.write(active_portfolio)
     
     # Fetch current prices for active stocks
-    end_date_raw = datetime.now()
+    brazil_tz = pytz.timezone("America/Sao_Paulo")
+    end_date_raw = datetime.now(brazil_tz)
     start_date_raw = transactions['Date'].min()
     end_date = end_date_raw.strftime('%Y-%m-%d')
     start_date = start_date_raw.strftime('%Y-%m-%d')
