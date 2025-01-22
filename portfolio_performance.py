@@ -465,7 +465,7 @@ def portfolio_tracking(user_id):
     st.title('Acompanhamento da Carteira')
 
     show_values = st.sidebar.toggle('Mostrar Valores', value=True)
-    
+    user_id
     # Initialize database
     init_db()
     analyzer = PortfolioAnalyzer()
