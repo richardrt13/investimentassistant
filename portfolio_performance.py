@@ -180,6 +180,7 @@ def get_portfolio_performance(user_id):
             return pd.DataFrame(), pd.Series()
     else:
         return pd.DataFrame(), pd.Series()
+    active_portfolio
     
     # Iterate through active portfolio and add daily values for each stock
     for _, stock in active_portfolio.iterrows():  # Removed the asterisk
@@ -196,6 +197,7 @@ def get_portfolio_performance(user_id):
             print(f"Could not fetch prices for {ticker}: {e}")
             
     daily_values = daily_values.dropna()  # Remove any rows with missing values
+    daily_values
     invested_values = active_portfolio.set_index('Ticker')['Total_Invested']
     
     return daily_values, invested_values
